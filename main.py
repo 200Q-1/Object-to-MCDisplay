@@ -1,16 +1,21 @@
 import bpy
 import os
-import bpy
 
-def my_handler(scene):
-    print("Scene updated:", scene.name)
 
-bpy.app.handlers.scene_update_pre.append(my_handler)
+def selection_changes(scene):
+    if bpy.data.scenes["Scene"].my_props.auto_reload == True:
+        command_generate()
+
 
 def update_bool(self, context):
     bpy.data.node_groups["アマスタ計算機"].autoExecution.sceneChanged = self.auto_reload
 
+
+def command_generate():
+    print("selected :", bpy.context.selected_objects[0])
 # プロパティを定義するクラス
+
+
 class MyProperties(bpy.types.PropertyGroup):
     directory: bpy.props.StringProperty(
         name="パス",
@@ -28,6 +33,8 @@ class MyProperties(bpy.types.PropertyGroup):
     )
 
 # パネルの定義
+
+
 class RenderScriptPanel(bpy.types.Panel):
     bl_idname = "RENDER_PT_script_panel"
     bl_label = "mcfunction"
@@ -62,14 +69,17 @@ class ReloadPanel(bpy.types.Panel):
         layout = self.layout
         layout.operator("render.reload")
         layout.prop(context.scene.my_props, "auto_reload")
-        
+
 # 実行ボタンの定義
+
+
 class RenderRunReload(bpy.types.Operator):
     bl_idname = "render.reload"
     bl_label = "更新"
 
     def execute(self, context):
         # ここに実行するスクリプトを記述
+        selection_changes
         context.scene.my_props.reload = not context.scene.my_props.reload
         return {'FINISHED'}
 
@@ -117,6 +127,8 @@ class RenderRunScript(bpy.types.Operator):
         bpy.context.scene.frame_set(current_frame)
         return {'FINISHED'}
 
+
+bpy.app.handlers.depsgraph_update_post.append(selection_changes)
 
 # Blenderに登録する関数群
 classes = (
