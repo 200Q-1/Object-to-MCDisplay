@@ -2,7 +2,7 @@ import bpy
 import mathutils
 import os
 import re
-import math
+from math import *
 
 bl_info = {
     "name" : "Object to mcDisplay",
@@ -144,7 +144,7 @@ def command_generate(scene):
             type = "block_display"
         com = "\n".join(com)
         #位置
-        loc = mathutils.Euler((math.radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ matrix
+        loc = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ matrix
         if o.my_object_properties.Type == "BLOCK":
             loc = loc @ mathutils.Matrix.Translation(mathutils.Vector((0.5,-0.5,-0.5)))
         loc = loc.translation
@@ -163,7 +163,7 @@ def command_generate(scene):
         l_rot_x = mathutils.Euler((-l_rot[0], 0, 0),'XYZ').to_matrix().to_4x4()
         l_rot_y = mathutils.Euler((0, l_rot[2], 0),'XYZ').to_matrix().to_4x4()
         l_rot_z = mathutils.Euler((0, 0, l_rot[1]),'XYZ').to_matrix().to_4x4()
-        l_rot = (mathutils.Euler((0, math.radians(180), 0),'XYZ').to_matrix().to_4x4() @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
+        l_rot = (mathutils.Euler((0, radians(180), 0),'XYZ').to_matrix().to_4x4() @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
         l_rot = str(round(l_rot[1],rou))+"f,"+str(round(l_rot[2],rou))+"f,"+str(round(l_rot[3],rou))+"f,"+str(round(l_rot[0],rou))+"f"
         
         #右回転
@@ -176,6 +176,12 @@ def command_generate(scene):
 
         #コマンド書き込み
         com = com.replace("/name",name).replace("/id",id).replace("/transf","translation:[/loc],right_rotation:[/right],scale:[/scale],left_rotation:[/left]").replace("/right",r_rot).replace("/scale",scale).replace("/loc",loc).replace("/left",l_rot).replace("/type",type).replace("/model",str(o.my_object_properties.CustomModelData)).replace("/num",str(i))
+        
+        l=re.findall('/math\[.*?\]',com)
+        c=len(l)
+        l=[eval(re.sub('/math\[(.+?)\]',"\\1",i)) for i in l]
+        for i in range(c) : com = re.sub("/math\[.+?\]",str(l[i]),com,1)
+
         output.append(com)
     #出力
     bpy.data.texts["Output"].from_string("\n".join(output))
