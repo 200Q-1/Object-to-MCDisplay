@@ -3,6 +3,20 @@ import mathutils
 import os
 import re
 import math
+
+bl_info = {
+    "name" : "Object to mcDisplay",
+    "author" : "200Q",
+    "version" : (0, 0, 1),
+    "blender" : (3, 4, 1),
+    "location" : "",
+    "description" : "",
+    "warning" : "",
+    "wiki_url" : "",
+    "tracker_url" : "",
+    "category" : "Object"
+}
+
 #プロパティパネル
 class DisplayProperties(bpy.types.Panel):
     bl_idname = "display_properties"
@@ -35,9 +49,11 @@ def reload(self, context):
 
 def update_enable(self, context):
     if bpy.context.scene.my_props.enable == True:
+        if "Input" not in bpy.data.texts : bpy.data.texts.new("Input")
         #更新ボタンを追加
         bpy.types.VIEW3D_HT_header.remove(reload)
         bpy.types.VIEW3D_HT_header.append(reload)
+
         if bpy.context.scene.my_props.auto_reload == True:
             bpy.app.handlers.frame_change_post.append(command_generate)
             bpy.app.handlers.depsgraph_update_post.append(command_generate)
@@ -106,8 +122,9 @@ class MyProperties(bpy.types.PropertyGroup):
 
 #コマンド生成
 def command_generate(scene):
+    if "Output" not in bpy.data.texts : bpy.data.texts.new("Output")
     object_list = [i for i in bpy.context.scene.objects if not i.my_object_properties.Type == "NONE" and i.hide_viewport == False and i.hide_render == False and i.type == "MESH"]
-    input = list(bpy.data.texts["入力"].as_string().splitlines())
+    input = list(bpy.data.texts["Input"].as_string().splitlines())
     #input = "\n".join([s for s in input if not re.match('^#(?! +|#+)', s)])
     input = [s for s in input if not re.match('^#(?! +|#+)', s)]
     rou = 3
@@ -158,10 +175,10 @@ def command_generate(scene):
         r_rot = str(round(r_rot[1],rou))+"f,"+str(round(r_rot[2],rou))+"f,"+str(round(r_rot[3],rou))+"f,"+str(round(r_rot[0],rou))+"f"
 
         #コマンド書き込み
-        com = com.replace("/id",id).replace("/transf","translation:[/loc],right_rotation:[/right],scale:[/scale],left_rotation:[/left]").replace("/right",r_rot).replace("/scale",scale).replace("/loc",loc).replace("/left",l_rot).replace("/type",type).replace("/model",str(o.my_object_properties.CustomModelData)).replace("/num",str(i))
+        com = com.replace("/name",name).replace("/id",id).replace("/transf","translation:[/loc],right_rotation:[/right],scale:[/scale],left_rotation:[/left]").replace("/right",r_rot).replace("/scale",scale).replace("/loc",loc).replace("/left",l_rot).replace("/type",type).replace("/model",str(o.my_object_properties.CustomModelData)).replace("/num",str(i))
         output.append(com)
     #出力
-    bpy.data.texts["出力"].from_string("\n".join(output))
+    bpy.data.texts["Output"].from_string("\n".join(output))
     #テキストエディタの表示を更新
     for area in bpy.context.screen.areas:
         if area.type == 'TEXT_EDITOR':
@@ -203,7 +220,7 @@ class RenderRunScript(bpy.types.Operator):
         directory = context.scene.my_props.directory
 
         # テキストブロックの名前
-        text_name = "出力"
+        text_name = "Output"
 
         # シーンのフレーム数を取得
         frame_end = bpy.context.scene.frame_end
@@ -239,7 +256,7 @@ classes = (
     RenderRunScript,
     RenderRunReload,
     DisplayProperties,
-    MyObjectProperties
+    MyObjectProperties,
 )
 
 def register():
@@ -247,13 +264,10 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.Object.my_object_properties = bpy.props.PointerProperty(type=MyObjectProperties)
     bpy.types.Scene.my_props = bpy.props.PointerProperty(type=MyProperties)
-
+    update_enable
 def unregister():
-    for cls in reversed(classes):
+    for cls in classes:
         bpy.utils.unregister_class(cls)
-    
-    del bpy.types.Scene.my_props
-    del bpy.types.Object.my_object_properties
 
 if __name__ == "__main__":
     register()
