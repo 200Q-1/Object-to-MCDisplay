@@ -175,12 +175,19 @@ def command_generate(scene):
         r_rot = str(round(r_rot[1],rou))+"f,"+str(round(r_rot[2],rou))+"f,"+str(round(r_rot[3],rou))+"f,"+str(round(r_rot[0],rou))+"f"
 
         #コマンド書き込み
-        com = com.replace("/name",name).replace("/id",id).replace("/transf","translation:[/loc],right_rotation:[/right],scale:[/scale],left_rotation:[/left]").replace("/right",r_rot).replace("/scale",scale).replace("/loc",loc).replace("/left",l_rot).replace("/type",type).replace("/model",str(o.my_object_properties.CustomModelData)).replace("/num",str(i))
-        
+        com = com.replace("/name",name).replace("/id",id).replace("/transf","translation:[/loc],right_rotation:[/right],scale:[/scale],left_rotation:[/left]").replace("/right",r_rot).replace("/scale",scale).replace("/loc",loc).replace("/left",l_rot).replace("/type",type).replace("/model",str(o.prop.CustomModelData)).replace("/num",str(i))
+        #タグ
+        if not o.prop.Tags == "":
+            tagl=re.split(",",o.prop.Tags)
+            l=re.findall('/tag\[.*?\]',com)
+            l=[re.sub('/tag\[(.+?)\]',"\\1",i) for i in l]
+            o=[",".join([re.sub('@',ti,li) for ti in tagl]) for li in l]
+            for i in range(len(l)) : com = re.sub("/tag\[.+?\]",o[i],com,1)
+        else: com = re.sub("/tag\[.+?\]","",com)
+        #math
         l=re.findall('/math\[.*?\]',com)
-        c=len(l)
         l=[eval(re.sub('/math\[(.+?)\]',"\\1",i)) for i in l]
-        for i in range(c) : com = re.sub("/math\[.+?\]",str(l[i]),com,1)
+        for i in range(len(l)) : com = re.sub("/math\[.+?\]",str(l[i]),com,1)
 
         output.append(com)
     #出力
