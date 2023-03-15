@@ -10,6 +10,7 @@ bl_info = {
     "version" : (0, 0, 1),
     "blender" : (3, 4, 1),
     "location" : "",
+    "support": "TESTING",
     "description" : "",
     "warning" : "",
     "wiki_url" : "",
@@ -18,7 +19,7 @@ bl_info = {
 }
 
 #プロパティパネル
-class DisplayProperties(bpy.types.Panel):
+class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):
     bl_idname = "display_properties"
     bl_label = "Display Properties"
     bl_space_type = 'VIEW_3D'
@@ -26,35 +27,35 @@ class DisplayProperties(bpy.types.Panel):
     bl_category = "Item"
     @classmethod
     def poll(cls, context):
-        return bpy.context.active_object and bpy.context.scene.my_props.enable
+        return bpy.context.active_object and bpy.context.scene.OtoD_props.enable
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.active_object.my_object_properties, "Type",expand=True)
-        if not context.active_object.my_object_properties.Type == "NONE":
-            layout.prop(context.active_object.my_object_properties, "Tags")
-            if context.active_object.my_object_properties.Type == "ITEM":
-                layout.prop(context.active_object.my_object_properties, "CustomModelData")
-                layout.prop(context.active_object.my_object_properties, "ItemTag")
-            if context.active_object.my_object_properties.Type == "BLOCK":
-                layout.prop(context.active_object.my_object_properties, "Properties")
-            layout.prop(context.active_object.my_object_properties, "ExtraNBT")
-        
+        layout.prop(context.active_object.OtoD_props, "Type",expand=True)
+        if not context.active_object.OtoD_props.Type == "NONE":
+            layout.prop(context.active_object.OtoD_props, "Tags")
+            if context.active_object.OtoD_props.Type == "ITEM":
+                layout.prop(context.active_object.OtoD_props, "CustomModelData")
+                layout.prop(context.active_object.OtoD_props, "ItemTag")
+            if context.active_object.OtoD_props.Type == "BLOCK":
+                layout.prop(context.active_object.OtoD_props, "Properties")
+            layout.prop(context.active_object.OtoD_props, "ExtraNBT")
+
 #更新ボタン
 def reload(self, context):
     layout = self.layout
     row = layout.row()
     row.alignment="LEFT"
     row.operator("render.reload")
-    row.prop(context.scene.my_props, "auto_reload")
+    row.prop(context.scene.OtoD_props, "auto_reload")
 
 def update_enable(self, context):
-    if bpy.context.scene.my_props.enable == True:
+    if bpy.context.scene.OtoD_props.enable == True:
         if "Input" not in bpy.data.texts : bpy.data.texts.new("Input")
         #更新ボタンを追加
         bpy.types.VIEW3D_HT_header.remove(reload)
         bpy.types.VIEW3D_HT_header.append(reload)
 
-        if bpy.context.scene.my_props.auto_reload == True:
+        if bpy.context.scene.OtoD_props.auto_reload == True:
             bpy.app.handlers.frame_change_post.append(command_generate)
             bpy.app.handlers.depsgraph_update_post.append(command_generate)
     else:
@@ -66,7 +67,7 @@ def update_enable(self, context):
 
 #更新検知
 def update_auto_reload(self, context):
-    if bpy.context.scene.my_props.auto_reload == True:
+    if bpy.context.scene.OtoD_props.auto_reload == True:
         bpy.app.handlers.frame_change_post.append(command_generate)
         bpy.app.handlers.depsgraph_update_post.append(command_generate)
     else:
@@ -74,7 +75,7 @@ def update_auto_reload(self, context):
         bpy.app.handlers.depsgraph_update_post.remove(command_generate)
 
 # オブジェクトのプロパティ
-class MyObjectProperties(bpy.types.PropertyGroup):
+class OtoD_Obj_Props(bpy.types.PropertyGroup):
     Type: bpy.props.EnumProperty(
     name="Object Type",
     items=[
@@ -103,7 +104,7 @@ class MyObjectProperties(bpy.types.PropertyGroup):
         )
 
 # パネルのプロパティ
-class MyProperties(bpy.types.PropertyGroup):
+class OtoD_Meny_Props(bpy.types.PropertyGroup):
     directory: bpy.props.StringProperty(
         name="パス",
         subtype='DIR_PATH',
@@ -123,7 +124,7 @@ class MyProperties(bpy.types.PropertyGroup):
 #コマンド生成
 def command_generate(scene):
     if "Output" not in bpy.data.texts : bpy.data.texts.new("Output")
-    object_list = [i for i in bpy.context.scene.objects if not i.my_object_properties.Type == "NONE" and i.hide_viewport == False and i.hide_render == False and i.type == "MESH"]
+    object_list = [i for i in bpy.context.scene.objects if not i.OtoD_props.Type == "NONE" and i.hide_viewport == False and i.hide_render == False and i.type == "MESH"]
     input = list(bpy.data.texts["Input"].as_string().splitlines())
     #input = "\n".join([s for s in input if not re.match('^#(?! +|#+)', s)])
     input = [s for s in input if not re.match('^#(?! +|#+)', s)]
@@ -136,16 +137,16 @@ def command_generate(scene):
         id = re.sub("(\.[0-9]*)*","",name)
         matrix = o.matrix_world
         com = []
-        if o.my_object_properties.Type == "ITEM":
+        if o.OtoD_props.Type == "ITEM":
             com = [re.sub("^item\s?:\s?", "",s) for s in input if re.match("(?!block\s?:\s?)",s)]
             type = "item_display"
-        elif o.my_object_properties.Type == "BLOCK":
+        elif o.OtoD_props.Type == "BLOCK":
             com = [re.sub("^block\s?:\s?", "",s) for s in input if re.match("(?!item\s?:\s?)",s)]
             type = "block_display"
         com = "\n".join(com)
         #位置
         loc = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ matrix
-        if o.my_object_properties.Type == "BLOCK":
+        if o.OtoD_props.Type == "BLOCK":
             loc = loc @ mathutils.Matrix.Translation(mathutils.Vector((0.5,-0.5,-0.5)))
         loc = loc.translation
         loc = str(round(loc[0],rou))+"f,"+str(round(loc[1],rou))+"f,"+str(round(loc[2],rou))+"f"
@@ -165,7 +166,7 @@ def command_generate(scene):
         l_rot_z = mathutils.Euler((0, 0, l_rot[1]),'XYZ').to_matrix().to_4x4()
         l_rot = (mathutils.Euler((0, radians(180), 0),'XYZ').to_matrix().to_4x4() @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
         l_rot = str(round(l_rot[1],rou))+"f,"+str(round(l_rot[2],rou))+"f,"+str(round(l_rot[3],rou))+"f,"+str(round(l_rot[0],rou))+"f"
-        
+
         #右回転
         if o.parent:
             r_rot = o.rotation_euler
@@ -175,10 +176,10 @@ def command_generate(scene):
         r_rot = str(round(r_rot[1],rou))+"f,"+str(round(r_rot[2],rou))+"f,"+str(round(r_rot[3],rou))+"f,"+str(round(r_rot[0],rou))+"f"
 
         #コマンド書き込み
-        com = com.replace("/name",name).replace("/id",id).replace("/transf","translation:[/loc],right_rotation:[/right],scale:[/scale],left_rotation:[/left]").replace("/right",r_rot).replace("/scale",scale).replace("/loc",loc).replace("/left",l_rot).replace("/type",type).replace("/model",str(o.prop.CustomModelData)).replace("/num",str(i))
+        com = com.replace("/name",name).replace("/id",id).replace("/transf","translation:[/loc],right_rotation:[/right],scale:[/scale],left_rotation:[/left]").replace("/right",r_rot).replace("/scale",scale).replace("/loc",loc).replace("/left",l_rot).replace("/type",type).replace("/model",str(o.OtoD_props.CustomModelData)).replace("/num",str(i))
         #タグ
-        if not o.prop.Tags == "":
-            tagl=re.split(",",o.prop.Tags)
+        if not o.OtoD_props.Tags == "":
+            tagl=re.split(",",o.OtoD_props.Tags)
             l=re.findall('/tag\[.*?\]',com)
             l=[re.sub('/tag\[(.+?)\]',"\\1",i) for i in l]
             o=[",".join([re.sub('@',ti,li) for ti in tagl]) for li in l]
@@ -199,38 +200,38 @@ def command_generate(scene):
 
 
 # 出力パネル
-class RenderScriptPanel(bpy.types.Panel):
+class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):
     bl_idname = "RENDER_PT_script_panel"
     bl_label = "Object to mcDisplay"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "output"
-    
+
     def draw_header(self, context):
-        self.layout.prop(context.scene.my_props, "enable")
+        self.layout.prop(context.scene.OtoD_props, "enable")
 
     # パネル内に描画する内容
     def draw(self, context):
         reload(self, context)
         layout = self.layout
-        layout.prop(context.scene.my_props, "directory")
+        layout.prop(context.scene.OtoD_props, "directory")
         layout.operator("render.run_script")
-        layout.enabled = context.scene.my_props.enable
+        layout.enabled = context.scene.OtoD_props.enable
 # 実行ボタンの定義
-class RenderRunReload(bpy.types.Operator):
+class OBJECTTOMCDISPLAY_OT_RunReload(bpy.types.Operator):
     bl_idname = "render.reload"
     bl_label = "更新"
 
     def execute(self, context):
         command_generate(bpy.context.scene)
         return {'FINISHED'}
-class RenderRunScript(bpy.types.Operator):
+class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):
     bl_idname = "render.run_script"
     bl_label = "書き出し"
 
     def execute(self, context):
         # 出力先ディレクトリ
-        directory = context.scene.my_props.directory
+        directory = context.scene.OtoD_props.directory
 
         # テキストブロックの名前
         text_name = "Output"
@@ -264,20 +265,19 @@ class RenderRunScript(bpy.types.Operator):
         return {'FINISHED'}
 # Blenderに登録する関数群
 classes = (
-    MyProperties,
-    RenderScriptPanel,
-    RenderRunScript,
-    RenderRunReload,
-    DisplayProperties,
-    MyObjectProperties,
+    OBJECTTOMCDISPLAY_PT_DisplayProperties,
+    OBJECTTOMCDISPLAY_PT_MainPanel,
+    OBJECTTOMCDISPLAY_OT_RunReload,
+    OBJECTTOMCDISPLAY_OT_Export,
+    OtoD_Meny_Props,
+    OtoD_Obj_Props,
 )
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-    bpy.types.Object.my_object_properties = bpy.props.PointerProperty(type=MyObjectProperties)
-    bpy.types.Scene.my_props = bpy.props.PointerProperty(type=MyProperties)
-    update_enable
+    bpy.types.Scene.OtoD_props = bpy.props.PointerProperty(type=OtoD_Meny_Props)
+    bpy.types.Object.OtoD_props = bpy.props.PointerProperty(type=OtoD_Obj_Props)
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
