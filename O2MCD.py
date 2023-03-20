@@ -6,7 +6,7 @@ from math import *
 from bpy.app.handlers import persistent
 
 bl_info = {
-    "name" : "Object to mcDisplay",
+    "name" : "Object to MCDisplay",
     "author" : "200Q",
     "version" : (0, 0, 1),
     "blender" : (3, 4, 1),
@@ -27,28 +27,6 @@ O2MCD_translation_dict = {
         ("*", "Show in header"):"ヘッダーに表示",
     }
 }
-#プロパティパネル
-class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):
-    bl_label = "Display Properties"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Item"
-    @classmethod
-    def poll(cls, context):
-        return context.active_object and context.scene.O2MCD_props.enable
-    def draw(self, context):
-        layout = self.layout
-        layout.prop(context.active_object.O2MCD_props, "Types",expand=True)
-        if not context.active_object.O2MCD_props.Types == "NONE":
-            layout.prop(context.active_object.O2MCD_props, "Tags")
-            if context.active_object.O2MCD_props.Types == "ITEM":
-                layout.prop(context.active_object.O2MCD_props, "CustomModelData")
-                layout.prop(context.active_object.O2MCD_props, "ItemTag")
-            if context.active_object.O2MCD_props.Types == "BLOCK":
-                layout.prop(context.active_object.O2MCD_props, "Properties")
-            if context.active_object.O2MCD_props.Types == "EXTRA":
-                layout.prop(context.active_object.O2MCD_props, "Type")
-            layout.prop(context.active_object.O2MCD_props, "ExtraNBT")
 
 def update(self, context):
     if context.scene.O2MCD_props.enable:
@@ -239,10 +217,32 @@ def command_generate(self, context):
         if area.type == 'TEXT_EDITOR':
             area.tag_redraw()
 
+#プロパティパネル
+class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):
+    bl_label = "Display Properties"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Item"
+    @classmethod
+    def poll(cls, context):
+        return context.active_object and context.scene.O2MCD_props.enable
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(context.active_object.O2MCD_props, "Types",expand=True)
+        if not context.active_object.O2MCD_props.Types == "NONE":
+            layout.prop(context.active_object.O2MCD_props, "Tags")
+            if context.active_object.O2MCD_props.Types == "ITEM":
+                layout.prop(context.active_object.O2MCD_props, "CustomModelData")
+                layout.prop(context.active_object.O2MCD_props, "ItemTag")
+            if context.active_object.O2MCD_props.Types == "BLOCK":
+                layout.prop(context.active_object.O2MCD_props, "Properties")
+            if context.active_object.O2MCD_props.Types == "EXTRA":
+                layout.prop(context.active_object.O2MCD_props, "Type")
+            layout.prop(context.active_object.O2MCD_props, "ExtraNBT")
 
 # 出力パネル
 class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):
-    bl_label = "Object to mcDisplay"
+    bl_label = "O2MCD"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "output"
@@ -269,6 +269,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):
             box.prop(context.scene.O2MCD_props, "curr_path")
         box.operator("render.run_script")
         layout.enabled = context.scene.O2MCD_props.enable
+
 # 実行ボタンの定義
 class OBJECTTOMCDISPLAY_OT_RunReload(bpy.types.Operator):
     bl_idname = "render.reload"
@@ -320,7 +321,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):
             curr_path = bpy.path.abspath(context.scene.O2MCD_props.curr_path)
             ext=str(os.path.splitext(curr_path)[1])
             if ext == "" : ext = ".mcfunction"
-            output_file = str(os.path.splitext(anim_path)[0])+ext
+            output_file = str(os.path.splitext(curr_path)[0])+ext
             # テキストブロックを取得
             command_generate(self, context)
             text = bpy.data.texts.get(text_name)
