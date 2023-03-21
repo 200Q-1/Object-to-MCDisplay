@@ -100,7 +100,7 @@ def get_right_rotation(object):
 #関数変換
 def comvert_function(context,object_list,com,num):
     current_frame = context.scene.frame_current
-    flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|tags?|num|math)"
+    flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|prop|tags?|num|math)"
     com = com.replace("/transf","translation:[/loc],right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot]")
     func=findall(f'(/{flist}(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)',com)
     for f in range(len(func)) :
@@ -139,12 +139,18 @@ def comvert_function(context,object_list,com,num):
             name = obj.name
             if obj.O2MCD_props.Types == "ITEM":
                 type = "item_display"
+                prop = ""
+                model = str(obj.O2MCD_props.CustomModelData)
             elif obj.O2MCD_props.Types == "BLOCK":
                 type = "block_display"
+                prop = obj.O2MCD_props.properties
+                model = ""
             elif obj.O2MCD_props.Types == "EXTRA":
                 type = obj.O2MCD_props.Type
+                prop = ""
+                model = ""
             id = sub("(\.[0-9]*)*","",name)
-            tags=split(",",obj.O2MCD_props.Tags)
+            tags=split(",",obj.O2MCD_props.tags)
 
             if elm == "" or elm == val :
                 if var == "loc":
@@ -152,7 +158,7 @@ def comvert_function(context,object_list,com,num):
                 if var == "scale":com = sub("/scale(\[.*?(,.*?)?\])?",str(scale[0])+"f,"+str(scale[1])+"f,"+str(scale[2])+"f",com,1)
                 if var == "r_rot":com = sub("/r_rot(\[.*?(,.*?)?\])?",str(right_rotation[0])+"f,"+str(right_rotation[1])+"f,"+str(right_rotation[2])+"f,"+str(right_rotation[3])+"f",com,1)
                 if var == "l_rot":com = sub("/l_rot(\[.*?(,.*?)?\])?",str(left_rotation[0])+"f,"+str(left_rotation[1])+"f,"+str(left_rotation[2])+"f,"+str(left_rotation[3])+"f",com,1)
-                if not obj.O2MCD_props.Tags == "":
+                if not obj.O2MCD_props.tags == "":
                     if var == "tags" : com = sub("/tags(\[.*?(,.*?)?\])?",",".join(["\""+i+"\"" for i in tags]),com,1)
                     if var == "tag" : com = sub("/tag(\[.*?(,.*?)?\])?",",".join(["tag="+i for i in tags]),com,1)
                 else: com = sub("/tags?(\[.*?(,.*?)?\])?","",com)
@@ -161,11 +167,19 @@ def comvert_function(context,object_list,com,num):
                 if var == "scale":com = sub("/scale\[.*?(,.*?)?\]",str(scale[int(elm)]),com,1)
                 if var == "r_rot":com = sub("/r_rot\[.*?(,.*?)?\]",str(right_rotation[int(elm)]),com,1)
                 if var == "l_rot":com = sub("/l_rot\[.*?(,.*?)?\]",str(left_rotation[int(elm)]),com,1)
-                if not obj.O2MCD_props.Tags == "":
+                if not obj.O2MCD_props.tags == "":
                     if var == "tags" : com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)],com,1)
                     if var == "tag" : com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)],com,1)
                 else:
                     com = sub("/tags?(\[.*?(,.*?)?\])?","",com)
+            if not prop == "":
+                if var == "prop" : com = sub("/prop(\[.*?(,.*?)?\])?",prop,com,1)
+            else:
+                com = sub("/prop?(\[.*?(,.*?)?\])?","",com)
+            if not model == "":
+                if var == "model" : com = sub("/model(\[.*?(,.*?)?\])?",model,com,1)
+            else:
+                com = sub("/model?(\[.*?(,.*?)?\])?","",com)
             if var == "name" : com = sub("/name(\[.*?(,.*?)?\])?",name,com,1)
             if var == "id" : com = sub("/id(\[.*?(,.*?)?\])?",id,com,1)
             if var == "type" : com = sub("/type(\[.*?(,.*?)?\])?",type,com,1)
@@ -230,12 +244,12 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):
         layout = self.layout
         layout.prop(context.active_object.O2MCD_props, "Types",expand=True)
         if not context.active_object.O2MCD_props.Types == "NONE":
-            layout.prop(context.active_object.O2MCD_props, "Tags")
+            layout.prop(context.active_object.O2MCD_props, "tags")
             if context.active_object.O2MCD_props.Types == "ITEM":
                 layout.prop(context.active_object.O2MCD_props, "CustomModelData")
                 layout.prop(context.active_object.O2MCD_props, "ItemTag")
             if context.active_object.O2MCD_props.Types == "BLOCK":
-                layout.prop(context.active_object.O2MCD_props, "Properties")
+                layout.prop(context.active_object.O2MCD_props, "properties")
             if context.active_object.O2MCD_props.Types == "EXTRA":
                 layout.prop(context.active_object.O2MCD_props, "Type")
             layout.prop(context.active_object.O2MCD_props, "ExtraNBT")
@@ -335,12 +349,12 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):
 # オブジェクトのプロパティ
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):
     Types: bpy.props.EnumProperty(name="Object Type",items=[('NONE', "None", ""),('ITEM', "Item", ""),('BLOCK', "Block", ""),('EXTRA', "Extra", "")],default='NONE',options={"ANIMATABLE"})
-    Tags: bpy.props.StringProperty(default="")
-    CustomModelData: bpy.props.IntProperty(default=0)
+    tags: bpy.props.StringProperty(default="")
+    CustomModelData: bpy.props.IntProperty(default=0,min=0)
     ItemTag: bpy.props.StringProperty(default="")
-    Properties: bpy.props.StringProperty(default="")
+    properties: bpy.props.StringProperty(default="")
     ExtraNBT: bpy.props.StringProperty(default="")
-    Type: bpy.props.StringProperty(default="")
+    type: bpy.props.StringProperty(default="")
 
 # パネルのプロパティ
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):
