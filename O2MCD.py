@@ -56,10 +56,7 @@ def get_scale(object):
     rou = bpy.context.scene.O2MCD_props.rou
     if object.parent:
         if object.parent_type == "BONE":
-            pscale = object.parent.pose.bones[object.parent_bone].matrix
-            print(pscale.to_scale())
-            scale = object.parent.matrix_world @ pscale @ object.matrix_world
-            scale = scale.to_scale()
+            pscale = object.parent.pose.bones[object.parent_bone].matrix @ object.matrix_world
             pscale = pscale.to_scale()
         else:
             pscale = object.parent.matrix_world.to_scale()
