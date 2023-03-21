@@ -1,3 +1,5 @@
+#Copyright (c) 2023 200Q
+
 import bpy
 import mathutils
 import os
@@ -12,9 +14,9 @@ bl_info = {
     "blender" : (3, 4, 1),
     "location" : "",
     "support": "TESTING",
-    "description" : "",
+    "description" : "オブジェクトのトランスフォームをMinecraftのDisplayエンティティのtransformationを設定するコマンドに変換します。",
     "warning" : "",
-    "wiki_url" : "",
+    "doc_url" : "https://github.com/200Q-1/Object-to-MCDisplay",
     "tracker_url" : "",
     "category" : "Object"
 }
@@ -27,20 +29,25 @@ O2MCD_translation_dict = {
         ("*", "Show in header"):"ヘッダーに表示",
     }
 }
-
+#更新処理
 def update(self, context):
+    #アドオンを有効
     if context.scene.O2MCD_props.enable:
+        #Inputが無ければ作成
         if "Input" not in bpy.data.texts : bpy.data.texts.new("Input")
+        #自動更新を有効
         if context.scene.O2MCD_props.auto_reload:
             bpy.app.handlers.frame_change_post.append(command_generate)
             bpy.app.handlers.depsgraph_update_post.append(command_generate)
+        #自動更新を無効
         else:
             if command_generate in bpy.app.handlers.frame_change_post : bpy.app.handlers.frame_change_post.remove(command_generate)
             if command_generate in bpy.app.handlers.depsgraph_update_post : bpy.app.handlers.depsgraph_update_post.remove(command_generate)
+    #アドオンを無効
     else:
-        #更新を停止
         if command_generate in bpy.app.handlers.frame_change_post : bpy.app.handlers.frame_change_post.remove(command_generate)
         if command_generate in bpy.app.handlers.depsgraph_update_post : bpy.app.handlers.depsgraph_update_post.remove(command_generate)
+
 #位置取得
 def get_location(object):
     loc = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ object.matrix_world
@@ -50,6 +57,7 @@ def get_location(object):
     loc = loc.translation
     loc = (round(loc[0],rou),round(loc[1],rou),round(loc[2],rou))
     return loc
+
 #スケール取得
 def get_scale(object):
     scale = object.matrix_world.to_scale()
@@ -65,7 +73,8 @@ def get_scale(object):
             scale=pscale
     scale = (round(scale[0],rou),round(scale[1],rou),round(scale[2],rou))
     return scale
-#左回転
+
+#左回転取得
 def get_left_rotation(object):
     rou = bpy.context.scene.O2MCD_props.rou
     if object.parent:
@@ -84,7 +93,8 @@ def get_left_rotation(object):
     l_rot = (mathutils.Euler((0, radians(180), 0),'XYZ').to_matrix().to_4x4() @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
     l_rot = [round(l_rot[1],rou),round(l_rot[2],rou),round(l_rot[3],rou),round(l_rot[0],rou)]
     return l_rot
-#右回転
+
+#右回転取得
 def get_right_rotation(object):
     rou = bpy.context.scene.O2MCD_props.rou
     if object.parent:
@@ -94,25 +104,40 @@ def get_right_rotation(object):
         r_rot = mathutils.Euler((0, 0, 0),'XYZ').to_quaternion()
     r_rot = [round(r_rot[1],rou),round(r_rot[2],rou),round(r_rot[3],rou),round(r_rot[0],rou)]
     return r_rot
+
 #関数変換
 def comvert_function(context,object_list,com,num):
+    #現在のフレームを保存
     current_frame = context.scene.frame_current
+    #関数名
     flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math)"
+    #/transfだけ先に変換
     com = com.replace("/transf","right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")
+    #入力から関数のリストを作成
     func=findall(f'(/{flist}(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)',com)
+    #関数を1つずつ処理
     for f in range(len(func)) :
+        #関数名
         var=sub(f'/({flist})(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?',"\\1",func[f])
+        #引数
         val = sub('/.+?\[(.+)\]',"V\\1",func[f])
+        #引数の中の関数を変換
         if not val == "" and not val == func[f] and match(f".*/{flist}.*",val) : val = comvert_function(context,object_list,val,num)
+        #要素番号
         elm=sub('V?([0-9]*?)(,.*)?',"\\1",val)
+        #フレーム数
         frm=sub('V?.*?,((?:\+|\-)?[0-9]*?)(,.*)?',"\\1",val)
+        #オブジェクト
         obj=sub('V?.*?,.*?,((?:\+|\-)?.*?)',"\\1",val)
+        #math以外の関数を処理
         if not var == "math":
+            #フレームを設定
             if frm == "" or frm == val :
                 frm=str(current_frame)
             elif match("(?:\+|\-)[0-9]+",frm):
                 frm=eval(str(current_frame)+frm)
-
+            context.scene.frame_set(int(frm))
+            #オブジェクトを設定
             if obj == "" or obj == val :
                 obj = object_list[num]
             elif match("(?:\+|\-)[0-9]+",obj):
@@ -128,12 +153,14 @@ def comvert_function(context,object_list,com,num):
                 num = object_list.index(obj)
             else:
                 obj = context.scene.objects[obj]
-            context.scene.frame_set(int(frm))
+            #transformationを取得
             location = get_location(obj)
             scale = get_scale(obj)
             left_rotation = get_left_rotation(obj)
             right_rotation = get_right_rotation(obj)
+            #名前を取得
             name = obj.name
+            #タイプを取得
             if obj.O2MCD_props.Types == "ITEM":
                 type = "item_display"
                 prop = ""
@@ -150,8 +177,9 @@ def comvert_function(context,object_list,com,num):
                 model = ""
                 item = ""
             id = sub("(\.[0-9]*)*","",name)
+            #タグをリスト化
             tags=split(",",obj.O2MCD_props.tags)
-
+            #置き換え
             if elm == "" or elm == val :
                 if var == "loc":
                     com = sub("/loc(\[.*?(,.*?)?\])?",str(location[0])+"f,"+str(location[1])+"f,"+str(location[2])+"f",com,1)
@@ -188,6 +216,7 @@ def comvert_function(context,object_list,com,num):
             if var == "id" : com = sub("/id(\[.*?(,.*?)?\])?",id,com,1)
             if var == "type" : com = sub("/type(\[.*?(,.*?)?\])?",type,com,1)
             if var == "num" : com = sub("/num(\[.*?(,.*?)?\])?",str(num),com,1)
+        #mathを処理
         if var == "math" :
             com = sub("/math\[.+\]+",str(eval(sub('V?(.+)',"\\1",val))),com,1)
     if not current_frame == context.scene.frame_current : context.scene.frame_set(current_frame)
@@ -195,21 +224,29 @@ def comvert_function(context,object_list,com,num):
 
 #コマンド生成
 def command_generate(self, context):
+    #ループ回避のため更新を停止
     if command_generate in bpy.app.handlers.frame_change_post : bpy.app.handlers.frame_change_post.remove(command_generate)
     if command_generate in bpy.app.handlers.depsgraph_update_post : bpy.app.handlers.depsgraph_update_post.remove(command_generate)
+    #Outputが無ければ作成
     if "Output" not in bpy.data.texts : bpy.data.texts.new("Output")
-    object_list = [i for i in context.scene.objects if not i.O2MCD_props.Types == "NONE" and i.hide_viewport == False and i.hide_render == False and i.type == "MESH"]
+    #NONE以外のオブジェクトをリスト化
+    object_list = [i for i in context.scene.objects if not i.O2MCD_props.Types == "NONE" and i.hide_viewport == False and i.hide_render == False]
+    #コマンドをリスト化
     input = list(bpy.data.texts["Input"].as_string().splitlines())
+    #エスケープ
     input = [s for s in input if not match('^#(?! +|#+)', s)]
+    #出力をリセット
     output = []
+
+    #startを出力に追加
     com = [sub("^start\s?:\s?", "",s) for s in input if match("start\s?:\s?.*",s)]
     if not com == []:
         com = "\n".join(com)
         com = comvert_function(context,object_list,com,0)
         output.append(com)
+    #メインコマンドを出力に追加
     for oi in range(len(object_list)):
         o = object_list[oi]
-        com = []
         if o.O2MCD_props.Types == "ITEM":
             com = [sub("^item\s?:\s?", "",s) for s in input if match("(?!block|extra|start|end\s?:\s?)",s)]
         elif o.O2MCD_props.Types == "BLOCK":
@@ -219,16 +256,18 @@ def command_generate(self, context):
         com = "\n".join(com)
         com = comvert_function(context,object_list,com,oi)
         output.append(com)
+    #endを出力に追加
     com = [sub("^end\s?:\s?", "",s) for s in input if match("end\s?:\s?.*",s)]
     if not com == []:
         com = "\n".join(com)
         com = comvert_function(context,object_list,com,0)
         output.append(com)
+    #更新を再開
     if context.scene.O2MCD_props.auto_reload:
         bpy.app.handlers.frame_change_post.append(command_generate)
         bpy.app.handlers.depsgraph_update_post.append(command_generate)
 
-    #出力
+    #Outputに書き込み
     bpy.data.texts["Output"].from_string("\n".join(output))
     #テキストエディタの表示を更新
     for area in bpy.context.screen.areas:
@@ -268,7 +307,6 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):
     def draw_header(self, context):
         self.layout.prop(context.scene.O2MCD_props, "enable")
 
-    # パネル内に描画する内容
     def draw(self, context):
         layout = self.layout
         row=layout.row()
@@ -288,7 +326,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):
         box.operator("render.run_script")
         layout.enabled = context.scene.O2MCD_props.enable
 
-# 実行ボタンの定義
+# 実行ボタン
 class OBJECTTOMCDISPLAY_OT_RunReload(bpy.types.Operator):
     bl_idname = "render.reload"
     bl_label = "Update"
@@ -302,10 +340,8 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):
     def execute(self, context):
         # テキストブロックの名前
         text_name = "Output"
-
         # シーンのフレーム数を取得
         frame_end = context.scene.frame_end
-
         # カレントフレームを保存
         current_frame = context.scene.frame_current
 
@@ -328,7 +364,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):
                 command_generate(self, context)
                 text = bpy.data.texts.get(text_name)
 
-                # テキストブロックが存在する場合は出力する
+                # 出力
                 if text:
                     with open(output_file, "w", encoding="utf-8") as f:
                         f.write(text.as_string())
@@ -344,7 +380,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):
             command_generate(self, context)
             text = bpy.data.texts.get(text_name)
 
-            # テキストブロックが存在する場合は出力する
+            # 出力
             if text:
                 with open(output_file, "w", encoding="utf-8") as f:
                     f.write(text.as_string())
@@ -378,10 +414,11 @@ classes = (
     O2MCD_Meny_Props,
     O2MCD_Obj_Props,
 )
+# blender起動時に実行
 @persistent
 def load_handler():
     update(None,bpy.context.scene)
-
+#登録
 def register():
     bpy.app.translations.register(__name__, O2MCD_translation_dict)
     for cls in classes:
@@ -389,6 +426,7 @@ def register():
     bpy.types.Scene.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Meny_Props)
     bpy.types.Object.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Obj_Props)
     bpy.app.handlers.load_post.append(load_handler)
+#登録解除
 def unregister():
     bpy.app.translations.unregister(__name__)
     for cls in classes:
