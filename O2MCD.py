@@ -97,7 +97,7 @@ def get_right_rotation(object):
 #関数変換
 def comvert_function(context,object_list,com,num):
     current_frame = context.scene.frame_current
-    flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|prop|tags?|num|math)"
+    flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math)"
     com = com.replace("/transf","translation:[/loc],right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot]")
     func=findall(f'(/{flist}(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)',com)
     for f in range(len(func)) :
@@ -138,14 +138,17 @@ def comvert_function(context,object_list,com,num):
                 type = "item_display"
                 prop = ""
                 model = str(obj.O2MCD_props.CustomModelData)
+                item = obj.O2MCD_props.ItemTag
             elif obj.O2MCD_props.Types == "BLOCK":
                 type = "block_display"
                 prop = obj.O2MCD_props.properties
                 model = ""
+                item = ""
             elif obj.O2MCD_props.Types == "EXTRA":
                 type = obj.O2MCD_props.type
                 prop = ""
                 model = ""
+                item = ""
             id = sub("(\.[0-9]*)*","",name)
             tags=split(",",obj.O2MCD_props.tags)
 
@@ -176,7 +179,11 @@ def comvert_function(context,object_list,com,num):
             if not model == "":
                 if var == "model" : com = sub("/model(\[.*?(,.*?)?\])?",model,com,1)
             else:
-                com = sub("/model?(\[.*?(,.*?)?\])?","",com)
+                com = sub("/item?(\[.*?(,.*?)?\])?","",com)
+            if not item == "":
+                if var == "item" : com = sub("/item(\[.*?(,.*?)?\])?",item,com,1)
+            else:
+                com = sub("/item?(\[.*?(,.*?)?\])?","",com)
             if var == "name" : com = sub("/name(\[.*?(,.*?)?\])?",name,com,1)
             if var == "id" : com = sub("/id(\[.*?(,.*?)?\])?",id,com,1)
             if var == "type" : com = sub("/type(\[.*?(,.*?)?\])?",type,com,1)
