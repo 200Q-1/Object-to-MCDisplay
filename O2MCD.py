@@ -98,7 +98,7 @@ def get_right_rotation(object):
 def comvert_function(context,object_list,com,num):
     current_frame = context.scene.frame_current
     flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math)"
-    com = com.replace("/transf","translation:[/loc],right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot]")
+    com = com.replace("/transf","right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")
     func=findall(f'(/{flist}(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)',com)
     for f in range(len(func)) :
         var=sub(f'/({flist})(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?',"\\1",func[f])
