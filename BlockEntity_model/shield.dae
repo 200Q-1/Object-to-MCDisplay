@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 3.4.1 commit date:2022-12-19, commit time:17:00, hash:55485cb379f7</authoring_tool>
+    </contributor>
+    <created>2023-03-20T18:59:17</created>
+    <modified>2023-03-20T18:59:17</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_effects>
+    <effect id="盾-effect">
+      <profile_COMMON>
+        <technique sid="common">
+          <lambert>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <diffuse>
+              <color sid="diffuse">0.8 0.8 0.8 1</color>
+            </diffuse>
+            <index_of_refraction>
+              <float sid="ior">1.45</float>
+            </index_of_refraction>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_images/>
+  <library_materials>
+    <material id="盾-material" name="盾">
+      <instance_effect url="#盾-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="盾-mesh" name="盾">
+      <mesh>
+        <source id="盾-mesh-positions">
+          <float_array id="盾-mesh-positions-array" count="48">0.125 -0.375 -1.1875 0.125 -0.4375 -1.1875 0.125 -0.375 0.1875 0.125 -0.4375 0.1875 0.8750001 -0.375 0.1875 0.8750001 -0.4375 0.1875 0.8750001 -0.375 -1.1875 0.8750001 -0.4375 -1.1875 0.4375 -0.4375 -0.6875 0.4375 -0.8125 -0.6875 0.4375 -0.4375 -0.3125 0.4375 -0.8125 -0.3125 0.5625 -0.4375 -0.3125 0.5625 -0.8125 -0.3125 0.5625 -0.4375 -0.6875 0.5625 -0.8125 -0.6875</float_array>
+          <technique_common>
+            <accessor source="#盾-mesh-positions-array" count="16" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="盾-mesh-normals">
+          <float_array id="盾-mesh-normals-array" count="18">-1 0 0 1 0 0 0 1 0 0 -1 0 0 0 -1 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#盾-mesh-normals-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="盾-mesh-map-0">
+          <float_array id="盾-mesh-map-0-array" count="144">0.21875 0.984375 0.203125 0.984375 0.21875 0.640625 0.203125 0.984375 0.203125 0.640625 0.21875 0.640625 0.015625 0.984375 0 0.984375 0.015625 0.640625 0 0.984375 0 0.640625 0.015625 0.640625 0.015625 0.984375 0.015625 0.640625 0.203125 0.984375 0.015625 0.640625 0.203125 0.640625 0.203125 0.984375 0.21875 0.984375 0.21875 0.640625 0.40625 0.984375 0.21875 0.640625 0.40625 0.640625 0.40625 0.984375 0.203125 1 0.203125 0.984375 0.390625 1 0.203125 0.984375 0.390625 0.984375 0.390625 1 0.015625 1 0.015625 0.984375 0.203125 1 0.015625 0.984375 0.203125 0.984375 0.203125 1 0.40625 0.90625 0.40625 0.8125 0.5 0.90625 0.40625 0.8125 0.5 0.8125 0.5 0.90625 0.53125 0.90625 0.53125 0.8125 0.625 0.90625 0.53125 0.8125 0.625 0.8125 0.625 0.90625 0.5 1 0.5 0.90625 0.53125 1 0.5 0.90625 0.53125 0.90625 0.53125 1 0.53125 1 0.53125 0.90625 0.5625 1 0.53125 0.90625 0.5625 0.90625 0.5625 1 0.625 0.90625 0.625 0.8125 0.65625 0.90625 0.625 0.8125 0.65625 0.8125 0.65625 0.90625 0.5 0.90625 0.5 0.8125 0.53125 0.90625 0.5 0.8125 0.53125 0.8125 0.53125 0.90625</float_array>
+          <technique_common>
+            <accessor source="#盾-mesh-map-0-array" count="72" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="盾-mesh-vertices">
+          <input semantic="POSITION" source="#盾-mesh-positions"/>
+        </vertices>
+        <triangles material="盾-material" count="24">
+          <input semantic="VERTEX" source="#盾-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#盾-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#盾-mesh-map-0" offset="2" set="0"/>
+          <p>0 0 0 1 0 1 2 0 2 1 0 3 3 0 4 2 0 5 4 1 6 5 1 7 6 1 8 5 1 9 7 1 10 6 1 11 4 2 12 6 2 13 2 2 14 6 2 15 0 2 16 2 2 17 7 3 18 5 3 19 1 3 20 5 3 21 3 3 22 1 3 23 6 4 24 7 4 25 0 4 26 7 4 27 1 4 28 0 4 29 2 5 30 3 5 31 4 5 32 3 5 33 5 5 34 4 5 35 8 0 36 9 0 37 10 0 38 9 0 39 11 0 40 10 0 41 12 1 42 13 1 43 14 1 44 13 1 45 15 1 46 14 1 47 12 2 48 14 2 49 10 2 50 14 2 51 8 2 52 10 2 53 15 3 54 13 3 55 9 3 56 13 3 57 11 3 58 9 3 59 14 4 60 15 4 61 8 4 62 15 4 63 9 4 64 8 4 65 10 5 66 11 5 67 12 5 68 11 5 69 13 5 70 12 5 71</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="shield" name="shield" type="NODE">
+        <matrix sid="transform">-1 1.50996e-7 0 0.5 -1.50996e-7 -1 0 -0.4375 0 0 1 1.1875 0 0 0 1</matrix>
+        <instance_geometry url="#盾-mesh" name="shield">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="盾-material" target="#盾-material">
+                <bind_vertex_input semantic="盾-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+              </instance_material>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>
