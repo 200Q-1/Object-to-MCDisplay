@@ -86,3 +86,16 @@ end : tellraw @a {"text":"最後に1つだけ生成されます。"}
 + オブジェクト：`/loc[,,stone.001]`でオブジェクト名、`/loc[,,1]`でオブジェクト番号を指定できます。
 
 `/math[]`：`[]`の中に数式を書くことが出来ます。`/math[/scale[0]*10]`のように中に関数を入れることも出来ます。
+### サンプル
+```python
+#召喚
+item:summon /type ~ ~ ~ {item:{"minecraft:/id",Count:1b,tag:{CustomModelData:/model}},Tags:["sample/num"],transformation:{/transf}}
+block:summon /type ~ ~ ~ {block_state:{Name:"minecraft:/id"},Tags:["sample/num"],transformation:{/transf}}
+
+#モーション
+data merge entity @e[tag=sample/num,limit=1] {transformation:{/transf}}
+
+#前フレームとの差分をスコアに入れて加算
+scoreboard players set @e[tag=sample/num] loc_x_diff /math[int((/loc[0]-/loc[0,-1])*1000)]
+execute as @e[tag=sample/num] run scoreboard players operation @s loc_x += @s loc_x_diff
+```
