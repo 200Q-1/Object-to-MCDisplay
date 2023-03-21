@@ -110,7 +110,7 @@ def comvert_function(context,object_list,com,num):
     #現在のフレームを保存
     current_frame = context.scene.frame_current
     #関数名
-    flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math)"
+    flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)"
     #/transfだけ先に変換
     com = com.replace("/transf","right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")
     #入力から関数のリストを作成
@@ -160,6 +160,10 @@ def comvert_function(context,object_list,com,num):
             right_rotation = get_right_rotation(obj)
             #名前を取得
             name = obj.name
+            #idを取得
+            id = sub("(\.[0-9]*)*","",name)
+            #extraNBTを取得
+            extra = obj.O2MCD_props.ExtraNBT
             #タイプを取得
             if obj.O2MCD_props.Types == "ITEM":
                 type = "item_display"
@@ -176,7 +180,6 @@ def comvert_function(context,object_list,com,num):
                 prop = ""
                 model = ""
                 item = ""
-            id = sub("(\.[0-9]*)*","",name)
             #タグをリスト化
             tags=split(",",obj.O2MCD_props.tags)
             #置き換え
@@ -216,6 +219,7 @@ def comvert_function(context,object_list,com,num):
             if var == "id" : com = sub("/id(\[.*?(,.*?)?\])?",id,com,1)
             if var == "type" : com = sub("/type(\[.*?(,.*?)?\])?",type,com,1)
             if var == "num" : com = sub("/num(\[.*?(,.*?)?\])?",str(num),com,1)
+            if var == "extra" : com = sub("/extra(\[.*?(,.*?)?\])?",extra,com,1)
         #mathを処理
         if var == "math" :
             com = sub("/math\[.+\]+",str(eval(sub('V?(.+)',"\\1",val))),com,1)
