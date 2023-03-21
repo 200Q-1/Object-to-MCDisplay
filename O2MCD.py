@@ -146,7 +146,7 @@ def comvert_function(context,object_list,com,num):
                 prop = obj.O2MCD_props.properties
                 model = ""
             elif obj.O2MCD_props.Types == "EXTRA":
-                type = obj.O2MCD_props.Type
+                type = obj.O2MCD_props.type
                 prop = ""
                 model = ""
             id = sub("(\.[0-9]*)*","",name)
@@ -244,14 +244,14 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):
         layout = self.layout
         layout.prop(context.active_object.O2MCD_props, "Types",expand=True)
         if not context.active_object.O2MCD_props.Types == "NONE":
+            if context.active_object.O2MCD_props.Types == "EXTRA":
+                layout.prop(context.active_object.O2MCD_props, "type")
             layout.prop(context.active_object.O2MCD_props, "tags")
             if context.active_object.O2MCD_props.Types == "ITEM":
                 layout.prop(context.active_object.O2MCD_props, "CustomModelData")
                 layout.prop(context.active_object.O2MCD_props, "ItemTag")
             if context.active_object.O2MCD_props.Types == "BLOCK":
                 layout.prop(context.active_object.O2MCD_props, "properties")
-            if context.active_object.O2MCD_props.Types == "EXTRA":
-                layout.prop(context.active_object.O2MCD_props, "Type")
             layout.prop(context.active_object.O2MCD_props, "ExtraNBT")
 
 # 出力パネル
