@@ -105,6 +105,27 @@ def get_right_rotation(object):
     r_rot = [round(r_rot[1],rou),round(r_rot[2],rou),round(r_rot[3],rou),round(r_rot[0],rou)]
     return r_rot
 
+#フレーム範囲指定
+def frame_range(context,com):
+    for s in range(len(com)):
+        #範囲設定
+        if match("^\[[0-9]+\]",com[s]):
+            min = int(sub("^\[([0-9]+)\].*","\\1",com[s]))
+            max = min
+        elif match("^\[[0-9]+\-[0-9]+\]",com[s]):
+            min = int(sub("^\[([0-9]+)\-[0-9]+\].*","\\1",com[s]))
+            max = int(sub("^\[[0-9]+\-([0-9]+)\].*","\\1",com[s]))
+        else:
+            min = context.scene.frame_start
+            max = context.scene.frame_end
+        #範囲比較
+        if min <= context.scene.frame_current <= max:
+            com[s] = sub("\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?","",com[s])
+        else:
+            com[s]=None
+    com = [s for s in com if not s == None]
+    return com
+
 #関数変換
 def comvert_function(context,object_list,com,num):
     #現在のフレームを保存
@@ -148,7 +169,7 @@ def comvert_function(context,object_list,com,num):
                     obj = 0
                 obj = object_list[obj]
                 num = object_list.index(obj)
-            elif match("[^\.][0-9]+",obj):
+            elif match("^[0-9]+",obj):
                 obj = object_list[int(obj)]
                 num = object_list.index(obj)
             else:
@@ -243,28 +264,32 @@ def command_generate(self, context):
     output = []
 
     #startを出力に追加
-    com = [sub("^start\s?:\s?", "",s) for s in input if match("start\s?:\s?.*",s)]
-    if not com == []:
+    com = [sub("^start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?",s)]
+    com = frame_range(context,com)
+    if com:
         com = "\n".join(com)
-        com = comvert_function(context,object_list,com,0)
+        if match("/(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)",com) : com = comvert_function(context,object_list,com,None)
         output.append(com)
     #メインコマンドを出力に追加
     for oi in range(len(object_list)):
         o = object_list[oi]
         if o.O2MCD_props.Types == "ITEM":
-            com = [sub("^item\s?:\s?", "",s) for s in input if match("(?!block|extra|start|end\s?:\s?)",s)]
+            com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("(?!block|extra|start|end\s?:\s?)",s)]
         elif o.O2MCD_props.Types == "BLOCK":
-            com = [sub("^block\s?:\s?", "",s) for s in input if match("(?!item|extra|start|end\s?:\s?)",s)]
+            com = [sub("^block(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("(?!item|extra|start|end\s?:\s?)",s)]
         elif o.O2MCD_props.Types == "EXTRA":
-            com = [sub("^extra\s?:\s?", "",s) for s in input if match("(?!block|item|start|end\s?:\s?)",s)]
+            com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("(?!block|item|start|end\s?:\s?)",s)]
+    com = frame_range(context,com)
+    if com:
         com = "\n".join(com)
-        com = comvert_function(context,object_list,com,oi)
+        if match("/(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)",com) : com = comvert_function(context,object_list,com,oi)
         output.append(com)
     #endを出力に追加
-    com = [sub("^end\s?:\s?", "",s) for s in input if match("end\s?:\s?.*",s)]
-    if not com == []:
+    com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?",s)]
+    com = frame_range(context,com)
+    if com:
         com = "\n".join(com)
-        com = comvert_function(context,object_list,com,0)
+        if match("/(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)",com) : com = comvert_function(context,object_list,com,None)
         output.append(com)
     #更新を再開
     if context.scene.O2MCD_props.auto_reload:
