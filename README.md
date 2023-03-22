@@ -77,6 +77,7 @@ end : tellraw @a {"text":"最後に1つだけ生成されます。"}
 + `prop`：プロパティの`properties`の値です。
 + `/tags`：プロパティの`tags`の値が`""`で囲われて出力されます。
 + `/tag`：プロパティの`tags`の値の前に`tag=`がついて出力されます。
++ `/extra`：プロパティの`ExtraNBT`の値です。
 + `/num`：オブジェクトの番号です。
 
 `[]`を付けて引数を渡すことも出来ます。  
@@ -89,7 +90,7 @@ end : tellraw @a {"text":"最後に1つだけ生成されます。"}
 ### サンプル
 ```python
 #召喚
-item:summon /type ~ ~ ~ {item:{"minecraft:/id",Count:1b,tag:{CustomModelData:/model}},Tags:["sample/num"],transformation:{/transf}}
+item:summon /type ~ ~ ~ {item:{"minecraft:/id",Count:1b,tag:{CustomModelData:/model}},Tags:["sample/num"],item_display:"none",transformation:{/transf}}
 block:summon /type ~ ~ ~ {block_state:{Name:"minecraft:/id"},Tags:["sample/num"],transformation:{/transf}}
 
 #モーション
