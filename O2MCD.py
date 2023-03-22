@@ -120,30 +120,28 @@ def frame_range(context,com):
             max = context.scene.frame_end
         #範囲比較
         if min <= context.scene.frame_current <= max:
-            com[s] = sub("\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?","",com[s])
+            com[s] = sub("^\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?","",com[s])
         else:
             com[s]=None
     com = [s for s in com if not s == None]
     return com
 
 #関数変換
-def comvert_function(context,object_list,com,num):
+def comvert_function(context,object_list,funk_list,com,num):
     #現在のフレームを保存
     current_frame = context.scene.frame_current
-    #関数名
-    flist="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)"
     #/transfだけ先に変換
     com = com.replace("/transf","right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")
     #入力から関数のリストを作成
-    func=findall(f'(/{flist}(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)',com)
+    func=findall(f'(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)',com)
     #関数を1つずつ処理
     for f in range(len(func)) :
         #関数名
-        var=sub(f'/({flist})(?:\[[^\[\]]*?(?:/{flist}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?',"\\1",func[f])
+        var=sub(f'/({funk_list})(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?',"\\1",func[f])
         #引数
         val = sub('/.+?\[(.+)\]',"V\\1",func[f])
         #引数の中の関数を変換
-        if not val == "" and not val == func[f] and match(f".*/{flist}.*",val) : val = comvert_function(context,object_list,val,num)
+        if not val == "" and not val == func[f] and match(f".*/{funk_list}.*",val) : val = comvert_function(context,object_list,val,num)
         #要素番号
         elm=sub('V?([0-9]*?)(,.*)?',"\\1",val)
         #フレーム数
@@ -254,6 +252,8 @@ def command_generate(self, context):
     if command_generate in bpy.app.handlers.depsgraph_update_post : bpy.app.handlers.depsgraph_update_post.remove(command_generate)
     #Outputが無ければ作成
     if "Output" not in bpy.data.texts : bpy.data.texts.new("Output")
+    #関数名
+    funk_list="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)"
     #NONE以外のオブジェクトをリスト化
     object_list = [i for i in context.scene.objects if not i.O2MCD_props.Types == "NONE" and i.hide_viewport == False and i.hide_render == False]
     #コマンドをリスト化
@@ -268,7 +268,7 @@ def command_generate(self, context):
     com = frame_range(context,com)
     if com:
         com = "\n".join(com)
-        if match("/(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)",com) : com = comvert_function(context,object_list,com,None)
+        if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,None)
         output.append(com)
     #メインコマンドを出力に追加
     for oi in range(len(object_list)):
@@ -282,14 +282,14 @@ def command_generate(self, context):
     com = frame_range(context,com)
     if com:
         com = "\n".join(com)
-        if match("/(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)",com) : com = comvert_function(context,object_list,com,oi)
+        if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,oi)
         output.append(com)
     #endを出力に追加
     com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?",s)]
     com = frame_range(context,com)
     if com:
         com = "\n".join(com)
-        if match("/(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)",com) : com = comvert_function(context,object_list,com,None)
+        if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,None)
         output.append(com)
     #更新を再開
     if context.scene.O2MCD_props.auto_reload:
