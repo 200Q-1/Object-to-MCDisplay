@@ -255,7 +255,7 @@ def command_generate(self, context):
     #Outputが無ければ作成
     if "Output" not in bpy.data.texts : bpy.data.texts.new("Output")
     #NONE以外のオブジェクトをリスト化
-    object_list = [i for i in context.scene.objects if not i.O2MCD_props.Types == "NONE" and i.hide_viewport == False and i.hide_render == False]
+    object_list = [i for i in context.scene.objects if not i.O2MCD_props.Types == "NONE" and not i.hide_viewport and not i.hide_render]
     #コマンドをリスト化
     input = list(bpy.data.texts["Input"].as_string().splitlines())
     #エスケープ
