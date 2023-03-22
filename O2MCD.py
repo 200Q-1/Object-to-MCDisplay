@@ -272,7 +272,9 @@ def command_generate(self, context):
         bpy.app.handlers.depsgraph_update_post.append(command_generate)
 
     #Outputに書き込み
-    bpy.data.texts["Output"].from_string("\n".join(output))
+    output = "\n".join(output)
+    output = sub("[,\.][,\.]|([\{\[\(])[,\.]|[,\.]([\]\}\)])","\\1\\2",output)
+    bpy.data.texts["Output"].from_string(output)
     #テキストエディタの表示を更新
     for area in bpy.context.screen.areas:
         if area.type == 'TEXT_EDITOR':
