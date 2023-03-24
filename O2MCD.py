@@ -27,6 +27,7 @@ O2MCD_translation_dict = {
         ("Operator", "Update"):"更新",
         ("*", "Auto Update"):"自動更新",
         ("*", "Show in header"):"ヘッダーに表示",
+        ("*", "Object Number"):"番号"
     }
 }
 #更新処理
@@ -256,6 +257,11 @@ def command_generate(self, context):
     funk_list="(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)"
     #NONE以外のオブジェクトをリスト化
     object_list = [i for i in context.scene.objects if not i.O2MCD_props.Types == "NONE" and not i.hide_viewport and not i.hide_render]
+    #オブジェクト番号をプロパティに表示
+    if context.view_layer.objects.active in object_list:
+        context.view_layer.objects.active.O2MCD_props.number = object_list.index(context.view_layer.objects.active)
+    elif context.view_layer.objects.active:
+        context.view_layer.objects.active.O2MCD_props.number = -1
     #コマンドをリスト化
     input = list(bpy.data.texts["Input"].as_string().splitlines())
     #エスケープ
@@ -271,8 +277,8 @@ def command_generate(self, context):
         if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,None)
         output.append(com)
     #メインコマンドを出力に追加
-    for oi in range(len(object_list)):
-        o = object_list[oi]
+    for num in range(len(object_list)):
+        o = object_list[num]
         if o.O2MCD_props.Types == "ITEM":
             com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("(?!block|extra|start|end\s?:\s?)",s)]
         elif o.O2MCD_props.Types == "BLOCK":
@@ -282,7 +288,7 @@ def command_generate(self, context):
     com = frame_range(context,com)
     if com:
         com = "\n".join(com)
-        if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,oi)
+        if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,num)
         output.append(com)
     #endを出力に追加
     com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?",s)]
@@ -318,6 +324,12 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):
         layout = self.layout
         layout.prop(context.active_object.O2MCD_props, "Types",expand=True)
         if not context.active_object.O2MCD_props.Types == "NONE":
+            row=layout.row()
+            row.enabled=False
+            row.use_property_split = True
+            row.use_property_decorate = False
+            if not context.view_layer.objects.active.O2MCD_props.number == -1:
+                row.prop(context.active_object.O2MCD_props, "number")
             if context.active_object.O2MCD_props.Types == "EXTRA":
                 layout.prop(context.active_object.O2MCD_props, "type")
             layout.prop(context.active_object.O2MCD_props, "tags")
@@ -419,6 +431,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):
 
 # オブジェクトのプロパティ
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):
+    number : bpy.props.IntProperty(name="Object Number",default=-1,min=-1)
     Types: bpy.props.EnumProperty(name="Object Type",items=[('NONE', "None", ""),('ITEM', "Item", ""),('BLOCK', "Block", ""),('EXTRA', "Extra", "")],default='NONE',options={"ANIMATABLE"})
     tags: bpy.props.StringProperty(default="")
     CustomModelData: bpy.props.IntProperty(default=0,min=0)
