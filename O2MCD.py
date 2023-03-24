@@ -285,11 +285,11 @@ def command_generate(self, context):
             com = [sub("^block(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("(?!item|extra|start|end\s?:\s?)",s)]
         elif o.O2MCD_props.Types == "EXTRA":
             com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("(?!block|item|start|end\s?:\s?)",s)]
-    com = frame_range(context,com)
-    if com:
-        com = "\n".join(com)
-        if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,num)
-        output.append(com)
+        com = frame_range(context,com)
+        if com:
+            com = "\n".join(com)
+            if match(f".*/({funk_list}).*",com) : com = comvert_function(context,object_list,funk_list,com,num)
+            output.append(com)
     #endを出力に追加
     com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?","\\1",s) for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?",s)]
     com = frame_range(context,com)
