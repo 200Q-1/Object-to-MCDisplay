@@ -142,7 +142,7 @@ def comvert_function(context,object_list,funk_list,com,num):
         #引数
         val = sub('/.+?\[(.+)\]',"V\\1",func[f])
         #引数の中の関数を変換
-        if not val == "" and not val == func[f] and match(f".*/{funk_list}.*",val) : val = comvert_function(context,object_list,val,num)
+        if not val == "" and not val == func[f] and match(f".*/{funk_list}.*",val) : val = comvert_function(context,object_list,funk_list,val,num)
         #要素番号
         elm=sub('V?([0-9]*?)(,.*)?',"\\1",val)
         #フレーム数
@@ -174,67 +174,87 @@ def comvert_function(context,object_list,funk_list,com,num):
             else:
                 obj = context.scene.objects[obj]
             #transformationを取得
-            location = get_location(obj)
-            scale = get_scale(obj)
-            left_rotation = get_left_rotation(obj)
-            right_rotation = get_right_rotation(obj)
+            if var == "loc": location = get_location(obj)
+            if var == "scale": scale = get_scale(obj)
+            if var == "r_rot": right_rotation = get_right_rotation(obj)
+            if var == "l_rot": left_rotation = get_left_rotation(obj)
             #名前を取得
-            name = obj.name
+            if var == "name" or var == "id" : name = obj.name
             #idを取得
-            id = sub("(\.[0-9]*)*","",name)
+            if var == "id" : id = sub("(\.[0-9]*)*","",name)
             #extraNBTを取得
-            extra = obj.O2MCD_props.ExtraNBT
+            if var == "extra" : extra = obj.O2MCD_props.ExtraNBT
             #タイプを取得
-            if obj.O2MCD_props.Types == "ITEM":
-                type = "item_display"
-                prop = ""
-                model = str(obj.O2MCD_props.CustomModelData)
-                item = obj.O2MCD_props.ItemTag
-            elif obj.O2MCD_props.Types == "BLOCK":
-                type = "block_display"
-                prop = obj.O2MCD_props.properties
-                model = ""
-                item = ""
-            elif obj.O2MCD_props.Types == "EXTRA":
-                type = obj.O2MCD_props.type
-                prop = ""
-                model = ""
-                item = ""
+            if var == "type" :
+                if obj.O2MCD_props.Types == "ITEM":
+                    type = "item_display"
+                elif obj.O2MCD_props.Types == "BLOCK":
+                    type = "block_display"
+                elif obj.O2MCD_props.Types == "EXTRA":
+                    type = obj.O2MCD_props.type
+            #ブロックのプロパティを取得
+            if var == "prop" :
+                if obj.O2MCD_props.Types == "ITEM":
+                    prop = ""
+                elif obj.O2MCD_props.Types == "BLOCK":
+                    prop = obj.O2MCD_props.properties
+                elif obj.O2MCD_props.Types == "EXTRA":
+                    prop = ""
+            #カスタムモデルデータを取得
+            if var == "model" :
+                if obj.O2MCD_props.Types == "ITEM":
+                    model = str(obj.O2MCD_props.CustomModelData)
+                elif obj.O2MCD_props.Types == "BLOCK":
+                    model = ""
+                elif obj.O2MCD_props.Types == "EXTRA":
+                    model = ""
+            #アイテムタグを取得
+            if var == "item" :
+                if obj.O2MCD_props.Types == "ITEM":
+                    item = obj.O2MCD_props.ItemTag
+                elif obj.O2MCD_props.Types == "BLOCK":
+                    item = ""
+                elif obj.O2MCD_props.Types == "EXTRA":
+                    item = ""
             #タグをリスト化
-            tags=split(",",obj.O2MCD_props.tags)
+            if var == "tag" or var == "tags" : tags=split(",",obj.O2MCD_props.tags)
             #置き換え
             if elm == "" or elm == val :
-                if var == "loc":
-                    com = sub("/loc(\[.*?(,.*?)?\])?",str(location[0])+"f,"+str(location[1])+"f,"+str(location[2])+"f",com,1)
+                if var == "loc":com = sub("/loc(\[.*?(,.*?)?\])?",str(location[0])+"f,"+str(location[1])+"f,"+str(location[2])+"f",com,1)
                 if var == "scale":com = sub("/scale(\[.*?(,.*?)?\])?",str(scale[0])+"f,"+str(scale[1])+"f,"+str(scale[2])+"f",com,1)
                 if var == "r_rot":com = sub("/r_rot(\[.*?(,.*?)?\])?",str(right_rotation[0])+"f,"+str(right_rotation[1])+"f,"+str(right_rotation[2])+"f,"+str(right_rotation[3])+"f",com,1)
                 if var == "l_rot":com = sub("/l_rot(\[.*?(,.*?)?\])?",str(left_rotation[0])+"f,"+str(left_rotation[1])+"f,"+str(left_rotation[2])+"f,"+str(left_rotation[3])+"f",com,1)
-                if not obj.O2MCD_props.tags == "":
-                    if var == "tags" : com = sub("/tags(\[.*?(,.*?)?\])?",",".join(["\""+i+"\"" for i in tags]),com,1)
-                    if var == "tag" : com = sub("/tag(\[.*?(,.*?)?\])?",",".join(["tag="+i for i in tags]),com,1)
-                else: com = sub("/tags?(\[.*?(,.*?)?\])?","",com)
+                if var == "tag" or var == "tags" :
+                    if not obj.O2MCD_props.tags == "":
+                        if var == "tags" : com = sub("/tags(\[.*?(,.*?)?\])?",",".join(["\""+i+"\"" for i in tags]),com,1)
+                        if var == "tag" : com = sub("/tag(\[.*?(,.*?)?\])?",",".join(["tag="+i for i in tags]),com,1)
+                    else: com = sub("/tags?(\[.*?(,.*?)?\])?","",com)
             else:
                 if var == "loc":com = sub("/loc\[.*?(,.*?)?\]",str(location[int(elm)]),com,1)
                 if var == "scale":com = sub("/scale\[.*?(,.*?)?\]",str(scale[int(elm)]),com,1)
                 if var == "r_rot":com = sub("/r_rot\[.*?(,.*?)?\]",str(right_rotation[int(elm)]),com,1)
                 if var == "l_rot":com = sub("/l_rot\[.*?(,.*?)?\]",str(left_rotation[int(elm)]),com,1)
-                if not obj.O2MCD_props.tags == "":
-                    if var == "tags" : com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)],com,1)
-                    if var == "tag" : com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)],com,1)
+                if var == "tag" or var == "tags" :
+                    if not obj.O2MCD_props.tags == "":
+                        if var == "tags" : com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)],com,1)
+                        if var == "tag" : com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)],com,1)
+                    else:
+                        com = sub("/tags?(\[.*?(,.*?)?\])?","",com)
+            if var == "prop" :
+                if not prop == "":
+                    com = sub("/prop(\[.*?(,.*?)?\])?",prop,com,1)
                 else:
-                    com = sub("/tags?(\[.*?(,.*?)?\])?","",com)
-            if not prop == "":
-                if var == "prop" : com = sub("/prop(\[.*?(,.*?)?\])?",prop,com,1)
-            else:
-                com = sub("/prop?(\[.*?(,.*?)?\])?","",com)
-            if not model == "":
-                if var == "model" : com = sub("/model(\[.*?(,.*?)?\])?",model,com,1)
-            else:
-                com = sub("/item?(\[.*?(,.*?)?\])?","",com)
-            if not item == "":
-                if var == "item" : com = sub("/item(\[.*?(,.*?)?\])?",item,com,1)
-            else:
-                com = sub("/item?(\[.*?(,.*?)?\])?","",com)
+                    com = sub("/prop?(\[.*?(,.*?)?\])?","",com)
+            if var == "model" :
+                if not model == "":
+                    com = sub("/model(\[.*?(,.*?)?\])?",model,com,1)
+                else:
+                    com = sub("/item?(\[.*?(,.*?)?\])?","",com)
+            if var == "item" :
+                if not item == "":
+                    com = sub("/item(\[.*?(,.*?)?\])?",item,com,1)
+                else:
+                    com = sub("/item?(\[.*?(,.*?)?\])?","",com)
             if var == "name" : com = sub("/name(\[.*?(,.*?)?\])?",name,com,1)
             if var == "id" : com = sub("/id(\[.*?(,.*?)?\])?",id,com,1)
             if var == "type" : com = sub("/type(\[.*?(,.*?)?\])?",type,com,1)
