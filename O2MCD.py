@@ -13,7 +13,7 @@ bl_info = {
     "version" : (0, 0, 1),
     "blender" : (3, 4, 1),
     "location" : "",
-    "support": "TESTING",
+    "support": "COMMUNITY",
     "description" : "オブジェクトのトランスフォームをMinecraftのDisplayエンティティのtransformationを設定するコマンドに変換します。",
     "warning" : "",
     "doc_url" : "https://github.com/200Q-1/Object-to-MCDisplay",
@@ -30,14 +30,26 @@ O2MCD_translation_dict = {
         ("*", "Object Number"):"番号"
     }
 }
+def prop_drow(self, context):
+    node = [i.name for i in bpy.context.active_object.modifiers if i.type == "NODES"]
+    node_groug = bpy.data.node_groups
+    node_groug = set([sub(":.*","",i.name) for i in node_groug if match(".+?:.+",i.name)])
+    for i in range(len(bpy.context.active_object.prop_list)):
+        if not bpy.context.active_object.prop_list[i].name in node_groug or not bpy.context.active_object.prop_list[i].name in node:
+            bpy.context.active_object.prop_list.remove(i)
+            bpy.context.active_object.list_index = min(max(0, bpy.context.active_object.list_index - 1), len(bpy.context.active_object.list_index) - 1)
+    for i in node :
+        if i in node_groug and not i in bpy.context.active_object.prop_list: bpy.context.active_object.prop_list.add().name = i
+
 #更新処理
 def update(self, context):
     #アドオンを有効
-    if context.scene.O2MCD_props.enable:
+    if bpy.context.scene.O2MCD_props.enable:
         #Inputが無ければ作成
+        bpy.app.handlers.depsgraph_update_post.append(prop_drow)
         if "Input" not in bpy.data.texts : bpy.data.texts.new("Input")
         #自動更新を有効
-        if context.scene.O2MCD_props.auto_reload:
+        if bpy.context.scene.O2MCD_props.auto_reload:
             bpy.app.handlers.frame_change_post.append(command_generate)
             bpy.app.handlers.depsgraph_update_post.append(command_generate)
         #自動更新を無効
@@ -46,6 +58,7 @@ def update(self, context):
             if command_generate in bpy.app.handlers.depsgraph_update_post : bpy.app.handlers.depsgraph_update_post.remove(command_generate)
     #アドオンを無効
     else:
+        if command_generate in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(prop_drow)
         if command_generate in bpy.app.handlers.frame_change_post : bpy.app.handlers.frame_change_post.remove(command_generate)
         if command_generate in bpy.app.handlers.depsgraph_update_post : bpy.app.handlers.depsgraph_update_post.remove(command_generate)
 
@@ -197,7 +210,7 @@ def comvert_function(context,object_list,funk_list,com,num):
                 if obj.O2MCD_props.Types == "ITEM":
                     prop = ""
                 elif obj.O2MCD_props.Types == "BLOCK":
-                    prop = obj.O2MCD_props.properties
+                    prop = ",".join([i.active for i in obj.prop_list])
                 elif obj.O2MCD_props.Types == "EXTRA":
                     prop = ""
             #カスタムモデルデータを取得
@@ -353,12 +366,22 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):
             if context.active_object.O2MCD_props.Types == "EXTRA":
                 layout.prop(context.active_object.O2MCD_props, "type")
             layout.prop(context.active_object.O2MCD_props, "tags")
+            layout.template_ID(context.object.O2MCD_props,"Types")
             if context.active_object.O2MCD_props.Types == "ITEM":
                 layout.prop(context.active_object.O2MCD_props, "CustomModelData")
                 layout.prop(context.active_object.O2MCD_props, "ItemTag")
             if context.active_object.O2MCD_props.Types == "BLOCK":
-                layout.prop(context.active_object.O2MCD_props, "properties")
+                prop = layout.row(align = True)
+                prop.alignment = "LEFT"
+                prop.prop(context.active_object.O2MCD_props, "toggle_prop", icon="TRIA_DOWN" if context.active_object.O2MCD_props.toggle_prop else "TRIA_RIGHT", emboss=False)
+                if context.active_object.O2MCD_props.toggle_prop:
+                    box = layout.box()
+                    box.template_list("OBJECTTOMCDISPLAY_UL_List", "The_List", context.active_object,"prop_list", context.active_object, "list_index",rows=1,type="GRID",columns=2)
+                    if context.active_object.list_index >= 0 and context.active_object.prop_list:
+                        item = context.active_object.prop_list[context.active_object.list_index]
+                        box.prop(item, "prop",text=item.name)
             layout.prop(context.active_object.O2MCD_props, "ExtraNBT")
+
 
 # 出力パネル
 class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):
@@ -380,8 +403,10 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):
         col.use_property_decorate = False
         col.prop(context.scene.O2MCD_props, "rou")
         layout.separator()
-        layout.prop(context.scene.O2MCD_props, "output",expand=True)
-        box = layout.box()
+        col2 = layout.column(align=True)
+        row2 = col2.row()
+        row2.prop(context.scene.O2MCD_props, "output",col2and=True)
+        box = col2.box()
         if context.scene.O2MCD_props.output == "ANIMATION":
             box.prop(context.scene.O2MCD_props, "anim_path")
         else:
@@ -456,7 +481,7 @@ class O2MCD_Obj_Props(bpy.types.PropertyGroup):
     tags: bpy.props.StringProperty(default="")
     CustomModelData: bpy.props.IntProperty(default=0,min=0)
     ItemTag: bpy.props.StringProperty(default="")
-    properties: bpy.props.StringProperty(default="")
+    toggle_prop: bpy.props.BoolProperty(name="toggle")
     ExtraNBT: bpy.props.StringProperty(default="")
     type: bpy.props.StringProperty(default="")
 
@@ -469,6 +494,36 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):
     output: bpy.props.EnumProperty(name="Output",items=[('CURRENT', "Current Frame", ""),('ANIMATION', "Animation", "")],default='CURRENT')
     enable: bpy.props.BoolProperty(name="",default=False,update=update)
 
+def item_list(self, context):
+    items=[]
+    node_groug = bpy.data.node_groups
+    name = context.active_object.prop_list[context.active_object.list_index].name
+    item = [sub(f"{name}:","",i.name) for i in node_groug if match(f"{name}:.+",i.name)]
+    for i in item:items.append((i,i,""))
+    return items
+class OBJECTTOMCDISPLAY_UL_List(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
+        row = layout.row(align=True)
+        row.prop(item,"toggle")
+        row.label(text=item.name)
+
+def apply_prop(self, context):
+    node_groug = bpy.data.node_groups
+    node_groug = set([sub(":.*","",i.name) for i in node_groug if match(".+?:.+",i.name)])
+    name = context.active_object.prop_list[context.active_object.list_index].name
+    prop = context.active_object.prop_list[context.active_object.list_index].prop
+    context.active_object.prop_list[context.active_object.list_index].active = name+":"+prop
+    context.active_object.modifiers[name].node_group = bpy.data.node_groups[name+":"+prop]
+    try:
+        context.active_object.modifiers[name]["Input_2_attribute_name"] = prop
+    except:pass
+def toggle_prop(self, context):
+    context.active_object.modifiers[self.name].show_viewport = self.toggle
+class O2MCD_ListItem(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name="Name",default="")
+    prop: bpy.props.EnumProperty(name="",items=item_list,update=apply_prop,options={"ANIMATABLE"})
+    active :bpy.props.StringProperty(name="active",default="")
+    toggle :bpy.props.BoolProperty(name="",default=False,update=toggle_prop)
 # Blenderに登録する関数群
 classes = (
     OBJECTTOMCDISPLAY_PT_DisplayProperties,
@@ -477,10 +532,12 @@ classes = (
     OBJECTTOMCDISPLAY_OT_Export,
     O2MCD_Meny_Props,
     O2MCD_Obj_Props,
+    OBJECTTOMCDISPLAY_UL_List,
+    O2MCD_ListItem
 )
 # blender起動時に実行
 @persistent
-def load_handler():
+def load_handler(self, context):
     update(None,bpy.context.scene)
 #登録
 def register():
@@ -489,12 +546,15 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.Scene.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Meny_Props)
     bpy.types.Object.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Obj_Props)
+    bpy.types.Object.prop_list = bpy.props.CollectionProperty(type = O2MCD_ListItem)
+    bpy.types.Object.list_index = bpy.props.IntProperty(name = "Index",default = 0)
     bpy.app.handlers.load_post.append(load_handler)
 #登録解除
 def unregister():
     bpy.app.translations.unregister(__name__)
     for cls in classes:
         bpy.utils.unregister_class(cls)
+    del bpy.types.Object.list_index
     bpy.app.handlers.load_post.remove(load_handler)
 
 if __name__ == "__main__":
