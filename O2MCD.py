@@ -59,18 +59,22 @@ def update(self, context):  # 更新処理
         except:pass
 
 def chenge_panel(self, context):
-    if context.view_layer.objects.active.O2MCD_props.prop_id > len(context.scene.prop_list)-1:
-        context.view_layer.objects.active.O2MCD_props.prop_id = -1
-    context.scene.O2MCD_props.list_index = context.view_layer.objects.active.O2MCD_props.prop_id
+    if not context.view_layer.objects.active == None:
+        if context.view_layer.objects.active.O2MCD_props.prop_id > len(context.scene.prop_list)-1:
+            context.view_layer.objects.active.O2MCD_props.prop_id = -1
+        context.scene.O2MCD_props.list_index = context.view_layer.objects.active.O2MCD_props.prop_id
     
-    bpy.context.scene.object_list.clear()
+    for i in range(len(bpy.context.scene.object_list)):
+        if not bpy.context.scene.object_list[i].obj.name in context.view_layer.objects or bpy.context.scene.object_list[i].obj.O2MCD_props.prop_id ==-1 :
+            bpy.context.scene.object_list[i].obj.O2MCD_props.number = -1
+            bpy.context.scene.object_list.remove(i)
     for i in context.view_layer.objects:
-        if i.O2MCD_props.prop_id >= 0 and not i.hide_viewport and not i.hide_render:
+        if i.O2MCD_props.prop_id >= 0 and not i.hide_viewport and not i.hide_render and not i in [i.obj for i in bpy.context.scene.object_list]:
             bpy.context.scene.object_list.add().obj = i
-            i.O2MCD_props.number = len(bpy.context.scene.object_list)-1
-        else: i.O2MCD_props.number = -1
+    for i in range(len(bpy.context.scene.object_list)):
+        bpy.context.scene.object_list[i].obj.O2MCD_props.number = i
     for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
+        if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
     
 
@@ -440,7 +444,11 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         col.use_property_split = True
         col.use_property_decorate = False
         col.prop(context.scene.O2MCD_props, "rou")
-        col.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "object_list", context.scene.O2MCD_props, "obj_index", rows=2)
+        row3 = col.row()
+        row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "object_list", context.scene.O2MCD_props, "obj_index", rows=2)
+        col3 = row3.column()
+        col3.operator("render.list_action", icon='TRIA_UP', text="").action = 'UP'
+        col3.operator("render.list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
         layout.separator()
         col2 = layout.column(align=True)
         row2 = col2.row()
@@ -453,7 +461,29 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         box.operator("render.export")
         layout.enabled = context.scene.O2MCD_props.enable
 
+class OBJECTTOMCDISPLAY_OT_actions(bpy.types.Operator): #移動
+    bl_idname = "render.list_action"
+    bl_label = "List Actions"
+    bl_options = {'REGISTER'}
+    
+    action: bpy.props.EnumProperty(
+        items=(('UP', "Up", ""),('DOWN', "Down", "")))
 
+    def invoke(self, context, event):
+        try:
+            item = context.scene.object_list[context.scene.O2MCD_props.obj_index]
+        except IndexError:
+            pass
+        else:
+            if self.action == 'DOWN' and context.scene.O2MCD_props.obj_index < len(context.scene.object_list) - 1:
+                context.scene.object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
+                context.scene.O2MCD_props.obj_index += 1
+            elif self.action == 'UP' and context.scene.O2MCD_props.obj_index >= 1:
+                context.scene.object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
+                context.scene.O2MCD_props.obj_index -= 1
+            chenge_panel(self, context)
+            if context.scene.O2MCD_props.auto_reload:command_generate(self, context)
+        return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_AddItem(bpy.types.Operator):  # 追加ボタン
     bl_idname = "render.add_item"
     bl_label = ""
@@ -462,6 +492,7 @@ class OBJECTTOMCDISPLAY_OT_AddItem(bpy.types.Operator):  # 追加ボタン
         context.scene.prop_list.add().name = "New"
         context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
         context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+        chenge_panel(self, context)
         return {'FINISHED'}
 
 class OBJECTTOMCDISPLAY_OT_RemoveItem(bpy.types.Operator):  # 削除ボタン
@@ -479,7 +510,7 @@ class OBJECTTOMCDISPLAY_OT_RemoveItem(bpy.types.Operator):  # 削除ボタン
         prop_list.remove(index)
         context.scene.O2MCD_props.list_index = min(max(0, index - 1), len(prop_list) - 1)
         context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
-
+        chenge_panel(self, context)
         return{'FINISHED'}
 
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
@@ -560,8 +591,7 @@ class OBJECTTOMCDISPLAY_OT_searchPopup(bpy.types.Operator):  # 検索
     def execute(self, context):
         context.object.O2MCD_props.prop_id = int(self.my_enum)
         context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
-        for area in bpy.context.screen.areas:
-            if area.type == 'VIEW_3D':area.tag_redraw()
+        chenge_panel(self, context)
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -614,7 +644,8 @@ classes = (
     O2MCD_Meny_Props,
     O2MCD_Obj_Props,
     O2MCD_ListItem,
-    O2MCD_ObjectList
+    O2MCD_ObjectList,
+    OBJECTTOMCDISPLAY_OT_actions
 )
 
 # blender起動時に実行
