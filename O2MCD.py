@@ -402,7 +402,8 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
         if context.scene.O2MCD_props.list_index >= 0 and context.scene.prop_list:
             br.prop(item, "name", text="")
             br.operator("render.add_item", icon='ADD')
-            br.operator("render.remove_item", icon='REMOVE')
+            br.operator("render.un_ink", icon='PANEL_CLOSE')
+            br.operator("render.remove_item", icon='TRASH')
         else:
             br.alignment = "EXPAND"
             br.operator("render.add_item", icon='ADD',text="New")
@@ -494,7 +495,19 @@ class OBJECTTOMCDISPLAY_OT_AddItem(bpy.types.Operator):  # 追加ボタン
         context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
         chenge_panel(self, context)
         return {'FINISHED'}
+    
+class OBJECTTOMCDISPLAY_OT_Unlink(bpy.types.Operator):  # リンク解除ボタン
+    bl_idname = "render.un_ink"
+    bl_label = ""
 
+    @classmethod
+    def poll(cls, context):
+        return context.scene.prop_list
+
+    def execute(self, context):
+        context.object.O2MCD_props.prop_id = -1
+        chenge_panel(self, context)
+        return{'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_RemoveItem(bpy.types.Operator):  # 削除ボタン
     bl_idname = "render.remove_item"
     bl_label = ""
@@ -638,6 +651,7 @@ classes = (
     OBJECTTOMCDISPLAY_OT_Reload,
     OBJECTTOMCDISPLAY_OT_Export,
     OBJECTTOMCDISPLAY_OT_AddItem,
+    OBJECTTOMCDISPLAY_OT_Unlink,
     OBJECTTOMCDISPLAY_OT_RemoveItem,
     OBJECTTOMCDISPLAY_OT_searchPopup,
     OBJECTTOMCDISPLAY_UL_ObjectList,
