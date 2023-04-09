@@ -59,40 +59,59 @@ def update(self, context):  # 更新処理
         except:pass
 
 def chenge_panel(self, context):
-    if not context.view_layer.objects.active == None:
-        if context.view_layer.objects.active.O2MCD_props.prop_id > len(context.scene.prop_list)-1:
-            context.view_layer.objects.active.O2MCD_props.prop_id = -1
-        context.scene.O2MCD_props.list_index = context.view_layer.objects.active.O2MCD_props.prop_id
+    active = context.view_layer.objects.active
+    scene = bpy.context.scene
+    if not active == None:
+        if active.O2MCD_props.prop_id > len(scene.prop_list)-1:
+            active.O2MCD_props.prop_id = -1
+        scene.O2MCD_props.list_index = active.O2MCD_props.prop_id
     
-    for i in range(len(bpy.context.scene.object_list)):
-        if not bpy.context.scene.object_list[i].obj.name in context.view_layer.objects or bpy.context.scene.object_list[i].obj.O2MCD_props.prop_id ==-1 :
-            bpy.context.scene.object_list[i].obj.O2MCD_props.number = -1
-            bpy.context.scene.object_list.remove(i)
+    for i in range(len(scene.object_list)):
+        if not scene.object_list[i].obj.name in context.view_layer.objects or scene.object_list[i].obj.O2MCD_props.prop_id ==-1 :
+            scene.object_list[i].obj.O2MCD_props.number = -1
+            scene.object_list.remove(i)
+            break
     for i in context.view_layer.objects:
-        if i.O2MCD_props.prop_id >= 0 and not i.hide_viewport and not i.hide_render and not i in [i.obj for i in bpy.context.scene.object_list]:
-            bpy.context.scene.object_list.add().obj = i
-    for i in range(len(bpy.context.scene.object_list)):
-        bpy.context.scene.object_list[i].obj.O2MCD_props.number = i
+        if i.O2MCD_props.prop_id >= 0 and not i.hide_viewport and not i.hide_render and not i in [i.obj for i in scene.object_list]:
+            scene.object_list.add().obj = i
+    for i in range(len(scene.object_list)):
+        scene.object_list[i].obj.O2MCD_props.number = i
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
     
 
+def change_name(self,context):
+    if [i.name for i in context.scene.prop_list].count(self.name) > 1:
+        name = sub("(.*?)(\.[0-9]+)?","\\1",self.name)
+        same_names = [i.name for i in context.scene.prop_list if match(f"{name}(?:\.[0-9]+)?",i.name)]
+        same_names.sort()
+        if same_names:
+            for i in same_names:
+                ii = sub(".+?\.([0-9]+)","\\1",i)
+                if ii == name:
+                    if not name+".001" in same_names:
+                        self.name = name+".001"
+                        break
+                else:
+                    ii = str(int(ii)+1).zfill(3)
+                    if not name+"."+ii in same_names:
+                        self.name = name+"."+ii
+                        break
 
-
-def get_location(object):  # 位置取得
+def get_location(context,object):  # 位置取得
     loc = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ object.matrix_world
-    rou = bpy.context.scene.O2MCD_props.rou
-    if bpy.context.scene.prop_list[object.O2MCD_props.prop_id].Types == "BLOCK":
+    rou = context.scene.O2MCD_props.rou
+    if context.scene.prop_list[object.O2MCD_props.prop_id].Types == "BLOCK":
         loc = loc @ mathutils.Matrix.Translation(
             mathutils.Vector((0.5, -0.5, -0.5)))
     loc = loc.translation
     loc = (round(loc[0], rou), round(loc[1], rou), round(loc[2], rou))
     return loc
 
-def get_scale(object):  # スケール取得
+def get_scale(context,object):  # スケール取得
     scale = object.matrix_world.to_scale()
-    rou = bpy.context.scene.O2MCD_props.rou
+    rou = context.scene.O2MCD_props.rou
     if object.parent:
         if object.parent_type == "BONE":
             pscale = object.parent.pose.bones[object.parent_bone].matrix @ object.matrix_world
@@ -106,8 +125,8 @@ def get_scale(object):  # スケール取得
     return scale
 
 
-def get_left_rotation(object):  # 左回転取得
-    rou = bpy.context.scene.O2MCD_props.rou
+def get_left_rotation(context,object):  # 左回転取得
+    rou = context.scene.O2MCD_props.rou
     if object.parent:
         if object.parent_type == "BONE":
             l_rot = object.parent.pose.bones[object.parent_bone].matrix
@@ -128,8 +147,8 @@ def get_left_rotation(object):  # 左回転取得
     return l_rot
 
 
-def get_right_rotation(object):  # 右回転取得
-    rou = bpy.context.scene.O2MCD_props.rou
+def get_right_rotation(context,object):  # 右回転取得
+    rou = context.scene.O2MCD_props.rou
     if object.parent:
         r_rot = object.rotation_euler
         r_rot = mathutils.Euler(
@@ -213,13 +232,13 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 obj = context.scene.objects[obj]
             # transformationを取得
             if var == "loc":
-                location = get_location(obj)
+                location = get_location(context,obj)
             if var == "scale":
-                scale = get_scale(obj)
+                scale = get_scale(context,obj)
             if var == "r_rot":
-                right_rotation = get_right_rotation(obj)
+                right_rotation = get_right_rotation(context,obj)
             if var == "l_rot":
-                left_rotation = get_left_rotation(obj)
+                left_rotation = get_left_rotation(context,obj)
             # 名前を取得
             if var == "name" or var == "id":
                 name = obj.name
@@ -375,7 +394,7 @@ def command_generate(self, context):  # コマンド生成
 def enum_item(self, context):  # プロパティリスト
     enum_items = []
     for i in range(len(context.scene.prop_list)):
-        enum_items.append((str(i), str(i)+"."+context.scene.prop_list[i].name, ""))
+        enum_items.append((str(i), str(i)+":"+context.scene.prop_list[i].name, ""))
     return enum_items
 
 # クラス
@@ -393,7 +412,6 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
 
     def draw(self, context):
         layout = self.layout
-        # box.template_list("OBJECTTOMCDISPLAY_UL_List", "The_List", context.scene,"prop_list", context.scene, "O2MCD_props.list_index", rows=1, type='GRID', columns=2)
         br = layout.row(align=True)
         br.alignment = "LEFT"
         if context.scene.prop_list:
@@ -401,12 +419,12 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
         br.operator("object.search_popup", text="", icon='DOWNARROW_HLT')
         if context.scene.O2MCD_props.list_index >= 0 and context.scene.prop_list:
             br.prop(item, "name", text="")
-            br.operator("render.add_item", icon='ADD')
-            br.operator("render.un_ink", icon='PANEL_CLOSE')
-            br.operator("render.remove_item", icon='TRASH')
+            br.operator("object.o2mcd_prop_action", icon='DUPLICATE').action = 'DUP'
+            br.operator("object.o2mcd_prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
+            br.operator("object.o2mcd_prop_action", icon='TRASH').action = 'REMOVE'
         else:
             br.alignment = "EXPAND"
-            br.operator("render.add_item", icon='ADD',text="New")
+            br.operator("object.o2mcd_prop_action", icon='ADD',text="New").action = 'ADD'
         if context.scene.prop_list and context.object.O2MCD_props.prop_id >= 0:
             # box.prop_search(context.scene.O2MCD_props, "active",context.scene, "prop_list")
             # layout.prop(context.object.O2MCD_props,"prop_id")
@@ -439,17 +457,20 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
     def draw(self, context):
         layout = self.layout
         row = layout.row()
-        row.operator("render.reload")
+        row.operator("render.o2mcd_reload")
         row.prop(context.scene.O2MCD_props, "auto_reload", toggle=True)
         col = layout.column()
         col.use_property_split = True
         col.use_property_decorate = False
         col.prop(context.scene.O2MCD_props, "rou")
         row3 = col.row()
-        row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "object_list", context.scene.O2MCD_props, "obj_index", rows=2)
+        row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "object_list", context.scene.O2MCD_props, "obj_index", rows=2,sort_lock=True)
         col3 = row3.column()
-        col3.operator("render.list_action", icon='TRIA_UP', text="").action = 'UP'
-        col3.operator("render.list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+        if len(context.scene.object_list) <= 1:col3.enabled = False
+        col3.operator("render.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
+        col3.operator("render.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
+        col3.separator()
+        col3.operator("render.o2mcd_list_move", icon='SORTALPHA', text="").action = 'SORT'
         layout.separator()
         col2 = layout.column(align=True)
         row2 = col2.row()
@@ -459,75 +480,69 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             box.prop(context.scene.O2MCD_props, "anim_path")
         else:
             box.prop(context.scene.O2MCD_props, "curr_path")
-        box.operator("render.export")
+        box.operator("render.o2mcd_export")
         layout.enabled = context.scene.O2MCD_props.enable
 
-class OBJECTTOMCDISPLAY_OT_actions(bpy.types.Operator): #移動
-    bl_idname = "render.list_action"
-    bl_label = "List Actions"
-    bl_options = {'REGISTER'}
+class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
+    bl_idname = "render.o2mcd_list_move"
+    bl_label = ""
     
-    action: bpy.props.EnumProperty(
-        items=(('UP', "Up", ""),('DOWN', "Down", "")))
+    action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", ""),('SORT', "Sort", "")))
 
     def invoke(self, context, event):
-        try:
-            item = context.scene.object_list[context.scene.O2MCD_props.obj_index]
-        except IndexError:
-            pass
-        else:
-            if self.action == 'DOWN' and context.scene.O2MCD_props.obj_index < len(context.scene.object_list) - 1:
-                context.scene.object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
-                context.scene.O2MCD_props.obj_index += 1
-            elif self.action == 'UP' and context.scene.O2MCD_props.obj_index >= 1:
-                context.scene.object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
-                context.scene.O2MCD_props.obj_index -= 1
-            chenge_panel(self, context)
-            if context.scene.O2MCD_props.auto_reload:command_generate(self, context)
+        if self.action == 'DOWN' and context.scene.O2MCD_props.obj_index < len(context.scene.object_list) - 1:
+            context.scene.object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
+            context.scene.O2MCD_props.obj_index += 1
+        elif self.action == 'UP' and context.scene.O2MCD_props.obj_index >= 1:
+            context.scene.object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
+            context.scene.O2MCD_props.obj_index -= 1
+        elif self.action == 'SORT':
+            object_list = [i.obj.name for i in context.scene.object_list]
+            object_list.sort()
+            context.scene.object_list.clear()
+            for i in range(len(object_list)): context.scene.object_list.add().obj=context.scene.objects[object_list[i]]
+        chenge_panel(self, context)
+        if context.scene.O2MCD_props.auto_reload:command_generate(self, context)
         return {"FINISHED"}
-class OBJECTTOMCDISPLAY_OT_AddItem(bpy.types.Operator):  # 追加ボタン
-    bl_idname = "render.add_item"
-    bl_label = ""
 
-    def execute(self, context):
-        context.scene.prop_list.add().name = "New"
-        context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
-        context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
-        chenge_panel(self, context)
-        return {'FINISHED'}
+class OBJECTTOMCDISPLAY_OT_prop_action(bpy.types.Operator): #プロパティ操作
+    bl_idname = "object.o2mcd_prop_action"
+    bl_label = ""
+    action: bpy.props.EnumProperty(items=(('ADD', "Add", ""),('DUP', "dup", ""),('UNLINK', "unlink", ""),('REMOVE', "remove", "")))
     
-class OBJECTTOMCDISPLAY_OT_Unlink(bpy.types.Operator):  # リンク解除ボタン
-    bl_idname = "render.un_ink"
-    bl_label = ""
-
-    @classmethod
-    def poll(cls, context):
-        return context.scene.prop_list
-
-    def execute(self, context):
-        context.object.O2MCD_props.prop_id = -1
-        chenge_panel(self, context)
-        return{'FINISHED'}
-class OBJECTTOMCDISPLAY_OT_RemoveItem(bpy.types.Operator):  # 削除ボタン
-    bl_idname = "render.remove_item"
-    bl_label = ""
-
-    @classmethod
-    def poll(cls, context):
-        return context.scene.prop_list
-
-    def execute(self, context):
+    def invoke(self,context,event):
         prop_list = context.scene.prop_list
         index = context.scene.O2MCD_props.list_index
 
-        prop_list.remove(index)
-        context.scene.O2MCD_props.list_index = min(max(0, index - 1), len(prop_list) - 1)
-        context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+        if self.action =='ADD':
+            name = "New"
+            context.scene.prop_list.add().name = name
+            context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
+            context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+        elif self.action == 'DUP':
+            name = sub("(.*?)(\.[0-9]+)?","\\1",prop_list[context.object.O2MCD_props.prop_id].name)
+            add = context.scene.prop_list.add()
+            add.name = name
+            add.Types= prop_list[context.object.O2MCD_props.prop_id].Types
+            add.tags= prop_list[context.object.O2MCD_props.prop_id].tags
+            add.CustomModelData= prop_list[context.object.O2MCD_props.prop_id].CustomModelData
+            add.ItemTag= prop_list[context.object.O2MCD_props.prop_id].ItemTag
+            add.ExtraNBT= prop_list[context.object.O2MCD_props.prop_id].ExtraNBT
+            add.type= prop_list[context.object.O2MCD_props.prop_id].type
+            context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
+            context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+        elif self.action == 'UNLINK':
+            context.object.O2MCD_props.prop_id = -1
+        elif self.action == 'REMOVE':
+            prop_list.remove(index)
+            context.scene.O2MCD_props.list_index = min(max(0, index - 1), len(prop_list) - 1)
+            context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+
         chenge_panel(self, context)
-        return{'FINISHED'}
+        return {'FINISHED'}
 
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
-    bl_idname = "render.reload"
+    bl_idname = "render.o2mcd_reload"
     bl_label = "Update"
 
     def execute(self, context):
@@ -536,7 +551,7 @@ class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
 
 
 class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
-    bl_idname = "render.export"
+    bl_idname = "render.o2mcd_export"
     bl_label = "Export"
 
     def execute(self, context):
@@ -555,16 +570,14 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
 
                 # カレントフレームを設定
                 context.scene.frame_set(frame)
-                ofset = sub(".*?([0-9]*)$", "\\1",
-                            str(os.path.splitext(anim_path)[0]))
+                ofset = sub(".*?([0-9]*)$", "\\1",str(os.path.splitext(anim_path)[0]))
                 ext = str(os.path.splitext(anim_path)[1])
                 if ofset == "":
                     ofset = 1
                 if ext == "":
                     ext = ".mcfunction"
                 # 出力するファイル名を作成
-                output_file = sub(
-                    "(.*?)([0-9]*)$", "\\1", str(os.path.splitext(anim_path)[0]))+str(int(ofset)-1+frame)+ext
+                output_file = sub("(.*?)([0-9]*)$", "\\1", str(os.path.splitext(anim_path)[0]))+str(int(ofset)-1+frame)+ext
 
                 # テキストブロックを取得
                 command_generate(self, context)
@@ -608,13 +621,15 @@ class OBJECTTOMCDISPLAY_OT_searchPopup(bpy.types.Operator):  # 検索
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        wm = context.window_manager
-        wm.invoke_search_popup(self)
+        context.window_manager.invoke_search_popup(self)
         return {'FINISHED'}
 
 class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
-        layout.prop(item.obj, "name", text="", emboss=False)
+        row = layout.row(align=True)
+        row.alignment="LEFT"
+        row.label(text=str(item.obj.O2MCD_props.number))
+        row.prop(item.obj, "name", text="", emboss=False)
 
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
     number: bpy.props.IntProperty(name="Object Number", default=-1, min=-1)
@@ -632,9 +647,8 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     list_index : bpy.props.IntProperty(name="Index", default=-1)
     obj_index:bpy.props.IntProperty(name="obj_index", default=0)
 
-
 class O2MCD_ListItem(bpy.types.PropertyGroup):  # リストのプロパティ
-    name: bpy.props.StringProperty(name="Name", default="")
+    name: bpy.props.StringProperty(name="Name", default="",update=change_name)
     Types: bpy.props.EnumProperty(name="Object Type", items=[('ITEM', "Item", ""), ('BLOCK', "Block", ""), ('EXTRA', "Extra", "")], options={"ANIMATABLE"})
     tags: bpy.props.StringProperty(default="")
     CustomModelData: bpy.props.IntProperty(default=0, min=0)
@@ -650,16 +664,14 @@ classes = (
     OBJECTTOMCDISPLAY_PT_MainPanel,
     OBJECTTOMCDISPLAY_OT_Reload,
     OBJECTTOMCDISPLAY_OT_Export,
-    OBJECTTOMCDISPLAY_OT_AddItem,
-    OBJECTTOMCDISPLAY_OT_Unlink,
-    OBJECTTOMCDISPLAY_OT_RemoveItem,
+    OBJECTTOMCDISPLAY_OT_prop_action,
     OBJECTTOMCDISPLAY_OT_searchPopup,
     OBJECTTOMCDISPLAY_UL_ObjectList,
     O2MCD_Meny_Props,
     O2MCD_Obj_Props,
     O2MCD_ListItem,
     O2MCD_ObjectList,
-    OBJECTTOMCDISPLAY_OT_actions
+    OBJECTTOMCDISPLAY_OT_list_move
 )
 
 # blender起動時に実行
