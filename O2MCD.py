@@ -66,16 +66,16 @@ def chenge_panel(self, context):
             active.O2MCD_props.prop_id = -1
         scene.O2MCD_props.list_index = active.O2MCD_props.prop_id
     
-    for i in range(len(scene.object_list)):
-        if not scene.object_list[i].obj.name in context.view_layer.objects or scene.object_list[i].obj.O2MCD_props.prop_id ==-1 :
-            scene.object_list[i].obj.O2MCD_props.number = -1
+    for i, l in enumerate(scene.object_list):
+        if not l.obj.name in context.view_layer.objects or l.obj.O2MCD_props.prop_id ==-1 :
+            l.obj.O2MCD_props.number = -1
             scene.object_list.remove(i)
             break
     for i in context.view_layer.objects:
-        if i.O2MCD_props.prop_id >= 0 and not i.hide_viewport and not i.hide_render and not i in [i.obj for i in scene.object_list]:
+        if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.object_list]:
             scene.object_list.add().obj = i
-    for i in range(len(scene.object_list)):
-        scene.object_list[i].obj.O2MCD_props.number = i
+    for i, list in enumerate(scene.object_list):
+        list.obj.O2MCD_props.number = i
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
@@ -160,24 +160,24 @@ def get_right_rotation(context,object):  # 右回転取得
 
 
 def frame_range(context, com):  # フレーム範囲指定
-    for s in range(len(com)):
+    for i,c in enumerate(com):
         # 範囲設定
-        if match("^\[[0-9]+\]", com[s]):
-            min = int(sub("^\[([0-9]+)\].*", "\\1", com[s]))
+        if match("^\[[0-9]+\]", c):
+            min = int(sub("^\[([0-9]+)\].*", "\\1", c))
             max = min
-        elif match("^\[[0-9]+\-[0-9]+\]", com[s]):
-            min = int(sub("^\[([0-9]+)\-[0-9]+\].*", "\\1", com[s]))
-            max = int(sub("^\[[0-9]+\-([0-9]+)\].*", "\\1", com[s]))
+        elif match("^\[[0-9]+\-[0-9]+\]", c):
+            min = int(sub("^\[([0-9]+)\-[0-9]+\].*", "\\1", c))
+            max = int(sub("^\[[0-9]+\-([0-9]+)\].*", "\\1", c))
         else:
             min = context.scene.frame_start
             max = context.scene.frame_end
         # 範囲比較
         if min <= context.scene.frame_current <= max:
-            com[s] = sub(
-                "^\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?", "", com[s])
+            c = sub(
+                "^\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?", "", c)
         else:
-            com[s] = None
-    com = [s for s in com if not s == None]
+            c = None
+    com = [i for i in com if not i == None]
     return com
 
 
@@ -191,14 +191,14 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
     func = findall(
         f'(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)', com)
     # 関数を1つずつ処理
-    for f in range(len(func)):
+    for f in func:
         # 関数名
         var = sub(
-            f'/({funk_list})(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?', "\\1", func[f])
+            f'/({funk_list})(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?', "\\1", f)
         # 引数
-        val = sub('/.+?\[(.+)\]', "V\\1", func[f])
+        val = sub('/.+?\[(.+)\]', "V\\1", f)
         # 引数の中の関数を変換
-        if not val == "" and not val == func[f] and match(f".*/{funk_list}.*", val):
+        if not val == "" and not val == f and match(f".*/{funk_list}.*", val):
             val = comvert_function(context, object_list, funk_list, val, num)
         # 要素番号
         elm = sub('V?([0-9]*?)(,.*)?', "\\1", val)
@@ -353,21 +353,21 @@ def command_generate(self, context):  # コマンド生成
             com = comvert_function(context, context.scene.object_list, funk_list, com, None)
         output.append(com)
     # メインコマンドを出力に追加
-    for num in range(len(context.scene.object_list)):
-        o = context.scene.object_list[num].obj
-        if context.scene.prop_list[o.O2MCD_props.prop_id].Types == "ITEM":
-            com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|extra|start|end\s?:\s?)", s)]
-        elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "BLOCK":
-            com = [sub("^block(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!item|extra|start|end\s?:\s?)", s)]
-        elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "EXTRA":
-            com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|item|start|end\s?:\s?)", s)]
-        com = frame_range(context, com)
-        if com:
-            com = "\n".join(com)
-            if match(f".*/({funk_list}).*", com):
-                com = comvert_function(
-                    context, context.scene.object_list, funk_list, com, num)
-            output.append(com)
+    for i,l in enumerate(context.scene.object_list):
+        o = l.obj
+        if not o.hide_viewport and not o.hide_render:
+            if context.scene.prop_list[o.O2MCD_props.prop_id].Types == "ITEM":
+                com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|extra|start|end\s?:\s?)", s)]
+            elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "BLOCK":
+                com = [sub("^block(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!item|extra|start|end\s?:\s?)", s)]
+            elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "EXTRA":
+                com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|item|start|end\s?:\s?)", s)]
+            com = frame_range(context, com)
+            if com:
+                com = "\n".join(com)
+                if match(f".*/({funk_list}).*", com):
+                    com = comvert_function(context, context.scene.object_list, funk_list, com, i)
+                output.append(com)
     # endを出力に追加
     com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
     com = frame_range(context, com)
@@ -505,7 +505,7 @@ class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
             object_list = [i.obj.name for i in context.scene.object_list]
             object_list.sort()
             context.scene.object_list.clear()
-            for i in range(len(object_list)): context.scene.object_list.add().obj=context.scene.objects[object_list[i]]
+            for i in object_list: context.scene.object_list.add().obj=context.scene.objects[i]
         chenge_panel(self, context)
         if context.scene.O2MCD_props.auto_reload:command_generate(self, context)
         return {"FINISHED"}
@@ -636,6 +636,9 @@ class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
         row.alignment="LEFT"
         row.label(text=str(item.obj.O2MCD_props.number))
         row.prop(item.obj, "name", text="", emboss=False)
+        row2=layout.row()
+        row2.alignment="RIGHT"
+        row2.prop(item.obj,"hide_render",text="")
 
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
     number: bpy.props.IntProperty(name="Object Number", default=-1, min=-1)
