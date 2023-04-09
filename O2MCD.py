@@ -441,7 +441,7 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
                 layout.prop(item,"CustomModelData")
                 layout.prop(item, "ItemTag")
             if item.Types == "BLOCK":
-                pass
+                layout.prop(item, "Properties",text="properties")
             layout.prop(item, "ExtraNBT")
 
 
@@ -463,14 +463,6 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         col.use_property_split = True
         col.use_property_decorate = False
         col.prop(context.scene.O2MCD_props, "rou")
-        row3 = col.row()
-        row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "object_list", context.scene.O2MCD_props, "obj_index", rows=2,sort_lock=True)
-        col3 = row3.column()
-        if len(context.scene.object_list) <= 1:col3.enabled = False
-        col3.operator("render.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
-        col3.operator("render.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
-        col3.separator()
-        col3.operator("render.o2mcd_list_move", icon='SORTALPHA', text="").action = 'SORT'
         layout.separator()
         col2 = layout.column(align=True)
         row2 = col2.row()
@@ -482,6 +474,19 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             box.prop(context.scene.O2MCD_props, "curr_path")
         box.operator("render.o2mcd_export")
         layout.enabled = context.scene.O2MCD_props.enable
+        row4 = layout.row(align = True)
+        row4.alignment = "LEFT"
+        row4.prop(context.scene.O2MCD_props, "toggle_list", icon="TRIA_DOWN" if context.scene.O2MCD_props.toggle_list else "TRIA_RIGHT", emboss=False,text="Object List")
+        row3 = layout.row()
+        if context.scene.O2MCD_props.toggle_list:
+            row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "object_list", context.scene.O2MCD_props, "obj_index", rows=3,sort_lock=True)
+            col3 = row3.column()
+            if len(context.scene.object_list) <= 1:col3.enabled = False
+            col3.operator("render.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
+            col3.operator("render.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
+            col3.separator()
+            col3.operator("render.o2mcd_list_move", icon='SORTALPHA', text="").action = 'SORT'
+
 
 class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
     bl_idname = "render.o2mcd_list_move"
@@ -527,6 +532,7 @@ class OBJECTTOMCDISPLAY_OT_prop_action(bpy.types.Operator): #プロパティ操�
             add.tags= prop_list[context.object.O2MCD_props.prop_id].tags
             add.CustomModelData= prop_list[context.object.O2MCD_props.prop_id].CustomModelData
             add.ItemTag= prop_list[context.object.O2MCD_props.prop_id].ItemTag
+            add.Properties= prop_list[context.object.O2MCD_props.prop_id].Properties
             add.ExtraNBT= prop_list[context.object.O2MCD_props.prop_id].ExtraNBT
             add.type= prop_list[context.object.O2MCD_props.prop_id].type
             context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
@@ -646,6 +652,7 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     Enum: bpy.props.EnumProperty(name="Enum", items=enum_item, options={"ANIMATABLE"})
     list_index : bpy.props.IntProperty(name="Index", default=-1)
     obj_index:bpy.props.IntProperty(name="obj_index", default=0)
+    toggle_list : bpy.props.BoolProperty(name="")
 
 class O2MCD_ListItem(bpy.types.PropertyGroup):  # リストのプロパティ
     name: bpy.props.StringProperty(name="Name", default="",update=change_name)
@@ -653,6 +660,7 @@ class O2MCD_ListItem(bpy.types.PropertyGroup):  # リストのプロパティ
     tags: bpy.props.StringProperty(default="")
     CustomModelData: bpy.props.IntProperty(default=0, min=0)
     ItemTag: bpy.props.StringProperty(default="")
+    Properties:bpy.props.StringProperty(default="")
     ExtraNBT: bpy.props.StringProperty(default="")
     type: bpy.props.StringProperty(default="")
 
