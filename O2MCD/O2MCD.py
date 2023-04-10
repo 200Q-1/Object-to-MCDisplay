@@ -7,32 +7,22 @@ from re import *
 from math import *
 from bpy.app.handlers import persistent
 
-bl_info = {
-    "name": "Object to MCDisplay",
-    "author": "200Q",
-    "version": (0, 0, 1),
-    "blender": (3, 4, 1),
-    "location": "",
-    "support": "COMMUNITY",
-    "description": "オブジェクトのトランスフォームをMinecraftのDisplayエンティティのtransformationを設定するコマンドに変換します。",
-    "warning": "",
-    "doc_url": "https://github.com/200Q-1/Object-to-MCDisplay",
-    "tracker_url": "",
-    "category": "Object"
-}
-
-O2MCD_translation_dict = {
-    "ja_JP": {
-        ("*", "Display Properties"): "Displayプロパティ",
-        ("Operator", "Update"): "更新",
-        ("*", "Auto Update"): "自動更新",
-        ("*", "Show in header"): "ヘッダーに表示",
-        ("*", "Object Number"): "番号"
-    }
-}
-
 # 関数
 
+def item_regist():  # アイテムをブロックを登録
+    file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\item_list.txt', 'r', encoding='UTF-8')
+    item = file.read().splitlines()
+    bpy.context.scene.item_list.clear()
+    for i in item:
+        bpy.context.scene.item_list.add().name= i
+    file.close()
+    
+    file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\block_list.txt', 'r', encoding='UTF-8')
+    block = file.read().splitlines()
+    bpy.context.scene.block_list.clear()
+    for i in block:
+        bpy.context.scene.block_list.add().name= i
+    file.close()
 def update(self, context):  # 更新処理
     # アドオンを有効
     if bpy.context.scene.O2MCD_props.enable:
@@ -57,8 +47,12 @@ def update(self, context):  # 更新処理
             bpy.app.handlers.depsgraph_update_post.remove(command_generate)
             bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)
         except:pass
-
-def chenge_panel(self, context):
+def setid(self,context):  # idを更新
+    if context.scene.prop_list[context.scene.O2MCD_props.list_index].Types == "ITEM":
+        context.scene.prop_list[context.scene.O2MCD_props.list_index].id = context.scene.prop_list[context.scene.O2MCD_props.list_index].item_id
+    elif context.scene.prop_list[context.scene.O2MCD_props.list_index].Types == "BLOCK":
+        context.scene.prop_list[context.scene.O2MCD_props.list_index].id = context.scene.prop_list[context.scene.O2MCD_props.list_index].block_id
+def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     active = context.view_layer.objects.active
     scene = bpy.context.scene
     if not active == None:
@@ -81,7 +75,7 @@ def chenge_panel(self, context):
             area.tag_redraw()
     
 
-def change_name(self,context):
+def change_name(self,context):  # 名前被りを回避
     if [i.name for i in context.scene.prop_list].count(self.name) > 1:
         name = sub("(.*?)(\.[0-9]+)?","\\1",self.name)
         same_names = [i.name for i in context.scene.prop_list if match(f"{name}(?:\.[0-9]+)?",i.name)]
@@ -160,23 +154,22 @@ def get_right_rotation(context,object):  # 右回転取得
 
 
 def frame_range(context, com):  # フレーム範囲指定
-    for i,c in enumerate(com):
+    for i in range(len(com)):
         # 範囲設定
-        if match("^\[[0-9]+\]", c):
-            min = int(sub("^\[([0-9]+)\].*", "\\1", c))
+        if match("^\[[0-9]+\]", com[i]):
+            min = int(sub("^\[([0-9]+)\].*", "\\1", com[i]))
             max = min
-        elif match("^\[[0-9]+\-[0-9]+\]", c):
-            min = int(sub("^\[([0-9]+)\-[0-9]+\].*", "\\1", c))
-            max = int(sub("^\[[0-9]+\-([0-9]+)\].*", "\\1", c))
+        elif match("^\[[0-9]+\-[0-9]+\]", com[i]):
+            min = int(sub("^\[([0-9]+)\-[0-9]+\].*", "\\1", com[i]))
+            max = int(sub("^\[[0-9]+\-([0-9]+)\].*", "\\1", com[i]))
         else:
             min = context.scene.frame_start
             max = context.scene.frame_end
         # 範囲比較
         if min <= context.scene.frame_current <= max:
-            c = sub(
-                "^\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?", "", c)
+            com[i] = sub("^\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?", "", com[i])
         else:
-            c = None
+            com[i] = None
     com = [i for i in com if not i == None]
     return com
 
@@ -185,8 +178,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
     # 現在のフレームを保存
     current_frame = context.scene.frame_current
     # /transfだけ先に変換
-    com = com.replace(
-        "/transf", "right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")
+    com = com.replace("/transf", "right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")
     # 入力から関数のリストを作成
     func = findall(
         f'(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)', com)
@@ -218,16 +210,16 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
             if obj == "" or obj == val:
                 obj = object_list[num].obj
             elif match("(?:\+|\-)[0-9]+", obj):
-                obj = eval(str(object_list.index(object_list[num].obj))+obj)
+                obj = eval(str(object_list[num].obj.O2MCD_props.number)+obj)
                 if len(object_list)-1 < obj:
                     obj = len(object_list)-1
                 elif 0 > obj:
                     obj = 0
                 obj = object_list[obj].obj
-                num = object_list.index(obj)
+                num = obj.O2MCD_props.number
             elif match("^[0-9]+", obj):
-                obj = object_list[int(obj)]
-                num = object_list.index(obj)
+                obj = object_list[int(obj)].obj
+                num = obj.O2MCD_props.number
             else:
                 obj = context.scene.objects[obj]
             # transformationを取得
@@ -244,7 +236,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 name = obj.name
             # idを取得
             if var == "id":
-                id = sub("(\.[0-9]*)*", "", name)
+                id = context.scene.prop_list[obj.O2MCD_props.prop_id].id
             # extraNBTを取得
             if var == "extra":
                 extra = context.scene.prop_list[obj.O2MCD_props.prop_id].ExtraNBT
@@ -336,7 +328,7 @@ def command_generate(self, context):  # コマンド生成
     if "Output" not in bpy.data.texts:
         bpy.data.texts.new("Output")
     # 関数名
-    funk_list = "(?:loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)"
+    funk_list = "(?:transf|loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)"
     # コマンドをリスト化
     input = list(bpy.data.texts["Input"].as_string().splitlines())
     # エスケープ
@@ -357,11 +349,11 @@ def command_generate(self, context):  # コマンド生成
         o = l.obj
         if not o.hide_viewport and not o.hide_render:
             if context.scene.prop_list[o.O2MCD_props.prop_id].Types == "ITEM":
-                com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|extra|start|end\s?:\s?)", s)]
+                com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|extra|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
             elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "BLOCK":
-                com = [sub("^block(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!item|extra|start|end\s?:\s?)", s)]
+                com = [sub("^block(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!item|extra|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
             elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "EXTRA":
-                com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|item|start|end\s?:\s?)", s)]
+                com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|item|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
             com = frame_range(context, com)
             if com:
                 com = "\n".join(com)
@@ -383,8 +375,7 @@ def command_generate(self, context):  # コマンド生成
 
     # Outputに書き込み
     output = "\n".join(output)
-    output = sub(
-        "[,\.][,\.]|([\{\[\(])[,\.]|[,\.]([\]\}\)])", "\\1\\2", output)
+    output = sub("[,\.][,\.]|([\{\[\(])[,\.]|[,\.]([\]\}\)])", "\\1\\2", output)
     bpy.data.texts["Output"].from_string(output)
     # テキストエディタの表示を更新
     for area in bpy.context.screen.areas:
@@ -426,21 +417,22 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
             br.alignment = "EXPAND"
             br.operator("object.o2mcd_prop_action", icon='ADD',text="New").action = 'ADD'
         if context.scene.prop_list and context.object.O2MCD_props.prop_id >= 0:
-            # box.prop_search(context.scene.O2MCD_props, "active",context.scene, "prop_list")
-            # layout.prop(context.object.O2MCD_props,"prop_id")
-            layout.prop(item, "Types", expand=True)
             row = layout.row()
             row.enabled = False
             row.use_property_split = True
             row.use_property_decorate = False
             row.prop(context.object.O2MCD_props, "number")
+            layout.prop(item, "Types", expand=True)
             if item.Types == "EXTRA":
                 layout.prop(item, "type")
-            layout.prop(item, "tags")
             if item.Types == "ITEM":
+                layout.prop_search(context.scene.prop_list[context.object.O2MCD_props.prop_id], "item_id",context.scene, "item_list",text="id")
+                layout.prop(item, "tags")
                 layout.prop(item,"CustomModelData")
                 layout.prop(item, "ItemTag")
             if item.Types == "BLOCK":
+                layout.prop_search(context.scene.prop_list[context.object.O2MCD_props.prop_id], "block_id",context.scene, "block_list",text="id")
+                layout.prop(item, "tags")
                 layout.prop(item, "Properties",text="properties")
             layout.prop(item, "ExtraNBT")
 
@@ -659,57 +651,20 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
 
 class O2MCD_ListItem(bpy.types.PropertyGroup):  # リストのプロパティ
     name: bpy.props.StringProperty(name="Name", default="",update=change_name)
-    Types: bpy.props.EnumProperty(name="Object Type", items=[('ITEM', "Item", ""), ('BLOCK', "Block", ""), ('EXTRA', "Extra", "")], options={"ANIMATABLE"})
+    Types: bpy.props.EnumProperty(name="Object Type", items=[('ITEM', "Item", ""), ('BLOCK', "Block", ""), ('EXTRA', "Extra", "")], options={"ANIMATABLE"},update=setid)
     tags: bpy.props.StringProperty(default="")
     CustomModelData: bpy.props.IntProperty(default=0, min=0)
     ItemTag: bpy.props.StringProperty(default="")
     Properties:bpy.props.StringProperty(default="")
     ExtraNBT: bpy.props.StringProperty(default="")
     type: bpy.props.StringProperty(default="")
+    id: bpy.props.StringProperty(default="")
+    item_id: bpy.props.StringProperty(default="",update=setid)
+    block_id: bpy.props.StringProperty(default="",update=setid)
 
+class  O2MCD_ItemList(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name="Name", default="")
+class  O2MCD_BlockList(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name="Name", default="")
 class  O2MCD_ObjectList(bpy.types.PropertyGroup):
     obj: bpy.props.PointerProperty(name="Object",type=bpy.types.Object)
-
-classes = (
-    OBJECTTOMCDISPLAY_PT_DisplayProperties,
-    OBJECTTOMCDISPLAY_PT_MainPanel,
-    OBJECTTOMCDISPLAY_OT_Reload,
-    OBJECTTOMCDISPLAY_OT_Export,
-    OBJECTTOMCDISPLAY_OT_prop_action,
-    OBJECTTOMCDISPLAY_OT_searchPopup,
-    OBJECTTOMCDISPLAY_UL_ObjectList,
-    O2MCD_Meny_Props,
-    O2MCD_Obj_Props,
-    O2MCD_ListItem,
-    O2MCD_ObjectList,
-    OBJECTTOMCDISPLAY_OT_list_move
-)
-
-# blender起動時に実行
-@persistent
-def load_handler(self, context):
-    update(None, bpy.context.scene)
-
-def register():
-    bpy.app.translations.register(__name__, O2MCD_translation_dict)
-    for cls in classes:
-        bpy.utils.register_class(cls)
-    bpy.types.Scene.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Meny_Props)
-    bpy.types.Object.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Obj_Props)
-    bpy.types.Scene.prop_list = bpy.props.CollectionProperty(type=O2MCD_ListItem)
-    bpy.types.Scene.object_list = bpy.props.CollectionProperty(type=O2MCD_ObjectList)
-    bpy.app.handlers.load_post.append(load_handler)
-
-
-def unregister():
-    bpy.app.translations.unregister(__name__)
-    for cls in classes:
-        bpy.utils.unregister_class(cls)
-    bpy.app.handlers.load_post.remove(load_handler)
-    bpy.app.handlers.frame_change_post.remove(command_generate)
-    bpy.app.handlers.depsgraph_update_post.remove(command_generate)
-    bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)
-
-
-if __name__ == "__main__":
-    register()
