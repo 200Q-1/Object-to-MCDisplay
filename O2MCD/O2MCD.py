@@ -170,6 +170,7 @@ def frame_range(context, com):  # フレーム範囲指定
             com[i] = sub("^\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?", "", com[i])
         else:
             com[i] = None
+        print(com[i])
     com = [i for i in com if not i == None]
     return com
 
@@ -232,7 +233,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
             if var == "l_rot":
                 left_rotation = get_left_rotation(context,obj)
             # 名前を取得
-            if var == "name" or var == "id":
+            if var == "name":
                 name = obj.name
             # idを取得
             if var == "id":
@@ -340,12 +341,13 @@ def command_generate(self, context):  # コマンド生成
     com = [sub("^start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
     com = frame_range(context, com)
     if com:
-        com = "\n".join(com)
-        if match(f".*/({funk_list}).*", com):
+        if [i for i in  com if match(f".*/({funk_list}).*", i)]:
+            com = "\n".join(com)
             com = comvert_function(context, context.scene.object_list, funk_list, com, None)
+        else:com = "\n".join(com)
         output.append(com)
     # メインコマンドを出力に追加
-    for i,l in enumerate(context.scene.object_list):
+    for l in context.scene.object_list:
         o = l.obj
         if not o.hide_viewport and not o.hide_render:
             if context.scene.prop_list[o.O2MCD_props.prop_id].Types == "ITEM":
@@ -355,18 +357,20 @@ def command_generate(self, context):  # コマンド生成
             elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "EXTRA":
                 com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|item|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
             com = frame_range(context, com)
-            if com:
+        if com:
+            if [i for i in  com if match(f".*/({funk_list}).*", i)]:
                 com = "\n".join(com)
-                if match(f".*/({funk_list}).*", com):
-                    com = comvert_function(context, context.scene.object_list, funk_list, com, i)
-                output.append(com)
+                com = comvert_function(context, context.scene.object_list, funk_list, com, o.O2MCD_props.prop_id)
+            else:com = "\n".join(com)
+            output.append(com)
     # endを出力に追加
     com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
     com = frame_range(context, com)
     if com:
-        com = "\n".join(com)
-        if match(f".*/({funk_list}).*", com):
+        if [i for i in  com if match(f".*/({funk_list}).*", i)]:
+            com = "\n".join(com)
             com = comvert_function(context, context.scene.object_list, funk_list, com, None)
+        else:com = "\n".join(com)
         output.append(com)
     # 更新を再開
     if context.scene.O2MCD_props.auto_reload:
