@@ -366,7 +366,7 @@ def command_generate(self, context):  # コマンド生成
         if com:
             if [i for i in  com if match(f".*/({funk_list}).*", i)]:
                 com = "\n".join(com)
-                com = comvert_function(context, context.scene.object_list, funk_list, com, o.O2MCD_props.prop_id)
+                com = comvert_function(context, context.scene.object_list, funk_list, com, o.O2MCD_props.number)
             else:com = "\n".join(com)
             output.append(com)
     # endを出力に追加
