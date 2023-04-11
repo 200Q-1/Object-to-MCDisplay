@@ -24,28 +24,31 @@ def item_regist():  # アイテムをブロックを登録
         bpy.context.scene.block_list.add().name= i
     file.close()
 def update(self, context):  # 更新処理
-    # アドオンを有効
-    if bpy.context.scene.O2MCD_props.enable:
-        bpy.app.handlers.depsgraph_update_post.append(chenge_panel)
-        # Inputが無ければ作成
-        if "Input" not in bpy.data.texts:
+    if bpy.context.scene.O2MCD_props.enable:  # アドオンを有効
+        if not chenge_panel in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.append(chenge_panel)
+        bpy.types.VIEW3D_MT_make_links.remove(prop_link)
+        bpy.types.VIEW3D_MT_make_links.append(prop_link)
+        
+        if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
-        # 自動更新を有効
-        if bpy.context.scene.O2MCD_props.auto_reload:
+            
+        if bpy.context.scene.O2MCD_props.auto_reload:  # 自動更新を有効
             bpy.app.handlers.frame_change_post.append(command_generate)
             bpy.app.handlers.depsgraph_update_post.append(command_generate)
-        # 自動更新を無効
-        else:
+            
+        else:  # 自動更新を無効
             if command_generate in bpy.app.handlers.frame_change_post:
                 bpy.app.handlers.frame_change_post.remove(command_generate)
             if command_generate in bpy.app.handlers.depsgraph_update_post:
                 bpy.app.handlers.depsgraph_update_post.remove(command_generate)
-    # アドオンを無効
-    else:
+                
+    else:  # アドオンを無効
         try:
             bpy.app.handlers.frame_change_post.remove(command_generate)
             bpy.app.handlers.depsgraph_update_post.remove(command_generate)
             bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)
+            bpy.types.VIEW3D_MT_make_links.remove(prop_link)
         except:pass
 def setid(self,context):  # idを更新
     if context.scene.prop_list[context.scene.O2MCD_props.list_index].Types == "ITEM":
@@ -74,6 +77,9 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
         if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
     
+def prop_link(self, context):  # プロパティリンクボタン
+    self.layout.separator()
+    self.layout.operator("object.link_prop")
 
 def change_name(self,context):  # 名前被りを回避
     if [i.name for i in context.scene.prop_list].count(self.name) > 1:
@@ -385,8 +391,9 @@ def command_generate(self, context):  # コマンド生成
     for area in bpy.context.screen.areas:
         if area.type == 'TEXT_EDITOR':
             area.tag_redraw()
-
+enum_items = []
 def enum_item(self, context):  # プロパティリスト
+    global enum_items
     enum_items = []
     for i in range(len(context.scene.prop_list)):
         enum_items.append((str(i), str(i)+":"+context.scene.prop_list[i].name, ""))
@@ -611,13 +618,13 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
 class OBJECTTOMCDISPLAY_OT_searchPopup(bpy.types.Operator):  # 検索
     bl_idname = "object.search_popup"
     bl_label = ""
-    bl_property = "my_enum"
+    bl_property = "enum"
 
-    my_enum: bpy.props.EnumProperty(
+    enum: bpy.props.EnumProperty(
         name="Objects", description="", items=enum_item)
 
     def execute(self, context):
-        context.object.O2MCD_props.prop_id = int(self.my_enum)
+        context.object.O2MCD_props.prop_id = int(self.enum)
         context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
         chenge_panel(self, context)
         return {'FINISHED'}
@@ -625,7 +632,18 @@ class OBJECTTOMCDISPLAY_OT_searchPopup(bpy.types.Operator):  # 検索
     def invoke(self, context, event):
         context.window_manager.invoke_search_popup(self)
         return {'FINISHED'}
+class OBJECTTOMCDISPLAY_OT_LinkProp(bpy.types.Operator):
 
+    bl_idname = "object.link_prop"
+    bl_label = "ディスプレイプロパティをリンク"
+    bl_description = "アクティブオブジェクトから選択オブジェクトにデータを転送します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    # メニューを実行したときに呼ばれる関数
+    def execute(self, context):
+        for i in bpy.context.selected_objects:
+            i.O2MCD_props.prop_id = context.object.O2MCD_props.prop_id
+        return {'FINISHED'}
 class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
         row = layout.row(align=True)

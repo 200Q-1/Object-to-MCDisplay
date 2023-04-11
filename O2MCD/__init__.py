@@ -43,7 +43,8 @@ classes = (
     O2MCD.O2MCD_ListItem,
     O2MCD.O2MCD_ObjectList,
     O2MCD.O2MCD_ItemList,
-    O2MCD.O2MCD_BlockList
+    O2MCD.O2MCD_BlockList,
+    O2MCD.OBJECTTOMCDISPLAY_OT_LinkProp
 )
 
 # blender起動時に実行
@@ -51,6 +52,7 @@ classes = (
 def load_handler(self, context):
     O2MCD.update(None, bpy.context.scene)
     O2MCD.item_regist()
+    bpy.types.VIEW3D_MT_make_links.append(O2MCD.prop_link)
 
 def register():
     bpy.app.translations.register(__name__, O2MCD_translation_dict)
