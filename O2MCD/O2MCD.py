@@ -23,6 +23,7 @@ def item_regist():  # アイテムをブロックを登録
     for i in block:
         bpy.context.scene.block_list.add().name= i
     file.close()
+
 def update(self, context):  # 更新処理
     if bpy.context.scene.O2MCD_props.enable:  # アドオンを有効
         if not chenge_panel in bpy.app.handlers.depsgraph_update_post:
@@ -33,15 +34,7 @@ def update(self, context):  # 更新処理
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
             
-        if bpy.context.scene.O2MCD_props.auto_reload:  # 自動更新を有効
-            bpy.app.handlers.frame_change_post.append(command_generate)
-            bpy.app.handlers.depsgraph_update_post.append(command_generate)
-            
-        else:  # 自動更新を無効
-            if command_generate in bpy.app.handlers.frame_change_post:
-                bpy.app.handlers.frame_change_post.remove(command_generate)
-            if command_generate in bpy.app.handlers.depsgraph_update_post:
-                bpy.app.handlers.depsgraph_update_post.remove(command_generate)
+        update_auto_reload(self,context)
                 
     else:  # アドオンを無効
         try:
@@ -50,6 +43,18 @@ def update(self, context):  # 更新処理
             bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)
             bpy.types.VIEW3D_MT_make_links.remove(prop_link)
         except:pass
+        
+def update_auto_reload(self,context):
+    if context.scene.O2MCD_props.auto_reload:  # 自動更新を有効
+        if not command_generate in bpy.app.handlers.frame_change_post:
+            bpy.app.handlers.frame_change_post.append(command_generate)
+        if not command_generate in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.append(command_generate)
+    else:  # 自動更新を無効
+        if command_generate in bpy.app.handlers.frame_change_post:
+            bpy.app.handlers.frame_change_post.remove(command_generate)
+        if command_generate in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.remove(command_generate)
 def setid(self,context):  # idを更新
     if context.scene.prop_list[context.scene.O2MCD_props.list_index].Types == "ITEM":
         context.scene.prop_list[context.scene.O2MCD_props.list_index].id = context.scene.prop_list[context.scene.O2MCD_props.list_index].item_id
@@ -176,7 +181,6 @@ def frame_range(context, com):  # フレーム範囲指定
             com[i] = sub("^\[(?:[0-9]+|[0-9]+\-[0-9]+)\](\s?:\s?)?", "", com[i])
         else:
             com[i] = None
-        print(com[i])
     com = [i for i in com if not i == None]
     return com
 
@@ -187,13 +191,11 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
     # /transfだけ先に変換
     com = com.replace("/transf", "right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")
     # 入力から関数のリストを作成
-    func = findall(
-        f'(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)', com)
+    func = findall(f'(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)', com)
     # 関数を1つずつ処理
     for f in func:
         # 関数名
-        var = sub(
-            f'/({funk_list})(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?', "\\1", f)
+        var = sub(f'/({funk_list})(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?', "\\1", f)
         # 引数
         val = sub('/.+?\[(.+)\]', "V\\1", f)
         # 引数の中の関数を変換
@@ -208,11 +210,11 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
         # math以外の関数を処理
         if not var == "math":
             # フレームを設定
-            if frm == "" or frm == val:
-                frm = str(current_frame)
-            elif match("(?:\+|\-)[0-9]+", frm):
-                frm = eval(str(current_frame)+frm)
-            context.scene.frame_set(int(frm))
+            if not frm == "" and not frm == val:
+                if match("(?:\+|\-)[0-9]+", frm):
+                    frm = eval(str(current_frame)+frm)
+                context.scene.frame_set(int(frm))
+                context.scene.frame_current=int(frm)
             # オブジェクトを設定
             if obj == "" or obj == val:
                 obj = object_list[num].obj
@@ -284,51 +286,49 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 tags = split(",", context.scene.prop_list[obj.O2MCD_props.prop_id].tags)
             # 置き換え
             if elm == "" or elm == val:
-                if var == "loc": com = sub("/loc(\[.*?(,.*?)?\])?", str(location[0]) +"f,"+str(location[1])+"f,"+str(location[2])+"f", com, 1)
-                if var == "scale": com = sub("/scale(\[.*?(,.*?)?\])?", str(scale[0]) +"f,"+str(scale[1])+"f,"+str(scale[2])+"f", com, 1)
-                if var == "r_rot": com = sub("/r_rot(\[.*?(,.*?)?\])?", str(right_rotation[0])+"f,"+str(right_rotation[1])+"f,"+str(right_rotation[2])+"f,"+str(right_rotation[3])+"f", com, 1)
-                if var == "l_rot": com = sub("/l_rot(\[.*?(,.*?)?\])?", str(left_rotation[0])+"f,"+str(left_rotation[1])+"f,"+str(left_rotation[2])+"f,"+str(left_rotation[3])+"f", com, 1)
+                if var == "loc": com = com.replace(f, str(location[0]) +"f,"+str(location[1])+"f,"+str(location[2])+"f", 1)
+                if var == "scale": com = com.replace(f, str(scale[0]) +"f,"+str(scale[1])+"f,"+str(scale[2])+"f", 1)
+                if var == "r_rot": com = com.replace(f, str(right_rotation[0])+"f,"+str(right_rotation[1])+"f,"+str(right_rotation[2])+"f,"+str(right_rotation[3])+"f", 1)
+                if var == "l_rot": com = com.replace(f, str(left_rotation[0])+"f,"+str(left_rotation[1])+"f,"+str(left_rotation[2])+"f,"+str(left_rotation[3])+"f", 1)
                 if var == "tag" or var == "tags":
                     if not context.scene.prop_list[obj.O2MCD_props.prop_id].tags == "":
-                        if var == "tags": com = sub("/tags(\[.*?(,.*?)?\])?", ",".join(["\""+i+"\"" for i in tags]), com, 1)
-                        if var == "tag": com = sub("/tag(\[.*?(,.*?)?\])?", ",".join(["tag="+i for i in tags]), com, 1)
-                    else: com = sub("/tags?(\[.*?(,.*?)?\])?", "", com)
+                        if var == "tags": com = com.replace(f, ",".join(["\""+i+"\"" for i in tags]), 1)
+                        if var == "tag": com = com.replace(f, ",".join(["tag="+i for i in tags]), 1)
+                    else: com = com.replace(f, "", com)
             else:
-                if var == "loc": com = sub("/loc\[.*?(,.*?)?\]",str(location[int(elm)]), com, 1)
-                if var == "scale": com = sub("/scale\[.*?(,.*?)?\]",str(scale[int(elm)]), com, 1)
-                if var == "r_rot": com = sub("/r_rot\[.*?(,.*?)?\]",str(right_rotation[int(elm)]), com, 1)
-                if var == "l_rot": com = sub("/l_rot\[.*?(,.*?)?\]",str(left_rotation[int(elm)]), com, 1)
+                if var == "loc": com = sub("/loc\[.*?(,.*?)?\]",str(location[int(elm)]), 1)
+                if var == "scale": com = sub("/scale\[.*?(,.*?)?\]",str(scale[int(elm)]), 1)
+                if var == "r_rot": com = sub("/r_rot\[.*?(,.*?)?\]",str(right_rotation[int(elm)]), 1)
+                if var == "l_rot": com = sub("/l_rot\[.*?(,.*?)?\]",str(left_rotation[int(elm)]), 1)
                 if var == "tag" or var == "tags":
                     if not context.scene.prop_list[obj.O2MCD_props.prop_id].tags == "":
-                        if var == "tags": com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)], com, 1)
-                        if var == "tag": com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)], com, 1)
-                    else: com = sub("/tags?(\[.*?(,.*?)?\])?", "", com)
+                        if var == "tags": com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)], 1)
+                        if var == "tag": com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)], 1)
+                    else: com = com.replace(f, "", com)
             if var == "prop":
-                if not prop == "": com = sub("/prop(\[.*?(,.*?)?\])?", prop, com, 1)
-                else: com = sub("/prop?(\[.*?(,.*?)?\])?", "", com)
+                if not prop == "": com = com.replace(f, prop, 1)
+                else: com = com.replace(f, "", com)
             if var == "model":
-                if not model == "": com = sub("/model(\[.*?(,.*?)?\])?", model, com, 1)
-                else: com = sub("/item?(\[.*?(,.*?)?\])?", "", com)
+                if not model == "": com = com.replace(f, model, 1)
+                else: com = com.replace(f, "", com)
             if var == "item":
-                if not item == "": com = sub("/item(\[.*?(,.*?)?\])?", item, com, 1)
-                else: com = sub("/item?(\[.*?(,.*?)?\])?", "", com)
-            if var == "name": com = sub("/name(\[.*?(,.*?)?\])?", name, com, 1)
-            if var == "id": com = sub("/id(\[.*?(,.*?)?\])?", id, com, 1)
-            if var == "type": com = sub("/type(\[.*?(,.*?)?\])?", type, com, 1)
-            if var == "num": com = sub("/num(\[.*?(,.*?)?\])?", str(num), com, 1)
-            if var == "extra": com = sub("/extra(\[.*?(,.*?)?\])?", extra, com, 1)
+                if not item == "": com = com.replace(f, item, 1)
+                else: com = com.replace(f, "", com)
+            if var == "name": com = com.replace(f, name, 1)
+            if var == "id": com = com.replace(f, id, 1)
+            if var == "type": com = com.replace(f, type, 1)
+            if var == "num": com = com.replace(f, str(num), 1)
+            if var == "extra": com = com.replace(f, extra, 1)
         # mathを処理
-        if var == "math":
-            com = sub("/math\[.+\]+",str(eval(sub('V?(.+)', "\\1", val))), com, 1)
+        if var == "math":com = com.replace(f,str(eval(sub('V?(.+)', "\\1", val))), 1)
     if not current_frame == context.scene.frame_current:
         context.scene.frame_set(current_frame)
     return com
 
 
 def command_generate(self, context):  # コマンド生成
-    # ループ回避のため更新を停止
     if command_generate in bpy.app.handlers.frame_change_post:
-        bpy.app.handlers.frame_change_post.remove(command_generate)
+            bpy.app.handlers.frame_change_post.remove(command_generate)
     if command_generate in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(command_generate)
     # Outputが無ければ作成
@@ -343,7 +343,7 @@ def command_generate(self, context):  # コマンド生成
     # 出力をリセット
     output = []
 
-    # startを出力に追加
+    # # startを出力に追加
     com = [sub("^start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
     com = frame_range(context, com)
     if com:
@@ -352,10 +352,10 @@ def command_generate(self, context):  # コマンド生成
             com = comvert_function(context, context.scene.object_list, funk_list, com, None)
         else:com = "\n".join(com)
         output.append(com)
-    # メインコマンドを出力に追加
+    # # メインコマンドを出力に追加
     for l in context.scene.object_list:
         o = l.obj
-        if not o.hide_viewport and not o.hide_render:
+        if not o.hide_viewport and o.O2MCD_props.enable:
             if context.scene.prop_list[o.O2MCD_props.prop_id].Types == "ITEM":
                 com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|extra|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
             elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "BLOCK":
@@ -363,12 +363,12 @@ def command_generate(self, context):  # コマンド生成
             elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "EXTRA":
                 com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|item|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
             com = frame_range(context, com)
-        if com:
-            if [i for i in  com if match(f".*/({funk_list}).*", i)]:
-                com = "\n".join(com)
-                com = comvert_function(context, context.scene.object_list, funk_list, com, o.O2MCD_props.number)
-            else:com = "\n".join(com)
-            output.append(com)
+            if com:
+                if [i for i in  com if match(f".*/({funk_list}).*", i)]:
+                    com = "\n".join(com)
+                    com = comvert_function(context, context.scene.object_list, funk_list, com, o.O2MCD_props.number)
+                else:com = "\n".join(com)
+                output.append(com)
     # endを出力に追加
     com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
     com = frame_range(context, com)
@@ -378,10 +378,6 @@ def command_generate(self, context):  # コマンド生成
             com = comvert_function(context, context.scene.object_list, funk_list, com, None)
         else:com = "\n".join(com)
         output.append(com)
-    # 更新を再開
-    if context.scene.O2MCD_props.auto_reload:
-        bpy.app.handlers.frame_change_post.append(command_generate)
-        bpy.app.handlers.depsgraph_update_post.append(command_generate)
 
     # Outputに書き込み
     output = "\n".join(output)
@@ -391,6 +387,10 @@ def command_generate(self, context):  # コマンド生成
     for area in bpy.context.screen.areas:
         if area.type == 'TEXT_EDITOR':
             area.tag_redraw()
+    if bpy.context.scene.O2MCD_props.auto_reload:  # 自動更新を有効
+        bpy.app.handlers.frame_change_post.append(command_generate)
+        bpy.app.handlers.depsgraph_update_post.append(command_generate)
+
 enum_items = []
 def enum_item(self, context):  # プロパティリスト
     global enum_items
@@ -652,18 +652,19 @@ class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
         row.prop(item.obj, "name", text="", emboss=False)
         row2=layout.row()
         row2.alignment="RIGHT"
-        row2.prop(item.obj,"hide_render",text="")
+        row2.prop(item.obj.O2MCD_props,"enable",text="")
 
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
     number: bpy.props.IntProperty(name="Object Number", default=-1, min=-1)
     prop_id: bpy.props.IntProperty(name="prop_id", default=-1, min=-1)
+    enable : bpy.props.BoolProperty(name="", default=True)
 
 
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     rou: bpy.props.IntProperty(name="Round", default=3, max=16, min=1)
     anim_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
     curr_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
-    auto_reload: bpy.props.BoolProperty(name="Auto Update", default=False, update=update)
+    auto_reload: bpy.props.BoolProperty(name="Auto Update", default=False, update=update_auto_reload)
     output: bpy.props.EnumProperty(name="Output", items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
     enable: bpy.props.BoolProperty(name="", default=False, update=update)
     Enum: bpy.props.EnumProperty(name="Enum", items=enum_item, options={"ANIMATABLE"})
