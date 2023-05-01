@@ -11,8 +11,8 @@ def prop_link(self, context):  # プロパティリンクボタン
 class OBJECTTOMCDISPLAY_OT_LinkProp(bpy.types.Operator):
 
     bl_idname = "object.link_prop"
-    bl_label = "ディスプレイプロパティをリンク"
-    bl_description = "アクティブオブジェクトから選択オブジェクトにデータを転送します"
+    bl_label = "Link display properties"
+    bl_description = "Transfers data from the active object to the selected object"
     bl_options = {'REGISTER', 'UNDO'}
 
     # メニューを実行したときに呼ばれる関数

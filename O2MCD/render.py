@@ -98,6 +98,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
     bl_idname = "render.o2mcd_reload"
     bl_label = "Update"
+    bl_description = "update command"
 
     def execute(self, context):
         command.command_generate(self, context)
@@ -107,7 +108,7 @@ class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
 class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
     bl_idname = "render.o2mcd_export"
     bl_label = "Export"
-
+    bl_description = "Generate file in specified path"
     def execute(self, context):
         # テキストブロックの名前
         text_name = "Output"
@@ -165,7 +166,7 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     rou: bpy.props.IntProperty(name="Round", default=3, max=16, min=1)
     anim_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
     curr_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
-    auto_reload: bpy.props.BoolProperty(name="Auto Update", default=False, update=update_auto_reload)
+    auto_reload: bpy.props.BoolProperty(name="Auto Update", default=False, update=update_auto_reload,description="Update commands automatically")
     output: bpy.props.EnumProperty(name="Output", items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
     enable: bpy.props.BoolProperty(name="", default=False, update=update)
     Enum: bpy.props.EnumProperty(name="Enum", items=object.enum_item, options={"ANIMATABLE"})

@@ -18,7 +18,19 @@ O2MCD_translation_dict = {
         ("Operator", "Update"): "更新",
         ("*", "Auto Update"): "自動更新",
         ("*", "Show in header"): "ヘッダーに表示",
-        ("*", "Object Number"): "番号"
+        ("*", "update commands"): "コマンドを更新",
+        ("*", "Update commands automatically"): "コマンドを自動で更新",
+        ("*", "Object Number"): "番号",
+        ("*", "Generate file in specified path"): "指定したパスにファイルを生成",
+        ("*", "Rearrange the order of objects"): "オブジェクトの順番を入れ替える",
+        ("*", "Sorting Objects"): "オブジェクトを並び替える",
+        ("Operator", "Name"): "名前",
+        ("Operator", "Create"): "作成",
+        ("Operator", "Shuffle"): "ランダム",
+        ("Operator", "DataPath"): "データパス",
+        ("*", "Link display properties"): "ディスプレイプロパティをリンク",
+        ("*", "Transfers data from the active object to the selected object"): "アクティブオブジェクトから選択オブジェクトにデータを転送します",
+        ("*", "Browse Linked Properties"): "リンクするプロパティを観覧",
     }
 }
 if "bpy" in locals():

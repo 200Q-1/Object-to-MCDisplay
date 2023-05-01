@@ -133,6 +133,7 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
 class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操作
     bl_idname = "object.o2mcd_prop_action"
     bl_label = ""
+    bl_description = "Browse Linked Properties"
     action: bpy.props.EnumProperty(items=(('ADD', "Add", ""),('DUP', "dup", ""),('UNLINK', "unlink", ""),('REMOVE', "remove", "")))
     
     def invoke(self,context,event):
@@ -155,9 +156,9 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
             add.Properties= prop_list[context.object.O2MCD_props.prop_id].Properties
             add.ExtraNBT= prop_list[context.object.O2MCD_props.prop_id].ExtraNBT
             add.type= prop_list[context.object.O2MCD_props.prop_id].type
-            add.id= prop_list[context.object.O2MCD_props.O2MCD_prop_id].id
-            add.item_id= prop_list[context.object.O2MCD_props.O2MCD_prop_id].item_id
-            add.block_id= prop_list[context.object.O2MCD_props.O2MCD_prop_id].block_id
+            add.id= prop_list[context.object.O2MCD_props.prop_id].id
+            add.item_id= prop_list[context.object.O2MCD_props.prop_id].item_id
+            add.block_id= prop_list[context.object.O2MCD_props.prop_id].block_id
             context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
             context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
         elif self.action == 'UNLINK':
@@ -170,7 +171,7 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
         chenge_panel(self, context)
         return {'FINISHED'}
 
-class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # 検索
+class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
     bl_idname = "object.search_popup"
     bl_label = ""
     bl_property = "enum"
