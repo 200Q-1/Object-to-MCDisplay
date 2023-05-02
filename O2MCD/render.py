@@ -120,45 +120,52 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
         if context.scene.O2MCD_props.output == "ANIMATION":
             # 出力先ディレクトリ
             anim_path = bpy.path.abspath(context.scene.O2MCD_props.anim_path)
-            # フレームを1つずつ進めながら出力する
-            for frame in range(1, frame_end+1):
+            if os.path.isdir(anim_path):
+                # フレームを1つずつ進めながら出力する
+                for frame in range(1, frame_end+1):
 
-                # カレントフレームを設定
-                context.scene.frame_set(frame)
-                ofset = sub(".*?([0-9]*)$", "\\1",str(os.path.splitext(anim_path)[0]))
-                ext = str(os.path.splitext(anim_path)[1])
-                if ofset == "":
-                    ofset = 1
+                    # カレントフレームを設定
+                    context.scene.frame_set(frame)
+                    ofset = sub(".*?([0-9]*)$", "\\1",str(os.path.splitext(anim_path)[0]))
+                    ext = str(os.path.splitext(anim_path)[1])
+                    if ofset == "":
+                        ofset = 1
+                    if ext == "":
+                        ext = ".mcfunction"
+                    # 出力するファイル名を作成
+                    output_file = sub("(.*?)([0-9]*)$", "\\1", str(os.path.splitext(anim_path)[0]))+str(int(ofset)-1+frame)+ext
+
+                    # テキストブロックを取得
+                    command.command_generate(self, context)
+                    text = bpy.data.texts.get(text_name)
+
+                    # 出力
+                    if text:
+                        with open(output_file, "w", encoding="utf-8") as f:
+                            f.write(text.as_string())
+                # カレントフレームを元に戻す
+                context.scene.frame_set(current_frame)
+                self.report({'INFO'}, "File exported")
+            else:
+                self.report({'ERROR'},"File path not found")
+        else:
+            # 出力先ディレクトリ
+            curr_path = bpy.path.abspath(context.scene.O2MCD_props.curr_path)
+            if os.path.isdir(curr_path):
+                ext = str(os.path.splitext(curr_path)[1])
                 if ext == "":
                     ext = ".mcfunction"
-                # 出力するファイル名を作成
-                output_file = sub("(.*?)([0-9]*)$", "\\1", str(os.path.splitext(anim_path)[0]))+str(int(ofset)-1+frame)+ext
-
+                output_file = str(os.path.splitext(curr_path)[0])+ext
                 # テキストブロックを取得
                 command.command_generate(self, context)
                 text = bpy.data.texts.get(text_name)
-
                 # 出力
                 if text:
                     with open(output_file, "w", encoding="utf-8") as f:
                         f.write(text.as_string())
-            # カレントフレームを元に戻す
-            context.scene.frame_set(current_frame)
-        else:
-            # 出力先ディレクトリ
-            curr_path = bpy.path.abspath(context.scene.O2MCD_props.curr_path)
-            ext = str(os.path.splitext(curr_path)[1])
-            if ext == "":
-                ext = ".mcfunction"
-            output_file = str(os.path.splitext(curr_path)[0])+ext
-            # テキストブロックを取得
-            command.command_generate(self, context)
-            text = bpy.data.texts.get(text_name)
-
-            # 出力
-            if text:
-                with open(output_file, "w", encoding="utf-8") as f:
-                    f.write(text.as_string())
+                self.report({'INFO'}, "File exported")
+            else:
+                self.report({'ERROR'},"File path not found")
         return {'FINISHED'}
 
 

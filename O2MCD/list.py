@@ -71,6 +71,7 @@ class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
             random.shuffle(object_list)
             context.scene.object_list.clear()
             for i in object_list: context.scene.object_list.add().obj=context.scene.objects[i]
+        self.report({'INFO'}, "Objects have been reordered")
         return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_DataPath(bpy.types.Operator): #データパス
     bl_idname = "render.o2mcd_data_path"
@@ -84,12 +85,16 @@ class OBJECTTOMCDISPLAY_OT_DataPath(bpy.types.Operator): #データパス
         else:
             data="."+self.data_path
         object_list = [i.obj.name for i in context.scene.object_list]
-        data_list=[eval("i.obj"+data) for i in context.scene.object_list]
-        d = dict(zip(data_list,object_list))
-        s = sorted(d.items())
-        context.scene.object_list.clear()
-        for i in s:
-            context.scene.object_list.add().obj=context.scene.objects[i[1]]
+        try:
+            data_list=[eval("i.obj"+data) for i in context.scene.object_list]
+            d = dict(zip(data_list,object_list))
+            s = sorted(d.items())
+            context.scene.object_list.clear()
+            for i in s:
+                context.scene.object_list.add().obj=context.scene.objects[i[1]]
+            self.report({'INFO'}, "Objects have been reordered")
+        except:
+            self.report({'ERROR'}, "No data available")
         return {'FINISHED'}
 
     def invoke(self, context, event):
