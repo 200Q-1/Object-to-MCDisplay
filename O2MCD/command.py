@@ -13,6 +13,13 @@ def get_location(context,object):  # 位置取得
     loc = (round(loc[0], rou), round(loc[1], rou), round(loc[2], rou))
     return loc
 
+def get_position(context,object):  # pos取得
+    pos = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ object.matrix_world
+    rou = context.scene.O2MCD_props.rou
+    pos = pos.translation
+    pos = (round(pos[0], rou), round(pos[1], rou), round(pos[2], rou))
+    return pos
+
 def get_scale(context,object):  # スケール取得
     scale = object.matrix_world.to_scale()
     rou = context.scene.O2MCD_props.rou
@@ -45,11 +52,28 @@ def get_left_rotation(context,object):  # 左回転取得
     l_rot_x = mathutils.Euler((-l_rot[0], 0, 0), 'XYZ').to_matrix().to_4x4()
     l_rot_y = mathutils.Euler((0, l_rot[2], 0), 'XYZ').to_matrix().to_4x4()
     l_rot_z = mathutils.Euler((0, 0, l_rot[1]), 'XYZ').to_matrix().to_4x4()
-    l_rot = (mathutils.Euler((0, radians(180), 0), 'XYZ').to_matrix(
-    ).to_4x4() @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
+    l_rot = (mathutils.Euler((0, radians(180), 0), 'XYZ').to_matrix().to_4x4() @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
     l_rot = [round(l_rot[1], rou), round(l_rot[2], rou),round(l_rot[3], rou), round(l_rot[0], rou)]
     return l_rot
 
+def get_rotation(context,object):  # 回転取得
+    rou = context.scene.O2MCD_props.rou
+    if object.parent:
+        if object.parent_type == "BONE":
+            rot = object.parent.pose.bones[object.parent_bone].matrix
+            rot = object.parent.matrix_world @ rot
+            rot = rot.to_euler()
+            rot = mathutils.Euler((rot[0]-1.5708, rot[1], rot[2]), 'XYZ')
+        else:
+            rot = object.parent.matrix_world.to_euler()
+    else:
+        rot = object.matrix_world.to_euler()
+    rot_x = mathutils.Euler((-rot[0], 0, 0), 'XYZ').to_matrix().to_4x4()
+    rot_y = mathutils.Euler((0, rot[2], 0), 'XYZ').to_matrix().to_4x4()
+    rot_z = mathutils.Euler((0, 0, rot[1]), 'XYZ').to_matrix().to_4x4()
+    rot = (rot_y @ rot_z @ rot_x).to_euler()
+    rot = [round(degrees(rot[1]), rou), round(degrees(rot[2]), rou),round(degrees(rot[0]), rou)]
+    return rot
 
 def get_right_rotation(context,object):  # 右回転取得
     rou = context.scene.O2MCD_props.rou
@@ -133,23 +157,27 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
             # transformationを取得
             if var == "loc":
                 location = get_location(context,obj)
-            if var == "scale":
+            elif var == "pos":
+                position = get_position(context,obj)
+            elif var == "scale":
                 scale = get_scale(context,obj)
-            if var == "r_rot":
+            elif var == "r_rot":
                 right_rotation = get_right_rotation(context,obj)
-            if var == "l_rot":
+            elif var == "l_rot":
                 left_rotation = get_left_rotation(context,obj)
+            elif var == "rot":
+                rotation = get_rotation(context,obj)
             # 名前を取得
-            if var == "name":
+            elif var == "name":
                 name = obj.name
             # idを取得
-            if var == "id":
+            elif var == "id":
                 id = context.scene.prop_list[obj.O2MCD_props.prop_id].id
             # extraNBTを取得
-            if var == "extra":
+            elif var == "extra":
                 extra = context.scene.prop_list[obj.O2MCD_props.prop_id].ExtraNBT
             # タイプを取得
-            if var == "type":
+            elif var == "type":
                 if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
                     type = "item_display"
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
@@ -157,7 +185,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
                     type = context.scene.prop_list[obj.O2MCD_props.prop_id].type
             # ブロックのプロパティを取得
-            if var == "prop":
+            elif var == "prop":
                 if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
                     prop = ""
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
@@ -165,7 +193,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
                     prop = ""
             # カスタムモデルデータを取得
-            if var == "model":
+            elif var == "model":
                 if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
                     model = str(context.scene.prop_list[obj.O2MCD_props.prop_id].CustomModelData)
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
@@ -173,7 +201,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
                     model = ""
             # アイテムタグを取得
-            if var == "item":
+            elif var == "item":
                 if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
                     item = context.scene.prop_list[obj.O2MCD_props.prop_id].ItemTag
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
@@ -181,43 +209,47 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
                     item = ""
             # タグをリスト化
-            if var == "tag" or var == "tags":
+            elif var == "tag" or var == "tags":
                 tags = split(",", context.scene.prop_list[obj.O2MCD_props.prop_id].tags)
             # 置き換え
             if elm == "" or elm == val:
                 if var == "loc": com = com.replace(f, str(location[0]) +"f,"+str(location[1])+"f,"+str(location[2])+"f", 1)
-                if var == "scale": com = com.replace(f, str(scale[0]) +"f,"+str(scale[1])+"f,"+str(scale[2])+"f", 1)
-                if var == "r_rot": com = com.replace(f, str(right_rotation[0])+"f,"+str(right_rotation[1])+"f,"+str(right_rotation[2])+"f,"+str(right_rotation[3])+"f", 1)
-                if var == "l_rot": com = com.replace(f, str(left_rotation[0])+"f,"+str(left_rotation[1])+"f,"+str(left_rotation[2])+"f,"+str(left_rotation[3])+"f", 1)
-                if var == "tag" or var == "tags":
+                elif var == "pos": com = com.replace(f, "^"+str(position[0]) +" ^"+str(position[1])+" ^"+str(position[2]), 1)
+                elif var == "scale": com = com.replace(f, str(scale[0]) +"f,"+str(scale[1])+"f,"+str(scale[2])+"f", 1)
+                elif var == "r_rot": com = com.replace(f, str(right_rotation[0])+"f,"+str(right_rotation[1])+"f,"+str(right_rotation[2])+"f,"+str(right_rotation[3])+"f", 1)
+                elif var == "l_rot": com = com.replace(f, str(left_rotation[0])+"f,"+str(left_rotation[1])+"f,"+str(left_rotation[2])+"f,"+str(left_rotation[3])+"f", 1)
+                elif var == "rot": com = com.replace(f, "~"+str(rotation[0])+" ~"+str(rotation[2]), 1)
+                elif var == "tag" or var == "tags":
                     if not context.scene.prop_list[obj.O2MCD_props.prop_id].tags == "":
                         if var == "tags": com = com.replace(f, ",".join(["\""+i+"\"" for i in tags]), 1)
                         if var == "tag": com = com.replace(f, ",".join(["tag="+i for i in tags]), 1)
                     else: com = com.replace(f, "", 1)
             else:
-                if var == "loc": com = sub("/loc\[.*?(,.*?)?\]",str(location[int(elm)]), 1)
-                if var == "scale": com = sub("/scale\[.*?(,.*?)?\]",str(scale[int(elm)]), 1)
-                if var == "r_rot": com = sub("/r_rot\[.*?(,.*?)?\]",str(right_rotation[int(elm)]), 1)
-                if var == "l_rot": com = sub("/l_rot\[.*?(,.*?)?\]",str(left_rotation[int(elm)]), 1)
-                if var == "tag" or var == "tags":
+                if var == "loc": com = sub("/loc\[.*?(,.*?)?\]",str(location[int(elm)]),com, 1)
+                elif var == "pos": com = sub("/pos\[.*?(,.*?)?\]",str(position[int(elm)]),com, 1)
+                elif var == "scale": com = sub("/scale\[.*?(,.*?)?\]",str(scale[int(elm)]),com, 1)
+                elif var == "r_rot": com = sub("/r_rot\[.*?(,.*?)?\]",str(right_rotation[int(elm)]),com, 1)
+                elif var == "l_rot": com = sub("/l_rot\[.*?(,.*?)?\]",str(left_rotation[int(elm)]),com, 1)
+                elif var == "rot": com = sub("/rot\[.*?(,.*?)?\]",str(rotation[int(elm)]),com, 1)
+                elif var == "tag" or var == "tags":
                     if not context.scene.prop_list[obj.O2MCD_props.prop_id].tags == "":
-                        if var == "tags": com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)], 1)
-                        if var == "tag": com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)], 1)
+                        if var == "tags": com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)],com, 1)
+                        if var == "tag": com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)],com, 1)
                     else: com = com.replace(f, "", 1)
             if var == "prop":
                 if not prop == "": com = com.replace(f, prop, 1)
                 else: com = com.replace(f, "", 1)
-            if var == "model":
+            elif var == "model":
                 if not model == "": com = com.replace(f, model, 1)
                 else: com = com.replace(f, "", 1)
-            if var == "item":
+            elif var == "item":
                 if not item == "": com = com.replace(f, item, 1)
                 else: com = com.replace(f, "", 1)
-            if var == "name": com = com.replace(f, name, 1)
-            if var == "id": com = com.replace(f, id, 1)
-            if var == "type": com = com.replace(f, type, 1)
-            if var == "num": com = com.replace(f, str(num), 1)
-            if var == "extra": com = com.replace(f, extra, 1)
+            elif var == "name": com = com.replace(f, name, 1)
+            elif var == "id": com = com.replace(f, id, 1)
+            elif var == "type": com = com.replace(f, type, 1)
+            elif var == "num": com = com.replace(f, str(num), 1)
+            elif var == "extra": com = com.replace(f, extra, 1)
         # mathを処理
         if var == "math":com = com.replace(f,str(eval(sub('V?(.+)', "\\1", val))), 1)
     if not current_frame == context.scene.frame_current:
@@ -234,7 +266,7 @@ def command_generate(self, context):  # コマンド生成
     if "Output" not in bpy.data.texts:
         bpy.data.texts.new("Output")
     # 関数名
-    funk_list = "(?:transf|loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra)"
+    funk_list = "(?:transf|loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra|pos|rot)"
     # コマンドをリスト化
     input = list(bpy.data.texts["Input"].as_string().splitlines())
     # エスケープ

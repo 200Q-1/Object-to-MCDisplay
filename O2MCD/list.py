@@ -1,6 +1,7 @@
 import bpy
 import random
 from . import command
+from re import *
 
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     active = context.view_layer.objects.active
@@ -78,9 +79,12 @@ class OBJECTTOMCDISPLAY_OT_DataPath(bpy.types.Operator): #データパス
     bl_options = {'REGISTER', 'UNDO'}
     data_path: bpy.props.StringProperty(default="")
     def execute(self, context):
-        data=self.data_path
+        if match("\[.+?\]",self.data_path):
+            data=self.data_path
+        else:
+            data="."+self.data_path
         object_list = [i.obj.name for i in context.scene.object_list]
-        data_list=[eval("i.obj."+data) for i in context.scene.object_list]
+        data_list=[eval("i.obj"+data) for i in context.scene.object_list]
         d = dict(zip(data_list,object_list))
         s = sorted(d.items())
         context.scene.object_list.clear()

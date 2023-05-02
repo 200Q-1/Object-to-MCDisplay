@@ -28,7 +28,7 @@ O2MCD_translation_dict = {
         ("Operator", "Create"): "作成",
         ("Operator", "Shuffle"): "ランダム",
         ("Operator", "DataPath"): "データパス",
-        ("*", "Link display properties"): "ディスプレイプロパティをリンク",
+        ("Operator", "Link display properties"): "ディスプレイプロパティをリンク",
         ("*", "Transfers data from the active object to the selected object"): "アクティブオブジェクトから選択オブジェクトにデータを転送します",
         ("*", "Browse Linked Properties"): "リンクするプロパティを観覧",
     }
