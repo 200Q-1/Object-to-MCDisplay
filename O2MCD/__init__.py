@@ -56,7 +56,7 @@ from bpy.app.handlers import persistent
 # blender起動時に実行
 @persistent
 def load_handler(self, context):
-    render.update(None, bpy.context.scene)
+    render.update(None, bpy.context)
     object.item_regist()
     bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
 
