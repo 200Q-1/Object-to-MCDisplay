@@ -29,7 +29,7 @@
 
 ### Displayプロパティパネル
 アドオンを有効にするとオブジェクトにDisplayプロパティパネルが追加されます。  
-<img src="https://github.com/200Q-1/Object-to-MCDisplay/blob/master/image/prop.png" width="480">
+<img src="https://github.com/200Q-1/Object-to-MCDisplay/blob/master/image/prop.png" width="540">
 #### プロパティ
 ##### 共通
 + `アイテム|ブロック|その他`：エンティティのタイプです。タイプごとに別のコマンドを設定することが出来ます。
