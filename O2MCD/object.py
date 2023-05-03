@@ -7,19 +7,19 @@ from math import *
 from bpy.app.handlers import persistent
 # 関数
 
-def item_regist():  # アイテムとブロックを登録
+def item_regist(scene):  # アイテムとブロックを登録
     file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\item_list.txt', 'r', encoding='UTF-8')
     item = file.read().splitlines()
-    bpy.context.scene.O2MCD_item_list.clear()
+    scene.O2MCD_item_list.clear()
     for i in item:
-        bpy.context.scene.O2MCD_item_list.add().name= i
+        scene.O2MCD_item_list.add().name= i
     file.close()
     
     file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\block_list.txt', 'r', encoding='UTF-8')
     block = file.read().splitlines()
-    bpy.context.scene.O2MCD_block_list.clear()
+    scene.O2MCD_block_list.clear()
     for i in block:
-        bpy.context.scene.O2MCD_block_list.add().name= i
+        scene.O2MCD_block_list.add().name= i
     file.close()
 
 def setid(self,context):  # idを更新
@@ -133,7 +133,6 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
 class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操作
     bl_idname = "object.o2mcd_prop_action"
     bl_label = ""
-    bl_description = "Browse Linked Properties"
     action: bpy.props.EnumProperty(items=(('ADD', "Add", ""),('DUP', "dup", ""),('UNLINK', "unlink", ""),('REMOVE', "remove", "")))
     
     def invoke(self,context,event):
@@ -178,7 +177,7 @@ class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
     bl_idname = "object.search_popup"
     bl_label = ""
     bl_property = "enum"
-
+    bl_description= "Browse Linked Properties"
     enum: bpy.props.EnumProperty(name="Objects", description="", items=enum_item)
 
     def execute(self, context):
