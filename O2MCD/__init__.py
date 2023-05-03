@@ -30,7 +30,6 @@ O2MCD_translation_dict = {
         ("Operator", "DataPath"): "データパス",
         ("Operator", "Link display properties"): "ディスプレイプロパティをリンク",
         ("Operator", "Transfers data from the active object to the selected object"): "アクティブオブジェクトから選択オブジェクトにデータを転送します",
-        ("Operator", "Browse Linked Properties"): "リンクするプロパティを観覧",
         ("*", "File exported"): "ファイルを書き出しました",
         ("*", "File path not found"): "ファイルパスが見つかりません",
         ("*", "Objects have been reordered"): "オブジェクトを並び替えました",
