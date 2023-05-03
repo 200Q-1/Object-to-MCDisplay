@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Object to MCDisplay",
     "author": "200Q",
-    "version": (0, 0, 1),
+    "version": (0, 0, 2),
     "blender": (3, 4, 1),
     "location": "",
     "support": "COMMUNITY",

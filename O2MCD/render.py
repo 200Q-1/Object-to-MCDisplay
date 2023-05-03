@@ -85,9 +85,9 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         row4.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="Object List")
         row3 = layout.row()
         if context.scene.O2MCD_props.toggle_list:
-            row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
+            row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
             col3 = row3.column()
-            if len(context.scene.object_list) <= 1:col3.enabled = False
+            if len(context.scene.O2MCD_object_list) <= 1:col3.enabled = False
             col3.operator("render.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
             col3.operator("render.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
             col3.separator()

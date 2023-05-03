@@ -6,7 +6,7 @@ from math import *
 def get_location(context,object):  # 位置取得
     loc = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ object.matrix_world
     rou = context.scene.O2MCD_props.rou
-    if context.scene.prop_list[object.O2MCD_props.prop_id].Types == "BLOCK":
+    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == "BLOCK":
         loc = loc @ mathutils.Matrix.Translation(
             mathutils.Vector((0.5, -0.5, -0.5)))
     loc = loc.translation
@@ -172,45 +172,45 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 name = obj.name
             # idを取得
             elif var == "id":
-                id = context.scene.prop_list[obj.O2MCD_props.prop_id].id
+                id = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].id
             # extraNBTを取得
             elif var == "extra":
-                extra = context.scene.prop_list[obj.O2MCD_props.prop_id].ExtraNBT
+                extra = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].ExtraNBT
             # タイプを取得
             elif var == "type":
-                if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
+                if context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
                     type = "item_display"
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
                     type = "block_display"
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
-                    type = context.scene.prop_list[obj.O2MCD_props.prop_id].type
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
+                    type = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].type
             # ブロックのプロパティを取得
             elif var == "prop":
-                if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
+                if context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
                     prop = ""
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
-                    prop = context.scene.prop_list[obj.O2MCD_props.prop_id].Properties
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
+                    prop = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Properties
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
                     prop = ""
             # カスタムモデルデータを取得
             elif var == "model":
-                if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
-                    model = str(context.scene.prop_list[obj.O2MCD_props.prop_id].CustomModelData)
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
+                if context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
+                    model = str(context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].CustomModelData)
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
                     model = ""
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
                     model = ""
             # アイテムタグを取得
             elif var == "item":
-                if context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
-                    item = context.scene.prop_list[obj.O2MCD_props.prop_id].ItemTag
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
+                if context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
+                    item = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].ItemTag
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
                     item = ""
-                elif context.scene.prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
+                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
                     item = ""
             # タグをリスト化
             elif var == "tag" or var == "tags":
-                tags = split(",", context.scene.prop_list[obj.O2MCD_props.prop_id].tags)
+                tags = split(",", context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].tags)
             # 置き換え
             if elm == "" or elm == val:
                 if var == "loc": com = com.replace(f, str(location[0]) +"f,"+str(location[1])+"f,"+str(location[2])+"f", 1)
@@ -220,7 +220,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 elif var == "l_rot": com = com.replace(f, str(left_rotation[0])+"f,"+str(left_rotation[1])+"f,"+str(left_rotation[2])+"f,"+str(left_rotation[3])+"f", 1)
                 elif var == "rot": com = com.replace(f, "~"+str(rotation[0])+" ~"+str(rotation[2]), 1)
                 elif var == "tag" or var == "tags":
-                    if not context.scene.prop_list[obj.O2MCD_props.prop_id].tags == "":
+                    if not context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].tags == "":
                         if var == "tags": com = com.replace(f, ",".join(["\""+i+"\"" for i in tags]), 1)
                         if var == "tag": com = com.replace(f, ",".join(["tag="+i for i in tags]), 1)
                     else: com = com.replace(f, "", 1)
@@ -232,7 +232,7 @@ def comvert_function(context, object_list, funk_list, com, num):  # 関数変換
                 elif var == "l_rot": com = sub("/l_rot\[.*?(,.*?)?\]",str(left_rotation[int(elm)]),com, 1)
                 elif var == "rot": com = sub("/rot\[.*?(,.*?)?\]",str(rotation[int(elm)]),com, 1)
                 elif var == "tag" or var == "tags":
-                    if not context.scene.prop_list[obj.O2MCD_props.prop_id].tags == "":
+                    if not context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].tags == "":
                         if var == "tags": com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)],com, 1)
                         if var == "tag": com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)],com, 1)
                     else: com = com.replace(f, "", 1)
@@ -280,24 +280,24 @@ def command_generate(self, context):  # コマンド生成
     if com:
         if [i for i in  com if match(f".*/({funk_list}).*", i)]:
             com = "\n".join(com)
-            com = comvert_function(context, context.scene.object_list, funk_list, com, None)
+            com = comvert_function(context, context.scene.O2MCD_object_list, funk_list, com, None)
         else:com = "\n".join(com)
         output.append(com)
     # # メインコマンドを出力に追加
-    for l in context.scene.object_list:
+    for l in context.scene.O2MCD_object_list:
         o = l.obj
         if not o.hide_viewport and o.O2MCD_props.enable:
-            if context.scene.prop_list[o.O2MCD_props.prop_id].Types == "ITEM":
+            if context.scene.O2MCD_prop_list[o.O2MCD_props.prop_id].Types == "ITEM":
                 com = [sub("^item(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|extra|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
-            elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "BLOCK":
+            elif context.scene.O2MCD_prop_list[o.O2MCD_props.prop_id].Types == "BLOCK":
                 com = [sub("^block(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!item|extra|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
-            elif context.scene.prop_list[o.O2MCD_props.prop_id].Types == "EXTRA":
+            elif context.scene.O2MCD_prop_list[o.O2MCD_props.prop_id].Types == "EXTRA":
                 com = [sub("^extra(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("(?!block|item|start|end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?)", s)]
             com = frame_range(context, com)
             if com:
                 if [i for i in  com if match(f".*/({funk_list}).*", i)]:
                     com = "\n".join(com)
-                    com = comvert_function(context, context.scene.object_list, funk_list, com, o.O2MCD_props.number)
+                    com = comvert_function(context, context.scene.O2MCD_object_list, funk_list, com, o.O2MCD_props.number)
                 else:com = "\n".join(com)
                 output.append(com)
     # endを出力に追加
@@ -306,7 +306,7 @@ def command_generate(self, context):  # コマンド生成
     if com:
         if [i for i in  com if match(f".*/({funk_list}).*", i)]:
             com = "\n".join(com)
-            com = comvert_function(context, context.scene.object_list, funk_list, com, None)
+            com = comvert_function(context, context.scene.O2MCD_object_list, funk_list, com, None)
         else:com = "\n".join(com)
         output.append(com)
 

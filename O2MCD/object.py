@@ -10,42 +10,42 @@ from bpy.app.handlers import persistent
 def item_regist():  # アイテムとブロックを登録
     file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\item_list.txt', 'r', encoding='UTF-8')
     item = file.read().splitlines()
-    bpy.context.scene.item_list.clear()
+    bpy.context.scene.O2MCD_item_list.clear()
     for i in item:
-        bpy.context.scene.item_list.add().name= i
+        bpy.context.scene.O2MCD_item_list.add().name= i
     file.close()
     
     file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\block_list.txt', 'r', encoding='UTF-8')
     block = file.read().splitlines()
-    bpy.context.scene.block_list.clear()
+    bpy.context.scene.O2MCD_block_list.clear()
     for i in block:
-        bpy.context.scene.block_list.add().name= i
+        bpy.context.scene.O2MCD_block_list.add().name= i
     file.close()
 
 def setid(self,context):  # idを更新
-    if context.scene.prop_list[context.scene.O2MCD_props.list_index].Types == "ITEM":
-        context.scene.prop_list[context.scene.O2MCD_props.list_index].id = context.scene.prop_list[context.scene.O2MCD_props.list_index].item_id
-    elif context.scene.prop_list[context.scene.O2MCD_props.list_index].Types == "BLOCK":
-        context.scene.prop_list[context.scene.O2MCD_props.list_index].id = context.scene.prop_list[context.scene.O2MCD_props.list_index].block_id
+    if context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].Types == "ITEM":
+        context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].id = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].item_id
+    elif context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].Types == "BLOCK":
+        context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].id = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].block_id
 
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     active = context.view_layer.objects.active
     scene = bpy.context.scene
 
     if not active == None:
-        if active.O2MCD_props.prop_id > len(scene.prop_list)-1:
+        if active.O2MCD_props.prop_id > len(scene.O2MCD_prop_list)-1:
             active.O2MCD_props.prop_id = -1
         scene.O2MCD_props.list_index = active.O2MCD_props.prop_id
     
-    for i, l in enumerate(scene.object_list):
+    for i, l in enumerate(scene.O2MCD_object_list):
         if not l.obj.name in context.view_layer.objects or l.obj.O2MCD_props.prop_id ==-1 :
             l.obj.O2MCD_props.number = -1
-            scene.object_list.remove(i)
+            scene.O2MCD_object_list.remove(i)
             break
     for i in context.view_layer.objects:
-        if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.object_list]:
-            scene.object_list.add().obj = i
-    for i, list in enumerate(scene.object_list):
+        if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.O2MCD_object_list]:
+            scene.O2MCD_object_list.add().obj = i
+    for i, list in enumerate(scene.O2MCD_object_list):
         list.obj.O2MCD_props.number = i
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D' or 'PROPERTIES':
@@ -56,9 +56,9 @@ def prop_link(self, context):  # プロパティリンクボタン
     self.layout.operator("object.link_prop")
 
 def change_name(self,context):  # 名前被りを回避
-    if [i.name for i in context.scene.prop_list].count(self.name) > 1:
+    if [i.name for i in context.scene.O2MCD_prop_list].count(self.name) > 1:
         name = sub("(.*?)(\.[0-9]+)?","\\1",self.name)
-        same_names = [i.name for i in context.scene.prop_list if match(f"{name}(?:\.[0-9]+)?",i.name)]
+        same_names = [i.name for i in context.scene.O2MCD_prop_list if match(f"{name}(?:\.[0-9]+)?",i.name)]
         same_names.sort()
         if same_names:
             for i in same_names:
@@ -78,8 +78,8 @@ enum_items = []
 def enum_item(self, context):  # プロパティリスト
     global enum_items
     enum_items = []
-    for i in range(len(context.scene.prop_list)):
-        enum_items.append((str(i), str(i)+":"+context.scene.prop_list[i].name, ""))
+    for i in range(len(context.scene.O2MCD_prop_list)):
+        enum_items.append((str(i), str(i)+":"+context.scene.O2MCD_prop_list[i].name, ""))
     return enum_items
 
 # クラス
@@ -98,10 +98,10 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
         layout = self.layout
         br = layout.row(align=True)
         br.alignment = "LEFT"
-        if context.scene.prop_list:
-            item = context.scene.prop_list[context.scene.O2MCD_props.list_index]
+        if context.scene.O2MCD_prop_list:
+            item = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index]
         br.operator("object.search_popup", text="", icon='DOWNARROW_HLT')
-        if context.scene.O2MCD_props.list_index >= 0 and context.scene.prop_list:
+        if context.scene.O2MCD_props.list_index >= 0 and context.scene.O2MCD_prop_list:
             br.prop(item, "name", text="")
             br.operator("object.o2mcd_prop_action", icon='DUPLICATE').action = 'DUP'
             br.operator("object.o2mcd_prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
@@ -109,7 +109,7 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
         else:
             br.alignment = "EXPAND"
             br.operator("object.o2mcd_prop_action", icon='ADD',text="New").action = 'ADD'
-        if context.scene.prop_list and context.object.O2MCD_props.prop_id >= 0:
+        if context.scene.O2MCD_prop_list and context.object.O2MCD_props.prop_id >= 0:
             row = layout.row()
             row.enabled = False
             row.use_property_split = True
@@ -119,12 +119,12 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
             if item.Types == "EXTRA":
                 layout.prop(item, "type")
             if item.Types == "ITEM":
-                layout.prop_search(context.scene.prop_list[context.object.O2MCD_props.prop_id], "item_id",context.scene, "item_list",text="id")
+                layout.prop_search(context.scene.O2MCD_prop_list[context.object.O2MCD_props.prop_id], "item_id",context.scene, "O2MCD_item_list",text="id")
                 layout.prop(item, "tags")
                 layout.prop(item,"CustomModelData")
                 layout.prop(item, "ItemTag")
             if item.Types == "BLOCK":
-                layout.prop_search(context.scene.prop_list[context.object.O2MCD_props.prop_id], "block_id",context.scene, "block_list",text="id")
+                layout.prop_search(context.scene.O2MCD_prop_list[context.object.O2MCD_props.prop_id], "block_id",context.scene, "O2MCD_block_list",text="id")
                 layout.prop(item, "tags")
                 layout.prop(item, "Properties",text="properties")
             layout.prop(item, "ExtraNBT")
@@ -137,17 +137,17 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
     action: bpy.props.EnumProperty(items=(('ADD', "Add", ""),('DUP', "dup", ""),('UNLINK', "unlink", ""),('REMOVE', "remove", "")))
     
     def invoke(self,context,event):
-        prop_list = context.scene.prop_list
+        prop_list = context.scene.O2MCD_prop_list
         index = context.scene.O2MCD_props.list_index
 
         if self.action =='ADD':
             name = "New"
-            context.scene.prop_list.add().name = name
-            context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
-            context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+            context.scene.O2MCD_prop_list.add().name = name
+            index = len(context.scene.O2MCD_prop_list)-1
+            context.object.O2MCD_props.prop_id = index
         elif self.action == 'DUP':
             name = sub("(.*?)(\.[0-9]+)?","\\1",prop_list[context.object.O2MCD_props.prop_id].name)
-            add = context.scene.prop_list.add()
+            add = context.scene.O2MCD_prop_list.add()
             add.name = name
             add.Types= prop_list[context.object.O2MCD_props.prop_id].Types
             add.tags= prop_list[context.object.O2MCD_props.prop_id].tags
@@ -159,14 +159,17 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
             add.id= prop_list[context.object.O2MCD_props.prop_id].id
             add.item_id= prop_list[context.object.O2MCD_props.prop_id].item_id
             add.block_id= prop_list[context.object.O2MCD_props.prop_id].block_id
-            context.scene.O2MCD_props.list_index = len(context.scene.prop_list)-1
-            context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+            index = len(context.scene.O2MCD_prop_list)-1
+            context.object.O2MCD_props.prop_id = index
         elif self.action == 'UNLINK':
             context.object.O2MCD_props.prop_id = -1
         elif self.action == 'REMOVE':
             prop_list.remove(index)
-            context.scene.O2MCD_props.list_index = min(max(0, index - 1), len(prop_list) - 1)
-            context.object.O2MCD_props.prop_id = context.scene.O2MCD_props.list_index
+            index = min(max(0, index - 1), len(prop_list) - 1)
+            for i in context.scene.O2MCD_object_list:
+                if i.obj.O2MCD_props.prop_id >= index:
+                    i.obj.O2MCD_props.prop_id -= 1
+            context.object.O2MCD_props.prop_id = index
 
         chenge_panel(self, context)
         return {'FINISHED'}
@@ -210,8 +213,7 @@ class  O2MCD_ItemList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
 class  O2MCD_BlockList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
-class  O2MCD_ObjectList(bpy.types.PropertyGroup):
-    obj: bpy.props.PointerProperty(name="Object",type=bpy.types.Object)
+
 
 classes = (
     OBJECTTOMCDISPLAY_PT_DisplayProperties,
@@ -219,7 +221,6 @@ classes = (
     OBJECTTOMCDISPLAY_OT_SearchPopup,
     O2MCD_Obj_Props,
     O2MCD_ListItem,
-    O2MCD_ObjectList,
     O2MCD_ItemList,
     O2MCD_BlockList,
 )
@@ -228,10 +229,9 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Object.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Obj_Props)
-    bpy.types.Scene.prop_list = bpy.props.CollectionProperty(type=O2MCD_ListItem)
-    bpy.types.Scene.object_list = bpy.props.CollectionProperty(type=O2MCD_ObjectList)
-    bpy.types.Scene.item_list = bpy.props.CollectionProperty(type=O2MCD_ItemList)
-    bpy.types.Scene.block_list = bpy.props.CollectionProperty(type=O2MCD_BlockList)
+    bpy.types.Scene.O2MCD_prop_list = bpy.props.CollectionProperty(type=O2MCD_ListItem)
+    bpy.types.Scene.O2MCD_item_list = bpy.props.CollectionProperty(type=O2MCD_ItemList)
+    bpy.types.Scene.O2MCD_block_list = bpy.props.CollectionProperty(type=O2MCD_BlockList)
 
 
 def unregister():
