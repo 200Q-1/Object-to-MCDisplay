@@ -9,7 +9,7 @@ from . import link
 from . import command
 from . import object
 from . import list
-from . import json
+# from . import json
 # 関数
 
 def update(self, context):  # 更新処理
@@ -17,9 +17,9 @@ def update(self, context):  # 更新処理
         if not list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.append(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
-        bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
+        # bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
         bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
-        bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
+        # bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
             
@@ -30,7 +30,7 @@ def update(self, context):  # 更新処理
         if command.command_generate in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
         if list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
-        bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
+        # bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
         
 def update_auto_reload(self,context):
     if context.scene.O2MCD_props.auto_reload:  # 自動更新を有効
