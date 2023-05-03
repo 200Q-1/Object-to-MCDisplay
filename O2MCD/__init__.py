@@ -77,7 +77,6 @@ def unregister():
     object.unregister()
     link.unregister()
     list.unregister()
-    bpy.app.handlers.depsgraph_update_post.remove(O2MCD.chenge_panel)
 
 
 if __name__ == "__main__":
