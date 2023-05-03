@@ -138,7 +138,6 @@ def register():
     bpy.types.Scene.O2MCD_object_list = bpy.props.CollectionProperty(type=O2MCD_ObjectList)
 
 def unregister():
-    bpy.app.translations.unregister(__name__)
     for cls in classes:
         bpy.utils.unregister_class(cls)
-    bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)
+    if chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)

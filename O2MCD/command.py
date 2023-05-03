@@ -326,5 +326,5 @@ def register():
     pass
 
 def unregister():
-    bpy.app.handlers.frame_change_post.remove(command_generate)
-    bpy.app.handlers.depsgraph_update_post.remove(command_generate)
+    if command_generate in bpy.app.handlers.frame_change_post :bpy.app.handlers.frame_change_post.remove(command_generate)
+    if command_generate in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(command_generate)

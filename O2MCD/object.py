@@ -235,7 +235,6 @@ def register():
 
 
 def unregister():
-    bpy.app.translations.unregister(__name__)
     for cls in classes:
         bpy.utils.unregister_class(cls)
-    bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)
+    if chenge_panel in bpy.app.handlers.depsgraph_update_post:bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)

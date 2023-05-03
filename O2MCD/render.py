@@ -16,24 +16,21 @@ def update(self, context):  # 更新処理
     if bpy.context.scene.O2MCD_props.enable:  # アドオンを有効
         if not list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.append(list.chenge_panel)
-            bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
-            bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
-            bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
-            bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
+        bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
+        bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
+        bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
+        bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
             
         update_auto_reload(self,context)
                 
     else:  # アドオンを無効
-        try:
-            bpy.app.handlers.frame_change_post.remove(command.command_generate)
-            bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
-            bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
-            bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
-            bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
-            
-        except:pass
+        if command.command_generate in bpy.app.handlers.frame_change_post :bpy.app.handlers.frame_change_post.remove(command.command_generate)
+        if command.command_generate in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
+        if list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
+        bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
+        bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
         
 def update_auto_reload(self,context):
     if context.scene.O2MCD_props.auto_reload:  # 自動更新を有効
@@ -195,6 +192,6 @@ def register():
 
 
 def unregister():
-    bpy.app.translations.unregister(__name__)
     for cls in classes:
         bpy.utils.unregister_class(cls)
+    if list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
