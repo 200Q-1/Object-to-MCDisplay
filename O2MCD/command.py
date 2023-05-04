@@ -1,3 +1,5 @@
+# Copyright (c) 2023 200Q
+
 import bpy
 import mathutils
 from re import *

@@ -1,3 +1,5 @@
+# Copyright (c) 2023 200Q
+
 bl_info = {
     "name": "Object to MCDisplay",
     "author": "200Q",

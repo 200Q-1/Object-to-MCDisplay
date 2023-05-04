@@ -1,3 +1,5 @@
+# Copyright (c) 2023 200Q
+
 import bpy
 import random
 from . import command
