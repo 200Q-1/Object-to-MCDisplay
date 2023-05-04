@@ -4,24 +4,18 @@ from . import command
 from re import *
 
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
-    active = context.view_layer.objects.active
-    scene = bpy.context.scene
-
-    if not active == None:
-        if active.O2MCD_props.prop_id > len(scene.O2MCD_prop_list)-1:
-            active.O2MCD_props.prop_id = -1
-        scene.O2MCD_props.list_index = active.O2MCD_props.prop_id
-    
+    scene=bpy.context.scene
+    list=[]
     for i, l in enumerate(scene.O2MCD_object_list):
-        if not l.obj.name in context.view_layer.objects or l.obj.O2MCD_props.prop_id ==-1 :
-            l.obj.O2MCD_props.number = -1
-            scene.O2MCD_object_list.remove(i)
-            break
+        if not l.obj == None and l.obj.name in context.view_layer.objects:
+            list.append(l.obj)
     for i in context.view_layer.objects:
         if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.O2MCD_object_list]:
-            scene.O2MCD_object_list.add().obj = i
-    for i, list in enumerate(scene.O2MCD_object_list):
-        list.obj.O2MCD_props.number = i
+            list.append(i)
+    scene.O2MCD_object_list.clear()
+    for i,o in enumerate(list):
+        scene.O2MCD_object_list.add().obj = o
+        o.O2MCD_props.number=i
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
@@ -39,11 +33,6 @@ class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
         elif self.action == 'UP' and context.scene.O2MCD_props.obj_index >= 1:
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
             context.scene.O2MCD_props.obj_index -= 1
-        elif self.action == 'SORT':
-            object_list = [i.obj.name for i in context.scene.O2MCD_object_list]
-            object_list.sort()
-            context.scene.O2MCD_object_list.clear()
-            for i in object_list: context.scene.O2MCD_object_list.add().obj=context.scene.objects[i]
         elif self.action == 'REVERSE':
             object_list = [i.obj.name for i in context.scene.O2MCD_object_list]
             object_list=object_list[::-1]

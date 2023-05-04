@@ -4,7 +4,7 @@ import bpy
 import os
 from re import *
 from math import *
-from bpy.app.handlers import persistent
+from . import list
 # 関数
 
 def item_regist():  # アイテムとブロックを登録
@@ -27,29 +27,6 @@ def setid(self,context):  # idを更新
         context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].id = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].item_id
     elif context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].Types == "BLOCK":
         context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].id = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].block_id
-
-def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
-    active = context.view_layer.objects.active
-    scene = bpy.context.scene
-
-    if not active == None:
-        if active.O2MCD_props.prop_id > len(scene.O2MCD_prop_list)-1:
-            active.O2MCD_props.prop_id = -1
-        scene.O2MCD_props.list_index = active.O2MCD_props.prop_id
-    
-    for i, l in enumerate(scene.O2MCD_object_list):
-        if not l.obj.name in context.view_layer.objects or l.obj.O2MCD_props.prop_id ==-1 :
-            l.obj.O2MCD_props.number = -1
-            scene.O2MCD_object_list.remove(i)
-            break
-    for i in context.view_layer.objects:
-        if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.O2MCD_object_list]:
-            scene.O2MCD_object_list.add().obj = i
-    for i, list in enumerate(scene.O2MCD_object_list):
-        list.obj.O2MCD_props.number = i
-    for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D' or 'PROPERTIES':
-            area.tag_redraw()
     
 def prop_link(self, context):  # プロパティリンクボタン
     self.layout.separator()
@@ -140,8 +117,7 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
         index = context.scene.O2MCD_props.list_index
 
         if self.action =='ADD':
-            name = "New"
-            context.scene.O2MCD_prop_list.add().name = name
+            context.scene.O2MCD_prop_list.add().name = "New"
             index = len(context.scene.O2MCD_prop_list)-1
             context.object.O2MCD_props.prop_id = index
         elif self.action == 'DUP':
@@ -169,8 +145,7 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
                 if i.obj.O2MCD_props.prop_id >= index:
                     i.obj.O2MCD_props.prop_id -= 1
             context.object.O2MCD_props.prop_id = index
-
-        chenge_panel(self, context)
+        context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
         return {'FINISHED'}
 
 class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
@@ -183,7 +158,7 @@ class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
     def execute(self, context):
         context.object.O2MCD_props.prop_id = int(self.enum)
         context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
-        chenge_panel(self, context)
+        list.chenge_panel(self, context)
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -236,4 +211,3 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
-    if chenge_panel in bpy.app.handlers.depsgraph_update_post:bpy.app.handlers.depsgraph_update_post.remove(chenge_panel)
