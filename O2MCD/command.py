@@ -68,9 +68,9 @@ def get_rotation(context,object):  # 回転取得
             rot = object.parent.matrix_world.to_euler()
     else:
         rot = object.matrix_world.to_euler()
-    rot_x = mathutils.Euler((-rot[0], 0, 0), 'XYZ').to_matrix().to_4x4()
-    rot_y = mathutils.Euler((0, rot[2], 0), 'XYZ').to_matrix().to_4x4()
-    rot_z = mathutils.Euler((0, 0, rot[1]), 'XYZ').to_matrix().to_4x4()
+    rot_x = mathutils.Euler((rot[0], 0, 0), 'XYZ').to_matrix().to_4x4()
+    rot_y = mathutils.Euler((0, -rot[2], 0), 'XYZ').to_matrix().to_4x4()
+    rot_z = mathutils.Euler((0, 0, -rot[1]), 'XYZ').to_matrix().to_4x4()
     rot = (rot_y @ rot_z @ rot_x).to_euler()
     rot = [round(degrees(rot[1]), rou), round(degrees(rot[2]), rou),round(degrees(rot[0]), rou)]
     return rot

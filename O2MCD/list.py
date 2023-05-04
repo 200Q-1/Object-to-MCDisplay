@@ -6,6 +6,9 @@ from re import *
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     scene=bpy.context.scene
     list=[]
+
+    if bpy.context.view_layer.objects.active:
+        scene.O2MCD_props.list_index = bpy.context.view_layer.objects.active.O2MCD_props.prop_id
     for i, l in enumerate(scene.O2MCD_object_list):
         if not l.obj == None and l.obj.name in context.view_layer.objects:
             list.append(l.obj)

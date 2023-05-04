@@ -1,9 +1,9 @@
 bl_info = {
     "name": "Object to MCDisplay",
     "author": "200Q",
-    "version": (0, 0, 2),
+    "version": (0, 1, 1),
     "blender": (3, 4, 1),
-    "location": "",
+    "location": "Output Properties",
     "support": "COMMUNITY",
     "description": "オブジェクトのトランスフォームをMinecraftのDisplayエンティティのtransformationを設定するコマンドに変換します。",
     "warning": "",
@@ -52,17 +52,18 @@ else:
     from . import list
 import bpy
 from bpy.app.handlers import persistent
-
+def test(self,context):
+    print("test")
 # blender起動時に実行
 @persistent
-def load_handler(self, context):
+def load(self, context):
     render.update(None, bpy.context)
     object.item_regist()
     bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
 
 def register():
     bpy.app.translations.register(__name__, O2MCD_translation_dict)
-    bpy.app.handlers.load_post.append(load_handler)
+    bpy.app.handlers.load_post.append(load)
     render.register()
     command.register()
     object.register()
