@@ -46,12 +46,14 @@ if "bpy" in locals():
     imp.reload(command)
     imp.reload(link)
     imp.reload(list)
+    imp.reload(json)
 else:
     from . import object
     from . import render
     from . import command
     from . import link
     from . import list
+    from . import json
 import bpy
 from bpy.app.handlers import persistent
 def test(self,context):
@@ -71,6 +73,7 @@ def register():
     object.register()
     link.register()
     list.register()
+    json.register()
 
 
 def unregister():
@@ -80,6 +83,7 @@ def unregister():
     object.unregister()
     link.unregister()
     list.unregister()
+    json.unregister()
 
 
 if __name__ == "__main__":
