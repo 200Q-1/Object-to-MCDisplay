@@ -11,53 +11,72 @@ def add_json(self,context):
     layout.operator("object.o2mcd_add_object")
     layout.menu("OBJECTTOMCDISPLAY_MT_Models",text="json")
 def add_object(self,context):
-    file=self.enum.lower()
+    file=self.enum.lower()+".json"
     path=bpy.context.preferences.addons[__package__ ].preferences.path
-    path=path+"models\\"
+    path=os.path.join(path,"models")
     if self.action =='BLOCK':
-        path=path+"block\\"
+        path=os.path.join(path,"block")
     elif self.action =='ITEM':
-        path=path+"item\\"
-    with open(f"{path}{file}.json", "r") as f:
+        path=os.path.join(path,"item")
+    path=os.path.join(path,file)
+    with open(path, "r") as f:
         data = json.load(f)
         elements= data["elements"]
     vertices = []
     edges = []
     faces=[]
     uvs=[]
-    direction = np.array([
+    dire = (
     "east",
     "south",
     "west",
     "north",
     "down",
     "up",
-])
-    for i, e in enumerate(elements):
+    )
+
+    for e in elements:  # 頂点作成
+        ve=[0,1,2,3,4,5,6,7]
         f=len(vertices)
-        # get cube min/max
         frm = np.array([e["from"][0]/16-0.5, e["from"][2]/16-0.5, e["from"][1]/16-0.5])
         to = np.array([e["to"][0]/16-0.5, e["to"][2]/16-0.5, e["to"][1]/16-0.5])
-        
-        vertices.append((frm[0], frm[1], frm[2]))
-        vertices.append((frm[0], frm[1], to[2]))
-        vertices.append((frm[0], to[1], frm[2]))
-        vertices.append((frm[0], to[1], to[2]))
-        vertices.append((to[0], frm[1], frm[2]))
-        vertices.append((to[0], frm[1], to[2]))
-        vertices.append((to[0], to[1], frm[2]))
-        vertices.append((to[0], to[1], to[2]))
-        faces.append((f+0, f+1, f+3, f+2))
-        faces.append((f+2, f+3, f+7, f+6))
-        faces.append((f+6, f+7, f+5, f+4))
-        faces.append((f+4, f+5, f+1, f+0))
-        faces.append((f+2, f+6, f+4, f+0))
-        faces.append((f+7, f+3, f+1, f+5))
-        
-        for d in direction:
-            if d in e["faces"]:
-                if "uv" in e["faces"][d]:
-                    uv=e["faces"][d]["uv"]
+        if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
+            vertices.append((frm[0], frm[1], frm[2]))
+        else:ve=[v-1 if i>=0 else v for i,v in enumerate(ve)]
+        if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[5] in e["faces"]:
+            vertices.append((frm[0], frm[1], to[2]))
+        else:ve=[v-1 if i>=1 else v for i,v in enumerate(ve)]
+        if dire[0] in e["faces"] or dire[1] in e["faces"] or dire[4] in e["faces"]:
+            vertices.append((frm[0], to[1], frm[2]))
+        else:ve=[v-1 if i>=2 else v for i,v in enumerate(ve)]
+        if dire[0] in e["faces"] or dire[1] in e["faces"] or dire[5] in e["faces"]:
+            vertices.append((frm[0], to[1], to[2]))
+        else:ve=[v-1 if i>=3 else v for i,v in enumerate(ve)]
+        if dire[2] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
+            vertices.append((to[0], frm[1], frm[2]))
+        else:ve=[v-1 if i>=4 else v for i,v in enumerate(ve)]
+        if dire[2] in e["faces"] or dire[3] in e["faces"] or dire[5] in e["faces"]:
+            vertices.append((to[0], frm[1], to[2]))
+        else:ve=[v-1 if i>=5 else v for i,v in enumerate(ve)]
+        if dire[2] in e["faces"] or dire[1] in e["faces"] or dire[4] in e["faces"]:
+            vertices.append((to[0], to[1], frm[2]))
+        else:ve=[v-1 if i>=6 else v for i,v in enumerate(ve)]
+        if dire[2] in e["faces"] or dire[1] in e["faces"] or dire[5] in e["faces"]:
+            vertices.append((to[0], to[1], to[2]))
+        else:ve=[v-1 if i>=7 else v for i,v in enumerate(ve)]
+        dire_val=[
+        (ve[0], ve[1], ve[3], ve[2]),
+        (ve[2], ve[3], ve[7], ve[6]),
+        (ve[6], ve[7], ve[5], ve[4]),
+        (ve[4], ve[5], ve[1], ve[0]),
+        (ve[2], ve[6], ve[4], ve[0]),
+        (ve[7], ve[3], ve[1], ve[5]),
+    ]
+        for key, value in zip(dire,dire_val):  # 面作成
+            if key in e["faces"]:
+                faces.append((f+value[0],f+value[1],f+value[2],f+value[3]))
+                if "uv" in e["faces"][key]:
+                    uv=e["faces"][key]["uv"]
                     xfrm = uv[0] / 16.0
                     xto = uv[2] / 16.0
                     yfrom = 1.0 - uv[3] / 16.0
@@ -71,21 +90,14 @@ def add_object(self,context):
                     uvs.append("SET")
                     uvs.append("SET")
                     uvs.append("SET")
-            else:
-                uvs.append("NONE")
-                uvs.append("NONE")
-                uvs.append("NONE")
-                uvs.append("NONE")
     new_mesh = bpy.data.meshes.new('new_mesh')
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
-    # make object from mesh
-    new_object = bpy.data.objects.new(file, new_mesh)
-    # make collection
-    # add object to scene collection
+
+    new_object = bpy.data.objects.new(file, new_mesh)  # オブジェクト作成
     bpy.context.collection.objects.link(new_object)
-    new_uv = new_mesh.uv_layers.new(name='UVMap')
-            
+    
+    new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
     for pi,p in enumerate(new_object.data.polygons):
         for vi,ver in enumerate(p.vertices):
             v=new_object.data.vertices[ver].co
@@ -103,12 +115,10 @@ def add_object(self,context):
                 vecuv=mathutils.Vector((v[0],v[2]))
             if uvs[pi*4+vi] == "SET":
                 new_uv.data[pi*4+vi].uv= vecuv + mathutils.Vector((0.5,0.5))
-            elif uvs[pi*4+vi] == "NONE":
-                new_object.data.polygons.remove(new_object.data.polygons[pi], True)
             else:
                 new_uv.data[pi*4+vi].uv= uvs[pi*4+vi]
             
-    material= bpy.data.materials.new("test")
+    material= bpy.data.materials.new("test")  # マテリアル作成
     material.use_nodes = True
     material.blend_method="BLEND"
     material.show_transparent_back=False
@@ -120,29 +130,14 @@ def add_object(self,context):
     tex_node.interpolation="Closest"
     tex_node.location = (-420, 220)
     
-    math_node=node_tree.nodes.new(type="ShaderNodeMath")
-    math_node.operation="MULTIPLY"
-    math_node.location = (-160, 0)
-    
-    map_node=node_tree.nodes.new(type="ShaderNodeMapRange")
-    map_node.inputs[1].default_value=0
-    map_node.inputs[2].default_value=0.01
-    map_node.location = (-320, -100)
-    
-    uv_node=node_tree.nodes.new(type="ShaderNodeUVMap")
-    uv_node.from_instancer=True
-    uv_node.location = (-500, -200)
-    
     node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
-    node_tree.links.new(tex_node.outputs[1], math_node.inputs[0])
-    node_tree.links.new(uv_node.outputs[0], map_node.inputs[0])
-    node_tree.links.new(map_node.outputs[0], math_node.inputs[1])
-    node_tree.links.new(math_node.outputs[0], bsdf.inputs[21])
+    node_tree.links.new(tex_node.outputs[1], bsdf.inputs[21])
     
     image = bpy.data.images.load("C:\\Users\\yasei\\Desktop\\minecraft\\textures\\block\\yellow_stained_glass.png")
     tex_node.image= image
     new_object.data.materials.append(material)
     
+
 items = []
 def enum_item(self, context):  # プロパティリスト
     global items
