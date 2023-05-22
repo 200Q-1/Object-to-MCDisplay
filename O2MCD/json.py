@@ -1,7 +1,6 @@
 import bpy
 import json
 import numpy as np
-import math
 import os
 import mathutils
 
@@ -11,15 +10,16 @@ def add_json(self,context):
     layout.operator("object.o2mcd_add_object")
     layout.menu("OBJECTTOMCDISPLAY_MT_Models",text="json")
 def add_object(self,context):
-    file=self.enum.lower()+".json"
+    name=self.enum.lower()
+    file=name+".json"
     path=bpy.context.preferences.addons[__package__ ].preferences.path
-    path=os.path.join(path,"models")
+    model_path=os.path.join(path,"models")
     if self.action =='BLOCK':
-        path=os.path.join(path,"block")
+        model_path=os.path.join(model_path,"block")
     elif self.action =='ITEM':
-        path=os.path.join(path,"item")
-    path=os.path.join(path,file)
-    with open(path, "r") as f:
+        model_path=os.path.join(model_path,"item")
+    model_path=os.path.join(model_path,file)
+    with open(model_path, "r") as f:
         data = json.load(f)
         elements= data["elements"]
     vertices = []
@@ -34,7 +34,40 @@ def add_object(self,context):
     "down",
     "up",
     )
+    
+    new_mesh = bpy.data.meshes.new(name)
+    new_object = bpy.data.objects.new(name, new_mesh)  # オブジェクト作成
+    bpy.context.collection.objects.link(new_object)
 
+    textures=data["textures"]
+    del textures["particle"]
+    for key,value in textures.items():
+        if not os.path.basename(value) in bpy.data.materials:
+            material= bpy.data.materials.new(os.path.basename(value))  # マテリアル作成
+            material.use_nodes = True
+            material.blend_method="BLEND"
+            material.show_transparent_back=False
+            node_tree= material.node_tree
+            bsdf= node_tree.nodes[0]
+            bsdf.inputs[7].default_value=0
+            
+            tex_node=node_tree.nodes.new(type="ShaderNodeTexImage")
+            tex_node.interpolation="Closest"
+            tex_node.location = (-420, 220)
+            
+            node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
+            node_tree.links.new(tex_node.outputs[1], bsdf.inputs[21])
+            tex=value.split("/")
+            tex_path=os.path.join(path,"textures",*tex)
+            if not tex[-1]+".png" in bpy.data.images:
+                image= bpy.data.images.load(tex_path+".png")
+            else:
+                image= bpy.data.images[tex[-1]+".png"]
+            tex_node.image= image
+        else:
+            material=bpy.data.materials[os.path.basename(value)]
+        new_object.data.materials.append(material)
+    texture= []
     for e in elements:  # 頂点作成
         ve=[0,1,2,3,4,5,6,7]
         f=len(vertices)
@@ -75,6 +108,7 @@ def add_object(self,context):
         for key, value in zip(dire,dire_val):  # 面作成
             if key in e["faces"]:
                 faces.append((f+value[0],f+value[1],f+value[2],f+value[3]))
+                texture.append(textures[e["faces"][key]["texture"][1:]].split("/")[-1])
                 if "uv" in e["faces"][key]:
                     uv=e["faces"][key]["uv"]
                     xfrm = uv[0] / 16.0
@@ -90,13 +124,12 @@ def add_object(self,context):
                     uvs.append("SET")
                     uvs.append("SET")
                     uvs.append("SET")
-    new_mesh = bpy.data.meshes.new('new_mesh')
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
-
-    new_object = bpy.data.objects.new(file, new_mesh)  # オブジェクト作成
-    bpy.context.collection.objects.link(new_object)
-    
+    for p,t in zip(new_object.data.polygons,texture):
+        print(t)
+        p.material_index=new_object.data.materials.find(t)
+    new_mesh.update()
     new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
     for pi,p in enumerate(new_object.data.polygons):
         for vi,ver in enumerate(p.vertices):
@@ -118,25 +151,6 @@ def add_object(self,context):
             else:
                 new_uv.data[pi*4+vi].uv= uvs[pi*4+vi]
             
-    material= bpy.data.materials.new("test")  # マテリアル作成
-    material.use_nodes = True
-    material.blend_method="BLEND"
-    material.show_transparent_back=False
-    node_tree= material.node_tree
-    bsdf= node_tree.nodes[0]
-    bsdf.inputs[7].default_value=0
-    
-    tex_node=node_tree.nodes.new(type="ShaderNodeTexImage")
-    tex_node.interpolation="Closest"
-    tex_node.location = (-420, 220)
-    
-    node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
-    node_tree.links.new(tex_node.outputs[1], bsdf.inputs[21])
-    
-    image = bpy.data.images.load("C:\\Users\\yasei\\Desktop\\minecraft\\textures\\block\\yellow_stained_glass.png")
-    tex_node.image= image
-    new_object.data.materials.append(material)
-    
 
 items = []
 def enum_item(self, context):  # プロパティリスト
