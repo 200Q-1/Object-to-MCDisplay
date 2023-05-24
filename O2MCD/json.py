@@ -9,19 +9,35 @@ def add_json(self,context):
     layout.separator()
     layout.operator("object.o2mcd_add_object")
     layout.menu("OBJECTTOMCDISPLAY_MT_Models",text="json")
+    
+def parents(pack,path):
+    model_path=os.path.join(pack,"models",*path.split("/"))
+    with open(model_path+".json", "r") as f:
+        data = json.load(f)
+    if "parent" in data:
+        parent_path=data["parent"].split(":")[-1]
+        parent=parents(pack,parent_path)
+        del data["parent"]
+        for k,v in parent.items():
+            if type(parent[k]) is dict and not k == "elements":
+                for k2,v2 in parent[k].items():
+                    if not k in data:
+                        data[k]={}
+                    data[k][k2]=v2
+            else:
+                data[k]=v
+    return data
+
 def add_object(self,context):
     name=self.enum.lower()
-    file=name+".json"
-    path=bpy.context.preferences.addons[__package__ ].preferences.path
-    model_path=os.path.join(path,"models")
+    pack=bpy.context.preferences.addons[__package__ ].preferences.path
     if self.action =='BLOCK':
-        model_path=os.path.join(model_path,"block")
+        model_path="block"
     elif self.action =='ITEM':
-        model_path=os.path.join(model_path,"item")
-    model_path=os.path.join(model_path,file)
-    with open(model_path, "r") as f:
-        data = json.load(f)
-        elements= data["elements"]
+        model_path="item"
+    model_path=model_path+"/"+name
+    data=parents(pack,model_path)
+    elements= data["elements"]
     vertices = []
     edges = []
     faces=[]
@@ -42,6 +58,7 @@ def add_object(self,context):
     textures=data["textures"]
     del textures["particle"]
     for key,value in textures.items():
+        value=value.split(":")[-1]
         if not os.path.basename(value) in bpy.data.materials:
             material= bpy.data.materials.new(os.path.basename(value))  # マテリアル作成
             material.use_nodes = True
@@ -58,7 +75,7 @@ def add_object(self,context):
             node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
             node_tree.links.new(tex_node.outputs[1], bsdf.inputs[21])
             tex=value.split("/")
-            tex_path=os.path.join(path,"textures",*tex)
+            tex_path=os.path.join(pack,"textures",*tex)
             if not tex[-1]+".png" in bpy.data.images:
                 image= bpy.data.images.load(tex_path+".png")
             else:
@@ -66,7 +83,8 @@ def add_object(self,context):
             tex_node.image= image
         else:
             material=bpy.data.materials[os.path.basename(value)]
-        new_object.data.materials.append(material)
+        if not material.name in new_object.data.materials:
+            new_object.data.materials.append(material)
     texture= []
     for e in elements:  # 頂点作成
         ve=[0,1,2,3,4,5,6,7]
@@ -108,17 +126,20 @@ def add_object(self,context):
         for key, value in zip(dire,dire_val):  # 面作成
             if key in e["faces"]:
                 faces.append((f+value[0],f+value[1],f+value[2],f+value[3]))
-                texture.append(textures[e["faces"][key]["texture"][1:]].split("/")[-1])
+                m=e["faces"][key]["texture"][1:]
+                if textures[m][0] == "#":
+                    m=textures[m][1:]
+                texture.append(textures[m].split("/")[-1])
                 if "uv" in e["faces"][key]:
                     uv=e["faces"][key]["uv"]
                     xfrm = uv[0] / 16.0
                     xto = uv[2] / 16.0
                     yfrom = 1.0 - uv[3] / 16.0
                     yto = 1.0 - uv[1] / 16.0
+                    uvs.append(mathutils.Vector((xto, yfrom)))
                     uvs.append(mathutils.Vector((xto, yto)))
                     uvs.append(mathutils.Vector((xfrm, yto)))
                     uvs.append(mathutils.Vector((xfrm, yfrom)))
-                    uvs.append(mathutils.Vector((xto, yfrom)))
                 else:
                     uvs.append("SET")
                     uvs.append("SET")
@@ -127,7 +148,6 @@ def add_object(self,context):
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
     for p,t in zip(new_object.data.polygons,texture):
-        print(t)
         p.material_index=new_object.data.materials.find(t)
     new_mesh.update()
     new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
