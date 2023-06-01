@@ -3,6 +3,31 @@ import json
 import numpy as np
 import os
 import mathutils
+import glob
+import zipfile
+import tempfile
+
+def check_path(self,context):
+    if os.path.isfile(self.path):
+        if os.path.splitext(self.path)[1] == ".zip" or os.path.splitext(self.path)[1] == ".jar":
+            name= self.path.split(os.sep)[-1]
+        else:
+            self.path=os.path.dirname(self.path)
+            name= self.path.split(os.sep)[-1]
+    else:
+        if os.path.splitext(self.path)[1]:
+            self.path= os.sep.join(self.path.split(os.sep)[:-1])+os.sep
+        name= self.path.split(os.sep)[-2]
+    self.name= name
+    self.icon=bpy.data.images[0]
+def get_pack():
+    pack=[]
+    for p in bpy.context.scene.O2MCD_rc_packs:
+        if os.path.splitext(p.path)[1] == ".zip" or os.path.splitext(p.path)[1] == ".jar":
+            pack.append(zipfile.ZipFile(p.path, 'r'))
+        else:
+            pack.append(p.path)
+    return pack
 
 def add_json(self,context):
     layout = self.layout
@@ -174,22 +199,124 @@ def add_object(self,context):
 
 items = []
 def enum_item(self, context):  # プロパティリスト
-    global items
-    items = []
-    if self.action =='BLOCK':
-        for i in context.scene.O2MCD_block_list:
-            items.append((i.name.upper(), i.name+" ", ""))
-    elif self.action =='ITEM':
-        for i in context.scene.O2MCD_item_list:
-            items.append((i.name.upper(), i.name+" ", ""))
-    return items
+    return tuple(items)
 
-class BKTEMP_MT_Preferences(bpy.types.AddonPreferences):
-    bl_idname = __package__
-    path: bpy.props.StringProperty(name="ResourcePack", subtype='DIR_PATH', default="C:\\Users\\yasei\\Desktop\\minecraft\\")
-    def draw(self, context):
-        layout = self.layout
-        layout.prop(self,"path")
+class O2MCD_ResourcePacks(bpy.types.PropertyGroup):
+    path: bpy.props.StringProperty(name="ResourcePack",default="",subtype="FILE_PATH",update=check_path)
+    name: bpy.props.StringProperty(name="name",default="")
+    image: bpy.props.PointerProperty(name="image",type=bpy.types.Image)
+    type: bpy.props.EnumProperty(items=(('ZIP', "zip", ""),('JAR', "jar", ""),('FOLDER', "folder", "")))
+class O2MCD_ResourcePack(bpy.types.PropertyGroup):
+    index:bpy.props.IntProperty(name="index", default=0)
+
+class OBJECTTOMCDISPLAY_UL_ResourcePacks(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
+        row = layout.row()
+        if index == len(context.scene.O2MCD_rc_packs)-1:
+            if context.scene.O2MCD_rc_packs[len(context.scene.O2MCD_rc_packs)-1].path == "":
+                row.operator(OBJECTTOMCDISPLAY_OT_JarAdd.bl_idname)
+            else:
+                row.alignment="LEFT"
+                row.label(text=item.name)
+                row = layout.row()
+                row.alignment="RIGHT"
+                row.operator(OBJECTTOMCDISPLAY_OT_JarAdd.bl_idname)
+        else:
+            if index == 0:
+                row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackAdd.bl_idname)
+            else:
+                row.alignment="LEFT"
+                if item.image:
+                    row.label(text="",icon_value=layout.icon(item.image))
+                row.label(text=item.name)
+                row = layout.row()
+                row.alignment="RIGHT"
+                # row.label(text=item.path)
+                row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,icon='X').index=index
+
+class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
+    bl_idname = "render.o2mcd_resource_pack_add"
+    bl_label = "リソースパックを開く"
+    bl_description = ""
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    filename : bpy.props.StringProperty()
+    directory : bpy.props.StringProperty(subtype="FILE_PATH")
+    filter_glob: bpy.props.StringProperty(default="*.zip;*.jar",options={"HIDDEN"})
+    def invoke(self, context, event):
+        wm = context.window_manager
+        wm.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def execute(self, context):
+        rc_pack=context.scene.O2MCD_rc_packs.add()
+        rc_pack.path = self.filepath
+        if os.path.isdir(self.filepath):
+            rc_pack.type='FOLDER'
+            image= bpy.data.images.load(os.path.join(self.filepath,"pack.png"))
+            rc_pack.image= image
+        elif os.path.splitext(self.filepath)[1] == ".zip":
+            rc_pack.type='ZIP'
+            with tempfile.TemporaryDirectory() as temp:
+                with zipfile.ZipFile(self.filepath) as zip:
+                    zip.extract('pack.png',temp)
+                    image= bpy.data.images.load(os.path.join(temp,"pack.png"))
+                    image.pack()
+                    rc_pack.image= image
+        context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
+        return {'FINISHED'}
+
+class OBJECTTOMCDISPLAY_OT_JarAdd(bpy.types.Operator): #追加
+    bl_idname = "render.o2mcd_jar_add"
+    bl_label = "jarを開く"
+    bl_description = ""
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    filename : bpy.props.StringProperty()
+    directory : bpy.props.StringProperty(subtype="FILE_PATH")
+    filter_glob: bpy.props.StringProperty(default="*.jar",options={"HIDDEN"})
+    def invoke(self, context, event):
+        wm = context.window_manager
+        wm.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def execute(self, context):
+        if self.filename[-4:]== ".jar":
+            context.scene.O2MCD_rc_packs[len(context.scene.O2MCD_rc_packs)-1].path=self.filepath
+        return {'FINISHED'}
+    
+def JarSet(self, context):
+    if len(context.scene.O2MCD_rc_packs) == 0:
+        context.scene.O2MCD_rc_packs.add()
+        context.scene.O2MCD_rc_packs.add()
+    return {'FINISHED'}
+class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
+    bl_idname = "render.o2mcd_resource_pack_remove"
+    bl_label = ""
+    bl_description = ""
+    index : bpy.props.IntProperty(default=0)
+    def execute(self, context):
+        context.scene.O2MCD_rc_packs.remove(self.index)
+        return {'FINISHED'}
+    
+class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
+    bl_idname = "render.o2mcd_resource_pack_move"
+    bl_label = ""
+    bl_description = "リソースパックを移動"
+    action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))
+
+    def invoke(self, context, event):
+        list=context.scene.O2MCD_rc_packs
+        index=context.scene.O2MCD_rc_pack.index
+        if self.action == 'DOWN' and index < len(list) - 1:
+            list.move(index, index+1)
+            context.scene.O2MCD_rc_pack.index += 1
+        elif self.action == 'UP' and index >= 1:
+            list.move(index, index-1)
+            context.scene.O2MCD_rc_pack.index -= 1
+        return {"FINISHED"}
 class OBJECTTOMCDISPLAY_MT_Models(bpy.types.Menu):
     bl_label = "json"
     def draw(self, context):
@@ -205,23 +332,51 @@ class OBJECTTOMCDISPLAY_OT_SearchJson(bpy.types.Operator):  # 検索
 
     def execute(self, context):
         add_object(self, context)
-        self.report({'INFO'}, self.enum)
         return {'FINISHED'}
 
     def invoke(self, context, event):
+        pack= get_pack()
+        if os.path.splitext(pack)[1] == ".zip" or os.path.splitext(pack)[1] == ".jar":
+            if self.action =='BLOCK':
+                with zipfile.ZipFile(pack, 'r') as zip:
+                    blocks= zip.namelist()
+                blocks=[i.split("/")[-1][:-5] for i in blocks if i.startswith('assets/minecraft/blockstates/')]
+                blocks.sort()
+                for i in blocks:
+                    items.append((i.upper(), i+" ", ""))
+            elif self.action =='ITEM':
+                for i in context.scene.O2MCD_item_list:
+                    items.append((i.name.upper(), i.name+" ", ""))
+        else:
+            if self.action =='BLOCK':
+                for i in glob.glob(os.path.join(pack,"assets","minecraft","blockstates","*")):
+                    i=i.split("\\")[-1][:-5]
+                    items.append((i.upper(), i+" ", ""))
+            elif self.action =='ITEM':
+                for i in context.scene.O2MCD_item_list:
+                    items.append((i.name.upper(), i.name+" ", ""))
+        
         if self.action =='BLOCK':
             context.window_manager.invoke_search_popup(self)
         elif self.action =='ITEM':
             context.window_manager.invoke_search_popup(self)
         return {'FINISHED'}
 classes = (
-    BKTEMP_MT_Preferences,
+    O2MCD_ResourcePacks,
+    OBJECTTOMCDISPLAY_UL_ResourcePacks,
+    O2MCD_ResourcePack,
     OBJECTTOMCDISPLAY_MT_Models,
-    OBJECTTOMCDISPLAY_OT_SearchJson
+    OBJECTTOMCDISPLAY_OT_SearchJson,
+    OBJECTTOMCDISPLAY_OT_ResourcePackAdd,
+    OBJECTTOMCDISPLAY_OT_JarAdd,
+    OBJECTTOMCDISPLAY_OT_ResourcePackRemove,
+    OBJECTTOMCDISPLAY_OT_ResourcePackMove
 )
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
+    bpy.types.Scene.O2MCD_rc_packs = bpy.props.CollectionProperty(type=O2MCD_ResourcePacks)
+    bpy.types.Scene.O2MCD_rc_pack = bpy.props.PointerProperty(type=O2MCD_ResourcePack)
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)

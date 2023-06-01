@@ -67,29 +67,40 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         col.use_property_decorate = False
         col.prop(context.scene.O2MCD_props, "rou")
         layout.separator()
-        col2 = layout.column(align=True)
-        row2 = col2.row()
-        row2.prop(context.scene.O2MCD_props, "output", expand=True)
-        box = col2.box()
+        col = layout.column(align=True)
+        row = col.row()
+        row.prop(context.scene.O2MCD_props, "output", expand=True)
+        box = col.box()
         if context.scene.O2MCD_props.output == "ANIMATION":
             box.prop(context.scene.O2MCD_props, "anim_path")
         else:
             box.prop(context.scene.O2MCD_props, "curr_path")
         box.operator("render.o2mcd_export")
         layout.enabled = context.scene.O2MCD_props.enable
-        row4 = layout.row(align = True)
-        row4.alignment = "LEFT"
-        row4.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="Object List")
-        row3 = layout.row()
+        row= layout.row()
+        row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene.O2MCD_rc_pack, "index", rows=2,sort_lock=True)
+        col = row.column()
+        col1 = col.column()
+        if context.scene.O2MCD_rc_pack.index <= 1 or context.scene.O2MCD_rc_pack.index == len(context.scene.O2MCD_rc_packs)-1:
+            col1.enabled= False
+        col1.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
+        col2 = col.column()
+        if context.scene.O2MCD_rc_pack.index >= len(context.scene.O2MCD_rc_packs)-2 or context.scene.O2MCD_rc_pack.index == 0:
+            col2.enabled= False
+        col2.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        row = layout.row(align = True)
+        row.alignment = "LEFT"
+        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="Object List")
+        row = layout.row()
         if context.scene.O2MCD_props.toggle_list:
-            row3.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
-            col3 = row3.column()
-            if len(context.scene.O2MCD_object_list) <= 1:col3.enabled = False
-            col3.operator("render.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
-            col3.operator("render.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
-            col3.separator()
-            col3.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
-            col3.operator("render.o2mcd_list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
+            row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
+            col = row.column()
+            if len(context.scene.O2MCD_object_list) <= 1:col.enabled = False
+            col.operator("render.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
+            col.operator("render.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
+            col.separator()
+            col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
+            col.operator("render.o2mcd_list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
 
 
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン

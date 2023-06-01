@@ -64,6 +64,7 @@ def load(self, context):
     render.update(None, bpy.context)
     object.item_regist()
     bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
+    json.JarSet(None, bpy.context)
 
 def register():
     bpy.app.translations.register(__name__, O2MCD_translation_dict)
