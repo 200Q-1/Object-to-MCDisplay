@@ -1,9 +1,9 @@
 import bpy
 import json
+import math
 import numpy as np
 import os
 import mathutils
-import glob
 import zipfile
 import tempfile
 
@@ -20,31 +20,49 @@ def check_path(self,context):
         name= self.path.split(os.sep)[-2]
     self.name= name
     self.icon=bpy.data.images[0]
-def get_pack():
+    
+def get_pack(file,form):
     pack=[]
-    for p in bpy.context.scene.O2MCD_rc_packs:
-        if os.path.splitext(p.path)[1] == ".zip" or os.path.splitext(p.path)[1] == ".jar":
-            pack.append(zipfile.ZipFile(p.path, 'r'))
+    for p in bpy.context.scene.O2MCD_rc_packs[1:]:
+        if p.type =='FOLDER':
+            if form == 'json':
+                with open(os.path.join(p.path,*file),'r') as js:
+                    pack=json.load(js)
+            elif form == 'png':
+                pack= bpy.data.images.load(os.path.join(p.path,*file))
+            break
         else:
-            pack.append(p.path)
+            with zipfile.ZipFile(p.path) as zip:
+                if form == 'json':
+                    try:
+                        pack=json.load(zip.open("/".join(file),'r'))
+                        break
+                    except:pass
+                elif form == 'png':
+                    try:
+                        with tempfile.TemporaryDirectory() as temp:
+                            zip.extract("/".join(file),temp)
+                            pack= bpy.data.images.load(os.path.join(temp,*file))
+                            pack.pack()
+                    except:pass
     return pack
 
 def add_json(self,context):
     layout = self.layout
     layout.separator()
-    layout.operator("object.o2mcd_add_object")
     layout.menu("OBJECTTOMCDISPLAY_MT_Models",text="json")
     
-def parents(pack,path):
-    model_path=os.path.join(pack,"models",*path.split("/"))
-    with open(model_path+".json", "r") as f:
-        data = json.load(f)
+def parents(path):
+    data= get_pack(path,'json')
     if "parent" in data:
-        parent_path=data["parent"].split(":")[-1]
-        parent=parents(pack,parent_path)
+        parent_path=data["parent"].split(":")[-1]+".json"
+        parent=parents(["assets","minecraft","models"]+parent_path.split("/"))
         del data["parent"]
         for k,v in parent.items():
-            if type(parent[k]) is dict and not k == "elements":
+            if k == "elements":
+                if not "elements" in data:
+                    data[k]=v
+            elif type(parent[k]) is dict:
                 for k2,v2 in parent[k].items():
                     if not k in data:
                         data[k]={}
@@ -55,18 +73,19 @@ def parents(pack,path):
 
 def add_object(self,context):
     name=self.enum.lower()
-    pack=bpy.context.preferences.addons[__package__ ].preferences.path
+    model_path=["assets","minecraft","models"]
     if self.action =='BLOCK':
-        model_path="block"
+        model_path.append("block")
     elif self.action =='ITEM':
-        model_path="item"
-    model_path=model_path+"/"+name
-    data=parents(pack,model_path)
+        model_path.append("item")
+    model_path.append(name+".json")
+    data=parents(model_path)
     elements= data["elements"]
     vertices = []
     edges = []
     faces=[]
     uvs=[]
+    uv_rot=[]
     dire = (
     "east",
     "south",
@@ -76,46 +95,48 @@ def add_object(self,context):
     "up",
     )
     
-    new_mesh = bpy.data.meshes.new(name)
-    new_object = bpy.data.objects.new(name, new_mesh)  # オブジェクト作成
+    new_mesh = bpy.data.meshes.new(name)  # オブジェクト作成
+    new_object = bpy.data.objects.new(name, new_mesh)
     bpy.context.collection.objects.link(new_object)
 
-    textures=data["textures"]
-    del textures["particle"]
+    textures=data["textures"]  # マテリアル作成
+    if "particle" in textures: del textures["particle"]
     for key,value in textures.items():
         value=value.split(":")[-1]
-        if not os.path.basename(value) in bpy.data.materials:
-            material= bpy.data.materials.new(os.path.basename(value))  # マテリアル作成
-            material.use_nodes = True
-            material.blend_method="BLEND"
-            material.show_transparent_back=False
-            node_tree= material.node_tree
-            bsdf= node_tree.nodes[0]
-            bsdf.inputs[7].default_value=0
-            
-            tex_node=node_tree.nodes.new(type="ShaderNodeTexImage")
-            tex_node.interpolation="Closest"
-            tex_node.location = (-420, 220)
-            
-            node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
-            node_tree.links.new(tex_node.outputs[1], bsdf.inputs[21])
-            tex=value.split("/")
-            tex_path=os.path.join(pack,"textures",*tex)
-            if not tex[-1]+".png" in bpy.data.images:
-                image= bpy.data.images.load(tex_path+".png")
+        if not value[0] == "#":
+            if  not os.path.basename(value) in bpy.data.materials:
+                material= bpy.data.materials.new(os.path.basename(value))
+                material.use_nodes = True
+                material.blend_method='CLIP'
+                material.show_transparent_back=False
+                node_tree= material.node_tree
+                bsdf= node_tree.nodes[0]
+                bsdf.inputs[7].default_value=0
+                
+                tex_node=node_tree.nodes.new(type="ShaderNodeTexImage")
+                tex_node.interpolation="Closest"
+                tex_node.location = (-420, 220)
+                
+                node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
+                node_tree.links.new(tex_node.outputs[1], bsdf.inputs[21])
+                tex=(value+".png").split("/")
+                if not tex[-1] in bpy.data.images:
+                    image= get_pack(["assets","minecraft","textures"]+tex,"png")
+                else:
+                    image= bpy.data.images[tex[-1]]
+                tex_node.image= image
             else:
-                image= bpy.data.images[tex[-1]+".png"]
-            tex_node.image= image
-        else:
-            material=bpy.data.materials[os.path.basename(value)]
-        if not material.name in new_object.data.materials:
-            new_object.data.materials.append(material)
+                material=bpy.data.materials[os.path.basename(value)]
+            if not material.name in new_object.data.materials:
+                new_object.data.materials.append(material)
+                
     texture= []
     for e in elements:  # 頂点作成
         ve=[0,1,2,3,4,5,6,7]
         f=len(vertices)
-        frm = np.array([e["from"][0]/16-0.5, e["from"][2]/16-0.5, e["from"][1]/16-0.5])
-        to = np.array([e["to"][0]/16-0.5, e["to"][2]/16-0.5, e["to"][1]/16-0.5])
+        frm = np.array([(e["to"][0]/16-0.5)*-1, e["from"][2]/16-0.5, e["from"][1]/16-0.5])
+        to = np.array([(e["from"][0]/16-0.5)*-1, e["to"][2]/16-0.5, e["to"][1]/16-0.5])
+        
         if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
             vertices.append((frm[0], frm[1], frm[2]))
         else:ve=[v-1 if i>=0 else v for i,v in enumerate(ve)]
@@ -140,14 +161,16 @@ def add_object(self,context):
         if dire[2] in e["faces"] or dire[1] in e["faces"] or dire[5] in e["faces"]:
             vertices.append((to[0], to[1], to[2]))
         else:ve=[v-1 if i>=7 else v for i,v in enumerate(ve)]
+
         dire_val=[
         (ve[0], ve[1], ve[3], ve[2]),
         (ve[2], ve[3], ve[7], ve[6]),
         (ve[6], ve[7], ve[5], ve[4]),
         (ve[4], ve[5], ve[1], ve[0]),
         (ve[2], ve[6], ve[4], ve[0]),
-        (ve[7], ve[3], ve[1], ve[5]),
+        (ve[5], ve[7], ve[3], ve[1]),
     ]
+
         for key, value in zip(dire,dire_val):  # 面作成
             if key in e["faces"]:
                 faces.append((f+value[0],f+value[1],f+value[2],f+value[3]))
@@ -161,42 +184,71 @@ def add_object(self,context):
                     xto = uv[2] / 16.0
                     yfrom = 1.0 - uv[3] / 16.0
                     yto = 1.0 - uv[1] / 16.0
-                    uvs.append(mathutils.Vector((xto, yfrom)))
-                    uvs.append(mathutils.Vector((xto, yto)))
-                    uvs.append(mathutils.Vector((xfrm, yto)))
-                    uvs.append(mathutils.Vector((xfrm, yfrom)))
+                    
+                    uvs.append(
+                        (mathutils.Vector((xto, yfrom)),
+                            mathutils.Vector((xto, yto)),
+                            mathutils.Vector((xfrm, yto)),
+                            mathutils.Vector((xfrm, yfrom)))
+                        )
                 else:
                     uvs.append("SET")
-                    uvs.append("SET")
-                    uvs.append("SET")
-                    uvs.append("SET")
+                if "rotation" in e["faces"][key]:
+                    uv_rot.append(e["faces"][key]["rotation"])
+                else:
+                    uv_rot.append(0)
+                    
+        if "rotation" in e:
+            axis={"x":(-1,0,0),"y":(0,1,0),"z":(0,0,1)}
+            for i,v in enumerate(vertices[f:]):
+                v=mathutils.Vector(v)
+                origin=e["rotation"]["origin"]
+                origin= mathutils.Matrix.Translation(((origin[0]/16-0.5)*-1,origin[2]/16-0.5,origin[1]/16-0.5))
+                r=mathutils.Matrix.Rotation(math.radians(e["rotation"]["angle"]), 4,axis[e["rotation"]["axis"]])
+                vertices[f+i]= origin @ r @ v
+                
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
     for p,t in zip(new_object.data.polygons,texture):
         p.material_index=new_object.data.materials.find(t)
-    new_mesh.update()
     new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
     for pi,p in enumerate(new_object.data.polygons):
-        for vi,ver in enumerate(p.vertices):
-            v=new_object.data.vertices[ver].co
+        vecuv=[]
+        if uvs[pi] == "SET":
+            vecuv=[new_object.data.vertices[i].co for i in p.vertices]
             if p.normal == mathutils.Vector((-1.0,0.0,0.0)):
-                vecuv=mathutils.Vector((v[1],v[2]))
+                vecuv=[mathutils.Vector((v[1]+0.5,v[2]+0.5)) for v in vecuv]
             elif p.normal == mathutils.Vector((1.0,0.0,0.0)):
-                vecuv=mathutils.Vector((v[1],v[2]))
+                vecuv=[mathutils.Vector((v[1]+0.5,v[2]+0.5)) for v in vecuv]
             elif p.normal == mathutils.Vector((0.0,0.0,-1.0)):
-                vecuv=mathutils.Vector((v[0],v[1]))
+                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) for v in vecuv]
             elif p.normal == mathutils.Vector((0.0,0.0,1.0)):
-                vecuv=mathutils.Vector((v[0],v[1]))
+                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) for v in vecuv]
             elif p.normal == mathutils.Vector((0.0,-1.0,0.0)):
-                vecuv=mathutils.Vector((v[0],v[2]))
+                vecuv=[mathutils.Vector((v[0]+0.5,v[2]+0.5)) for v in vecuv]
             elif p.normal == mathutils.Vector((0.0,1.0,0.0)):
-                vecuv=mathutils.Vector((v[0],v[2]))
-            if uvs[pi*4+vi] == "SET":
-                new_uv.data[pi*4+vi].uv= vecuv + mathutils.Vector((0.5,0.5))
-            else:
-                new_uv.data[pi*4+vi].uv= uvs[pi*4+vi]
+                vecuv=[mathutils.Vector((v[0]+0.5,v[2]+0.5)) for v in vecuv]
+        else:
+            vecuv.append(uvs[pi][0])
+            vecuv.append(uvs[pi][1])
+            vecuv.append(uvs[pi][2])
+            vecuv.append(uvs[pi][3])
             
-
+        if p.normal == mathutils.Vector((0.0,0.0,1.0)):
+            vecuv=[vecuv[2],vecuv[3],vecuv[0],vecuv[1]]
+        elif p.normal == mathutils.Vector((0.0,0.0,-1.0)):
+            vecuv=[vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
+        
+        if uv_rot[pi] == 90:
+            vecuv=[vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
+        elif uv_rot[pi] == 180:
+            vecuv=[vecuv[2],vecuv[3],vecuv[0],vecuv[1]]
+        elif uv_rot[pi] == 270:
+            vecuv=[vecuv[3],vecuv[0],vecuv[1],vecuv[2]]
+        
+        for i,u in enumerate(new_uv.uv[pi*4:pi*4+4]):
+            u.vector=vecuv[i]
+            
 items = []
 def enum_item(self, context):  # プロパティリスト
     return tuple(items)
@@ -335,31 +387,18 @@ class OBJECTTOMCDISPLAY_OT_SearchJson(bpy.types.Operator):  # 検索
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        pack= get_pack()
-        if os.path.splitext(pack)[1] == ".zip" or os.path.splitext(pack)[1] == ".jar":
-            if self.action =='BLOCK':
-                with zipfile.ZipFile(pack, 'r') as zip:
-                    blocks= zip.namelist()
-                blocks=[i.split("/")[-1][:-5] for i in blocks if i.startswith('assets/minecraft/blockstates/')]
-                blocks.sort()
-                for i in blocks:
-                    items.append((i.upper(), i+" ", ""))
-            elif self.action =='ITEM':
-                for i in context.scene.O2MCD_item_list:
-                    items.append((i.name.upper(), i.name+" ", ""))
-        else:
-            if self.action =='BLOCK':
-                for i in glob.glob(os.path.join(pack,"assets","minecraft","blockstates","*")):
-                    i=i.split("\\")[-1][:-5]
-                    items.append((i.upper(), i+" ", ""))
-            elif self.action =='ITEM':
-                for i in context.scene.O2MCD_item_list:
-                    items.append((i.name.upper(), i.name+" ", ""))
-        
+        pack= context.scene.O2MCD_rc_packs[len(context.scene.O2MCD_rc_packs)-1].path
         if self.action =='BLOCK':
-            context.window_manager.invoke_search_popup(self)
+            with zipfile.ZipFile(pack, 'r') as zip:
+                blocks= zip.namelist()
+            blocks=[i.split("/")[-1][:-5] for i in blocks if i.startswith('assets/minecraft/blockstates/')]
+            blocks.sort()
+            for i in blocks:
+                items.append((i.upper(), i+" ", ""))
         elif self.action =='ITEM':
-            context.window_manager.invoke_search_popup(self)
+            for i in context.scene.O2MCD_item_list:
+                items.append((i.name.upper(), i.name+" ", ""))
+        context.window_manager.invoke_search_popup(self)
         return {'FINISHED'}
 classes = (
     O2MCD_ResourcePacks,
