@@ -24,9 +24,13 @@ def check_path(self,context):
 def get_pack(file,form):
     pack=[]
     for p in bpy.context.scene.O2MCD_rc_packs[1:]:
-        if p.type =='FOLDER':
-            if form == 'json':
-                with open(os.path.join(p.path,*file),'r') as js:
+        if file == "generated" or p.type =='FOLDER':
+            if file == "generated" or form == 'json':
+                if file == "generated":
+                    path=os.path.join(bpy.path.abspath(os.path.dirname(__file__)),"generated.json")
+                else:
+                    path=os.path.join(p.path,*file)
+                with open(path,'r') as js:
                     pack=json.load(js)
             elif form == 'png':
                 pack= bpy.data.images.load(os.path.join(p.path,*file))
@@ -55,8 +59,12 @@ def add_json(self,context):
 def parents(path):
     data= get_pack(path,'json')
     if "parent" in data:
-        parent_path=data["parent"].split(":")[-1]+".json"
-        parent=parents(["assets","minecraft","models"]+parent_path.split("/"))
+        if data["parent"].split(":")[-1] == "item/generated":
+            parent_path="generated"
+        else:
+            parent_path=data["parent"].split(":")[-1]+".json"
+            parent_path=["assets","minecraft","models"]+parent_path.split("/")
+        parent=parents(parent_path)
         del data["parent"]
         for k,v in parent.items():
             if k == "elements":
@@ -66,7 +74,13 @@ def parents(path):
                 for k2,v2 in parent[k].items():
                     if not k in data:
                         data[k]={}
-                    data[k][k2]=v2
+                    if type(parent[k][k2]) is dict:
+                        for k3,v3 in parent[k][k2].items():
+                            if not k2 in data[k]:
+                                data[k][k2]={}
+                            data[k][k2][k3]=v3
+                    else:
+                        data[k][k2]=v2
             else:
                 data[k]=v
     return data
@@ -80,6 +94,7 @@ def add_object(self,context):
         model_path.append("item")
     model_path.append(name+".json")
     data=parents(model_path)
+    if "overrides" in data:print(data["overrides"])
     elements= data["elements"]
     vertices = []
     edges = []
@@ -94,6 +109,12 @@ def add_object(self,context):
     "down",
     "up",
     )
+    # if self.action =='ITEM':
+    #     object_name="Item"
+    #     with bpy.data.libraries.load(os.path.dirname(__file__)+'/model.blend') as (data_from, data_to):
+    #         data_to.objects = [name for name in data_from.objects if name == object_name]
+    #     for obj in data_to.objects:
+    #         bpy.context.collection.objects.link(obj)
     
     new_mesh = bpy.data.meshes.new(name)  # オブジェクト作成
     new_object = bpy.data.objects.new(name, new_mesh)
@@ -384,22 +405,35 @@ class OBJECTTOMCDISPLAY_OT_SearchJson(bpy.types.Operator):  # 検索
 
     def execute(self, context):
         add_object(self, context)
+        global items
+        items = []
         return {'FINISHED'}
 
     def invoke(self, context, event):
         pack= context.scene.O2MCD_rc_packs[len(context.scene.O2MCD_rc_packs)-1].path
-        if self.action =='BLOCK':
-            with zipfile.ZipFile(pack, 'r') as zip:
-                blocks= zip.namelist()
-            blocks=[i.split("/")[-1][:-5] for i in blocks if i.startswith('assets/minecraft/blockstates/')]
-            blocks.sort()
-            for i in blocks:
-                items.append((i.upper(), i+" ", ""))
-        elif self.action =='ITEM':
-            for i in context.scene.O2MCD_item_list:
-                items.append((i.name.upper(), i.name+" ", ""))
+        with zipfile.ZipFile(pack, 'r') as zip:
+            file= zip.namelist()
+            block=[i.split("/")[-1][:-5] for i in file if i.startswith('assets/minecraft/blockstates/')]
+            if self.action =='BLOCK':
+                block.sort()
+                print(block)
+                for i in block:
+                    items.append((i.upper(), i+" ", ""))
+            
+            elif self.action =='ITEM':
+                item=[i.split("/")[-1][:-5] for i in file if i.startswith('assets/minecraft/models/item/')]
+                lang=json.load(zip.open('assets/minecraft/lang/en_us.json', 'r'))
+                lang=[i[15:] for i in lang.keys() if i.startswith("item.minecraft.")]
+                block=[i for i in block if i in item]
+                item=[i for i in item if i in lang]
+                item+=block
+                item.sort()
+                print(item)
+                for i in item:
+                    items.append((i.upper(), i+" ", ""))
         context.window_manager.invoke_search_popup(self)
         return {'FINISHED'}
+    
 classes = (
     O2MCD_ResourcePacks,
     OBJECTTOMCDISPLAY_UL_ResourcePacks,

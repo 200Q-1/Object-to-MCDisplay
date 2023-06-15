@@ -5,18 +5,17 @@ import mathutils
 from re import *
 from math import *
 
-def get_location(context,object):  # 位置取得
-    loc = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ object.matrix_world
+def get_location(context,object):  # 位置取得 
+    loc = mathutils.Matrix.Rotation(radians(-90),4,'X') @ object.matrix_world
     rou = context.scene.O2MCD_props.rou
     if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == "BLOCK":
-        loc = loc @ mathutils.Matrix.Translation(
-            mathutils.Vector((0.5, -0.5, -0.5)))
+        loc = loc @ mathutils.Matrix.Translation(mathutils.Vector((0.5, -0.5, -0.5)))
     loc = loc.translation
     loc = (round(loc[0], rou), round(loc[1], rou), round(loc[2], rou))
     return loc
 
 def get_position(context,object):  # pos取得
-    pos = mathutils.Euler((radians(-90), 0, 0),'XYZ').to_matrix().to_4x4() @ object.matrix_world
+    pos = mathutils.Matrix.Rotation(radians(-90),4,'X') @ object.matrix_world
     rou = context.scene.O2MCD_props.rou
     pos = pos.translation
     pos = (round(pos[0], rou), round(pos[1], rou), round(pos[2], rou))
@@ -34,7 +33,7 @@ def get_scale(context,object):  # スケール取得
         if not round(pscale[0], rou) == round(pscale[1], rou) == round(pscale[2], rou):
             object.scale = (1, 1, 1)
             scale = pscale
-    scale = (round(scale[0], rou), round(scale[1], rou), round(scale[2], rou))
+    scale = (round(scale[0], rou), round(scale[2], rou), round(scale[1], rou))
     return scale
 
 
@@ -51,10 +50,15 @@ def get_left_rotation(context,object):  # 左回転取得
             l_rot = object.parent.matrix_world.to_euler()
     else:
         l_rot = object.matrix_world.to_euler()
-    l_rot_x = mathutils.Euler((-l_rot[0], 0, 0), 'XYZ').to_matrix().to_4x4()
-    l_rot_y = mathutils.Euler((0, l_rot[2], 0), 'XYZ').to_matrix().to_4x4()
-    l_rot_z = mathutils.Euler((0, 0, l_rot[1]), 'XYZ').to_matrix().to_4x4()
-    l_rot = (mathutils.Euler((0, radians(180), 0), 'XYZ').to_matrix().to_4x4() @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
+    l_rot_x = mathutils.Matrix.Rotation(-l_rot[0],4,'X')
+    l_rot_y = mathutils.Matrix.Rotation(l_rot[2],4,'Y')
+    l_rot_z = mathutils.Matrix.Rotation(l_rot[1],4,'Z')
+    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK':
+        inv=mathutils.Matrix.Rotation(radians(180),4,"Y")
+    else:
+        inv=mathutils.Matrix.Identity(4)
+    l_rot = (inv @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
+    
     l_rot = [round(l_rot[1], rou), round(l_rot[2], rou),round(l_rot[3], rou), round(l_rot[0], rou)]
     return l_rot
 
@@ -69,10 +73,10 @@ def get_rotation(context,object):  # 回転取得
         else:
             rot = object.parent.matrix_world.to_euler()
     else:
-        rot = object.matrix_world.to_euler()
-    rot_x = mathutils.Euler((rot[0], 0, 0), 'XYZ').to_matrix().to_4x4()
-    rot_y = mathutils.Euler((0, -rot[2], 0), 'XYZ').to_matrix().to_4x4()
-    rot_z = mathutils.Euler((0, 0, -rot[1]), 'XYZ').to_matrix().to_4x4()
+        rot = object.matrix_world.to_euler()  
+    rot_x = mathutils.Matrix.Rotation(rot[0],4,'X')
+    rot_y = mathutils.Matrix.Rotation( -rot[2],4,'X')
+    rot_z = mathutils.Matrix.Rotation( -rot[1],4,'X')
     rot = (rot_y @ rot_z @ rot_x).to_euler()
     rot = [round(degrees(rot[1]), rou), round(degrees(rot[2]), rou),round(degrees(rot[0]), rou)]
     return rot
@@ -81,10 +85,9 @@ def get_right_rotation(context,object):  # 右回転取得
     rou = context.scene.O2MCD_props.rou
     if object.parent:
         r_rot = object.rotation_euler
-        r_rot = mathutils.Euler(
-            (-r_rot[0], r_rot[2], r_rot[1]), 'XYZ').to_quaternion()
+        r_rot = mathutils.Euler((-r_rot[0], r_rot[2], r_rot[1]), 'XYZ').to_quaternion()
     else:
-        r_rot = mathutils.Euler((0, 0, 0), 'XYZ').to_quaternion()
+        r_rot = mathutils.Matrix.Identity(4).to_quaternion()
     r_rot = [round(r_rot[1], rou), round(r_rot[2], rou),round(r_rot[3], rou), round(r_rot[0], rou)]
     return r_rot
 
