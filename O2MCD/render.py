@@ -10,6 +10,7 @@ from . import command
 from . import object
 from . import list
 from . import json
+from . import json_import
 # 関数
 
 def update(self, context):  # 更新処理
@@ -17,8 +18,10 @@ def update(self, context):  # 更新処理
         if not list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.append(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
+        bpy.types.TOPBAR_MT_file_import.remove(json_import.json_import)
         bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
         bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
+        bpy.types.TOPBAR_MT_file_import.append(json_import.json_import)
         bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
@@ -31,6 +34,7 @@ def update(self, context):  # 更新処理
         if list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
         bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
+        bpy.types.TOPBAR_MT_file_import.remove(json_import.json_import)
         
 def update_auto_reload(self,context):
     if context.scene.O2MCD_props.auto_reload:  # 自動更新を有効

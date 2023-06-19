@@ -99,8 +99,11 @@ def add_object(self,context):
     vertices = []
     edges = []
     faces=[]
+    normal=[]
     uvs=[]
     uv_rot=[]
+    axis={"x":(-1,0,0),"y":"Z","z":"Y"}
+    texture= []
     dire = (
     "east",
     "south",
@@ -109,12 +112,6 @@ def add_object(self,context):
     "down",
     "up",
     )
-    # if self.action =='ITEM':
-    #     object_name="Item"
-    #     with bpy.data.libraries.load(os.path.dirname(__file__)+'/model.blend') as (data_from, data_to):
-    #         data_to.objects = [name for name in data_from.objects if name == object_name]
-    #     for obj in data_to.objects:
-    #         bpy.context.collection.objects.link(obj)
     
     new_mesh = bpy.data.meshes.new(name)  # オブジェクト作成
     new_object = bpy.data.objects.new(name, new_mesh)
@@ -151,12 +148,12 @@ def add_object(self,context):
             if not material.name in new_object.data.materials:
                 new_object.data.materials.append(material)
                 
-    texture= []
+    
     for e in elements:  # 頂点作成
         ve=[0,1,2,3,4,5,6,7]
         f=len(vertices)
-        frm = np.array([(e["to"][0]/16-0.5)*-1, e["from"][2]/16-0.5, e["from"][1]/16-0.5])
-        to = np.array([(e["from"][0]/16-0.5)*-1, e["to"][2]/16-0.5, e["to"][1]/16-0.5])
+        frm = ([(e["to"][0]/16-0.5)*-1, e["from"][2]/16-0.5, e["from"][1]/16-0.5])
+        to = ([(e["from"][0]/16-0.5)*-1, e["to"][2]/16-0.5, e["to"][1]/16-0.5])
         
         if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
             vertices.append((frm[0], frm[1], frm[2]))
@@ -191,9 +188,17 @@ def add_object(self,context):
         (ve[2], ve[6], ve[4], ve[0]),
         (ve[5], ve[7], ve[3], ve[1]),
     ]
-
+        if "rotation" in e:
+            for i,v in enumerate(vertices[f:]):
+                v=mathutils.Vector(v)
+                origin=e["rotation"]["origin"]
+                origin= mathutils.Matrix.Translation((-(origin[0]/16-0.5),origin[2]/16-0.5,origin[1]/16-0.5))
+                r=mathutils.Matrix.Rotation(math.radians(e["rotation"]["angle"]), 4,axis[e["rotation"]["axis"]])
+                vertices[f+i]= origin @ r @ mathutils.Matrix.inverted(origin) @ v
+        
         for key, value in zip(dire,dire_val):  # 面作成
             if key in e["faces"]:
+                normal.append(key)
                 faces.append((f+value[0],f+value[1],f+value[2],f+value[3]))
                 m=e["faces"][key]["texture"][1:]
                 if textures[m][0] == "#":
@@ -205,9 +210,16 @@ def add_object(self,context):
                     xto = uv[2] / 16.0
                     yfrom = 1.0 - uv[3] / 16.0
                     yto = 1.0 - uv[1] / 16.0
-                    
-                    uvs.append(
-                        (mathutils.Vector((xto, yfrom)),
+                    if key == "down":
+                        uvs.append(
+                        (   mathutils.Vector((xto, yto)),
+                            mathutils.Vector((xfrm, yto)),
+                            mathutils.Vector((xfrm, yfrom)),
+                            mathutils.Vector((xto, yfrom)))
+                        )
+                    else:
+                        uvs.append(
+                        (   mathutils.Vector((xto, yfrom)),
                             mathutils.Vector((xto, yto)),
                             mathutils.Vector((xfrm, yto)),
                             mathutils.Vector((xfrm, yfrom)))
@@ -218,16 +230,7 @@ def add_object(self,context):
                     uv_rot.append(e["faces"][key]["rotation"])
                 else:
                     uv_rot.append(0)
-                    
-        if "rotation" in e:
-            axis={"x":(-1,0,0),"y":(0,1,0),"z":(0,0,1)}
-            for i,v in enumerate(vertices[f:]):
-                v=mathutils.Vector(v)
-                origin=e["rotation"]["origin"]
-                origin= mathutils.Matrix.Translation(((origin[0]/16-0.5)*-1,origin[2]/16-0.5,origin[1]/16-0.5))
-                r=mathutils.Matrix.Rotation(math.radians(e["rotation"]["angle"]), 4,axis[e["rotation"]["axis"]])
-                vertices[f+i]= origin @ r @ v
-                
+
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
     for p,t in zip(new_object.data.polygons,texture):
@@ -237,28 +240,26 @@ def add_object(self,context):
         vecuv=[]
         if uvs[pi] == "SET":
             vecuv=[new_object.data.vertices[i].co for i in p.vertices]
-            if p.normal == mathutils.Vector((-1.0,0.0,0.0)):
+            if normal[pi] == "east":
                 vecuv=[mathutils.Vector((v[1]+0.5,v[2]+0.5)) for v in vecuv]
-            elif p.normal == mathutils.Vector((1.0,0.0,0.0)):
+            elif normal[pi] == "south":
+                vecuv=[mathutils.Vector((v[0]+0.5,v[2]+0.5)) for v in vecuv]
+            elif normal[pi] == "west":
                 vecuv=[mathutils.Vector((v[1]+0.5,v[2]+0.5)) for v in vecuv]
-            elif p.normal == mathutils.Vector((0.0,0.0,-1.0)):
-                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) for v in vecuv]
-            elif p.normal == mathutils.Vector((0.0,0.0,1.0)):
-                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) for v in vecuv]
-            elif p.normal == mathutils.Vector((0.0,-1.0,0.0)):
+            elif normal[pi] == "north":
                 vecuv=[mathutils.Vector((v[0]+0.5,v[2]+0.5)) for v in vecuv]
-            elif p.normal == mathutils.Vector((0.0,1.0,0.0)):
-                vecuv=[mathutils.Vector((v[0]+0.5,v[2]+0.5)) for v in vecuv]
+            elif normal[pi] == "down":
+                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) for v in vecuv]
+            elif normal[pi] == "up":
+                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) for v in vecuv]
+            
         else:
             vecuv.append(uvs[pi][0])
             vecuv.append(uvs[pi][1])
             vecuv.append(uvs[pi][2])
             vecuv.append(uvs[pi][3])
-            
-        if p.normal == mathutils.Vector((0.0,0.0,1.0)):
+        if normal[pi] == "up":
             vecuv=[vecuv[2],vecuv[3],vecuv[0],vecuv[1]]
-        elif p.normal == mathutils.Vector((0.0,0.0,-1.0)):
-            vecuv=[vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
         
         if uv_rot[pi] == 90:
             vecuv=[vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
@@ -416,7 +417,6 @@ class OBJECTTOMCDISPLAY_OT_SearchJson(bpy.types.Operator):  # 検索
             block=[i.split("/")[-1][:-5] for i in file if i.startswith('assets/minecraft/blockstates/')]
             if self.action =='BLOCK':
                 block.sort()
-                print(block)
                 for i in block:
                     items.append((i.upper(), i+" ", ""))
             
@@ -428,7 +428,6 @@ class OBJECTTOMCDISPLAY_OT_SearchJson(bpy.types.Operator):  # 検索
                 item=[i for i in item if i in lang]
                 item+=block
                 item.sort()
-                print(item)
                 for i in item:
                     items.append((i.upper(), i+" ", ""))
         context.window_manager.invoke_search_popup(self)

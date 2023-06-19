@@ -47,6 +47,7 @@ if "bpy" in locals():
     imp.reload(link)
     imp.reload(list)
     imp.reload(json)
+    imp.reload(json_import)
 else:
     from . import object
     from . import render
@@ -54,16 +55,14 @@ else:
     from . import link
     from . import list
     from . import json
+    from . import json_import
 import bpy
 from bpy.app.handlers import persistent
-def test(self,context):
-    print("test")
 # blender起動時に実行
 @persistent
 def load(self, context):
     render.update(None, bpy.context)
     object.item_regist()
-    bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
     json.JarSet(None, bpy.context)
 
 def register():
@@ -75,6 +74,7 @@ def register():
     link.register()
     list.register()
     json.register()
+    json_import.register()
 
 
 def unregister():
@@ -85,6 +85,7 @@ def unregister():
     link.unregister()
     list.unregister()
     json.unregister()
+    json_import.unregister()
 
 
 if __name__ == "__main__":
