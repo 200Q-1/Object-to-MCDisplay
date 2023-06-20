@@ -19,11 +19,15 @@ class OBJECTTOMCDISPLAY_OT_ImpJson(bpy.types.Operator, ImportHelper):
             create_model(self,file.name)
         return {'FINISHED'}
 
-def parents(directory,file):
+def parents(self,directory,file):
     if file == 'generated':
         file = os.path.join(bpy.path.abspath(os.path.dirname(__file__)),"generated.json")
-    with open(directory+file,'r') as js:
-        data=json.load(js)
+    try:
+        with open(directory+file,'r') as js:
+            data=json.load(js)
+    except:
+        self.report({'ERROR'}, f"{file}が見つかりませんでした。")
+        data={}
     if "parent" in data:
         if data["parent"].split(":")[-1] == "item/generated":
             parent_file="generated"
@@ -34,32 +38,24 @@ def parents(directory,file):
             parent_file=parent_file.split("/")[-1]
             parent_path=directory.split(os.sep)
             parent_path=os.sep.join(parent_path[:parent_path.index("models")+1]+parent_type)+os.sep
-        parent=parents(parent_path,parent_file)
+        parent=parents(self,parent_path,parent_file)
         del data["parent"]
         for k,v in parent.items():
-            if k == "elements":
-                if not "elements" in data:
-                    data[k]=v
-            elif type(parent[k]) is dict:
-                for k2,v2 in parent[k].items():
-                    if not k in data:
-                        data[k]={}
-                    if type(parent[k][k2]) is dict:
-                        for k3,v3 in parent[k][k2].items():
-                            if not k2 in data[k]:
-                                data[k][k2]={}
-                            data[k][k2][k3]=v3
-                    else:
-                        data[k][k2]=v2
+            if k == "elements" and not "elements" in data:
+                data[k]=v
+            elif type(v) is dict:
+                if not k in data:data[k]={}
+                for k2,v2 in v.items():
+                    if not k2 in data[k]: data[k][k2]=v2
             else:
                 data[k]=v
+
     return data
 
 def create_model(self,file):
     directory=self.directory
     name=file[:-5]
-    data=[]
-    data=parents(directory,file)
+    data=parents(self,directory,file)
     try:elements= data["elements"]
     except:
         self.report({'ERROR_INVALID_INPUT'}, f"elementsがありません。ブロックエンティティの可能性があります。\nFILE:{file}")
@@ -69,6 +65,7 @@ def create_model(self,file):
     faces=[]
     normal=[]
     texture= []
+    ratio=[]
     uvs=[]
     uv_rot=[]
     axis={"x":(-1,0,0),"y":"Z","z":"Y"}
@@ -80,7 +77,6 @@ def create_model(self,file):
     "down",
     "up",
     )
-    
     new_mesh = bpy.data.meshes.new(name)  # オブジェクト作成
     new_object = bpy.data.objects.new(name, new_mesh)
     bpy.context.collection.objects.link(new_object)
@@ -114,8 +110,6 @@ def create_model(self,file):
                     image= os.sep.join(image+["textures"]+tex)
                     try:
                         image= bpy.data.images.load(image)
-                        width,height=image.size
-                        ratio=height/width
                     except:
                         self.report({'ERROR_INVALID_INPUT'}, f"テクスチャが見つかりません。\nFILE:{file}\nTEXTUR:{image}")
                         image=None
@@ -178,10 +172,16 @@ def create_model(self,file):
             if key in e["faces"]:
                 normal.append(key)
                 faces.append((f+value[0],f+value[1],f+value[2],f+value[3]))
+                
                 m=e["faces"][key]["texture"][1:]
                 try:
-                    if textures[m][0] == "#":
-                        m=textures[m][1:]
+                    pretex=""
+                    for i in range(5):
+                        if textures[m][0] == "#":
+                            if pretex == textures[m][1:]:
+                                raise
+                            m=textures[m][1:]
+                            pretex=m
                     texture.append(textures[m].split("/")[-1])
                 except:
                     self.report({'ERROR_INVALID_INPUT'}, f"テクスチャのパスが設定されていません。\nFILE:{file}")
@@ -190,22 +190,14 @@ def create_model(self,file):
                     uv=e["faces"][key]["uv"]
                     xfrm = uv[0] / 16.0
                     xto = uv[2] / 16.0
-                    yfrom = 1.0 - uv[3] / 16.0
-                    yto = 1.0 - uv[1] / 16.0
-                    if key == "down":
-                        uvs.append(
-                        (   mathutils.Vector((xto, yto)),
-                            mathutils.Vector((xfrm, yto)),
-                            mathutils.Vector((xfrm, yfrom)),
-                            mathutils.Vector((xto, yfrom)))
-                        )
-                    else:
-                        uvs.append(
-                        (   mathutils.Vector((xto, yfrom)),
-                            mathutils.Vector((xto, yto)),
-                            mathutils.Vector((xfrm, yto)),
-                            mathutils.Vector((xfrm, yfrom)))
-                        )
+                    yfrom = uv[3] / 16.0
+                    yto = uv[1] / 16.0
+                    uvs.append(
+                    (   mathutils.Vector((xto, yfrom)),
+                        mathutils.Vector((xto, yto)),
+                        mathutils.Vector((xfrm, yto)),
+                        mathutils.Vector((xfrm, yfrom)))
+                    )
                 else:
                     uvs.append("SET")
                 if "rotation" in e["faces"][key]:
@@ -216,40 +208,54 @@ def create_model(self,file):
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
     for p,t in zip(new_object.data.polygons,texture):
-        if t:p.material_index=new_object.data.materials.find(t)
+        if t:
+            p.material_index=new_object.data.materials.find(t)
+            width,height=bpy.data.materials[t].node_tree.nodes[2].image.size
+            ratio.append(height/width)
+        else:ratio.append(1)
     new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
-    for pi,p in enumerate(new_object.data.polygons):
+    for ind,p in enumerate(new_object.data.polygons):
         vecuv=[]
-        if uvs[pi] == "SET":
+        if uvs[ind] == "SET":
             vecuv=[new_object.data.vertices[i].co for i in p.vertices]
-            if normal[pi] == "east":
-                vecuv=[mathutils.Vector((v[1]+0.5,v[2]+0.5)) if i == 1 or i == 2 else mathutils.Vector((v[1]+0.5,v[2]+0.5+(1-1))) for i,v in enumerate(vecuv)]
-            elif normal[pi] == "south":
-                vecuv=[mathutils.Vector((v[0]+0.5,v[2]+0.5)) if i == 1 or i == 2 else mathutils.Vector((v[0]+0.5,v[2]+0.5+(1-1))) for i,v in enumerate(vecuv)]
-            elif normal[pi] == "west":
-                vecuv=[mathutils.Vector((v[1]+0.5,v[2]+0.5)) if i == 1 or i == 2 else mathutils.Vector((v[1]+0.5,v[2]+0.5+(1-1))) for i,v in enumerate(vecuv)]
-            elif normal[pi] == "north":
-                vecuv=[mathutils.Vector((v[0]+0.5,v[2]+0.5)) if i == 1 or i == 2 else mathutils.Vector((v[0]+0.5,v[2]+0.5+(1-1))) for i,v in enumerate(vecuv)]
-            elif normal[pi] == "down":
-                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) if i == 0 or i == 1 else mathutils.Vector((v[0]+0.5,v[1]+0.5+(1-1))) for i,v in enumerate(vecuv)]
-            elif normal[pi] == "up":
-                vecuv=[mathutils.Vector((v[0]+0.5,v[1]+0.5)) if i == 1 or i == 2 else mathutils.Vector((v[0]+0.5,v[1]+0.5+(1-1))) for i,v in enumerate(vecuv)]
+            if normal[ind] == "east":
+                vecuv=[mathutils.Vector((v[1]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+            elif normal[ind] == "south":
+                vecuv=[mathutils.Vector((v[0]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+            elif normal[ind] == "west":
+                vecuv=[mathutils.Vector((v[1]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+            elif normal[ind] == "north":
+                vecuv=[mathutils.Vector((v[0]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+            elif normal[ind] == "down":
+                vecuv=[mathutils.Vector((v[0]+0.5,((v[1]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+            elif normal[ind] == "up":
+                vecuv=[mathutils.Vector((v[0]+0.5,((v[1]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
         else:
-            vecuv.append(uvs[pi][0])
-            vecuv.append(uvs[pi][1])
-            vecuv.append(uvs[pi][2])
-            vecuv.append(uvs[pi][3])
-        if normal[pi] == "up":
+            uvs[ind][0][1]=1-(uvs[ind][0][1]/ratio[ind])
+            uvs[ind][3][1]=1-(uvs[ind][3][1]/ratio[ind])
+            uvs[ind][1][1]=1-(uvs[ind][1][1]/ratio[ind])
+            uvs[ind][2][1]=1-(uvs[ind][2][1]/ratio[ind])
+            if key == "down":
+                vecuv.append(uvs[ind][1])
+                vecuv.append(uvs[ind][2])
+                vecuv.append(uvs[ind][3])
+                vecuv.append(uvs[ind][0])
+            else:
+                vecuv.append(uvs[ind][0])
+                vecuv.append(uvs[ind][1])
+                vecuv.append(uvs[ind][2])
+                vecuv.append(uvs[ind][3])
+        if normal[ind] == "up":
             vecuv=[vecuv[2],vecuv[3],vecuv[0],vecuv[1]]
 
-        if uv_rot[pi] == 90:
+        if uv_rot[ind] == 90:
             vecuv=[vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
-        elif uv_rot[pi] == 180:
+        elif uv_rot[ind] == 180:
             vecuv=[vecuv[2],vecuv[3],vecuv[0],vecuv[1]]
-        elif uv_rot[pi] == 270:
+        elif uv_rot[ind] == 270:
             vecuv=[vecuv[3],vecuv[0],vecuv[1],vecuv[2]]
         
-        for i,u in enumerate(new_uv.uv[pi*4:pi*4+4]):
+        for i,u in enumerate(new_uv.uv[ind*4:ind*4+4]):
             u.vector=vecuv[i]
     
 def json_import(self, context):
