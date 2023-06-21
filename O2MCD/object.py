@@ -62,7 +62,7 @@ def enum_item(self, context):  # プロパティリスト
 # クラス
 
 class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパティパネル
-    bl_label = "Display Properties"
+    bl_label = bpy.app.translations.pgettext("Display Properties") 
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Item"
@@ -152,7 +152,7 @@ class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
     bl_idname = "object.search_popup"
     bl_label = ""
     bl_property = "enum"
-    bl_description= "Browse Linked Properties"
+    bl_description= bpy.app.translations.pgettext("Browse Linked Properties")
     enum: bpy.props.EnumProperty(name="Objects", description="", items=enum_item)
 
     def execute(self, context):
@@ -166,7 +166,7 @@ class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
         return {'FINISHED'}
 
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
-    number: bpy.props.IntProperty(name="Object Number", default=-1, min=-1)
+    number: bpy.props.IntProperty(name=bpy.app.translations.pgettext("Object Number"), default=-1, min=-1)
     prop_id: bpy.props.IntProperty(name="prop_id", default=-1, min=-1)
     enable : bpy.props.BoolProperty(name="", default=True)
 

@@ -8,18 +8,19 @@ import tempfile
 import zipfile
 
 def check_path(self,context):
-    if os.path.isfile(self.path):
-        if os.path.splitext(self.path)[1] == ".zip" or os.path.splitext(self.path)[1] == ".jar":
-            name= self.path.split(os.sep)[-1]
+    if self.path:
+        if os.path.isfile(self.path):
+            if os.path.splitext(self.path)[1] == ".zip" or os.path.splitext(self.path)[1] == ".jar":
+                name= self.path.split(os.sep)[-1]
+            else:
+                self.path=os.path.dirname(self.path)
+                name= self.path.split(os.sep)[-1]
         else:
-            self.path=os.path.dirname(self.path)
-            name= self.path.split(os.sep)[-1]
-    else:
-        if os.path.splitext(self.path)[1]:
-            self.path= os.sep.join(self.path.split(os.sep)[:-1])+os.sep
-        name= self.path.split(os.sep)[-2]
-    self.name= name
-    self.icon=bpy.data.images[0]
+            if os.path.splitext(self.path)[1]:
+                self.path= os.sep.join(self.path.split(os.sep)[:-1])+os.sep
+            name= self.path.split(os.sep)[-2]
+        self.name= name
+        self.icon=bpy.data.images[0]
     
 def get_pack(directory,file):
     data={}
@@ -36,9 +37,11 @@ def get_pack(directory,file):
                             data=json.load(js)
                             break
                 else:
-                    with zipfile.ZipFile(p.path) as zip:
-                        data=json.load(zip.open("/".join(file),'r'))
-                        break
+                    try:
+                        with zipfile.ZipFile(p.path) as zip:
+                            data=json.load(zip.open("/".join(file),'r'))
+                            break
+                    except:pass
     elif os.path.splitext(file[-1])[1] == '.png':
         if os.path.isfile(directory+os.sep.join(file)):
             file=os.sep.join(file)
@@ -62,7 +65,8 @@ def get_pack(directory,file):
 
 class OBJECTTOMCDISPLAY_OT_ImpJson(bpy.types.Operator, ImportHelper):
     bl_idname = "import.json_model"
-    bl_label = "jsonをインポート"
+    bl_description = bpy.app.translations.pgettext("Import json file as object.")
+    bl_label = bpy.app.translations.pgettext("jsonをインポート")
     bl_options = {"REGISTER", "UNDO"}
     filename_ext = ".json"
 
@@ -79,8 +83,8 @@ def parents(self,directory,file):
     if file == 'generated.json':
         directory=bpy.path.abspath(os.path.dirname(__file__))
     data=get_pack(directory,file)
-    if not data:self.report({'ERROR'}, f"{file[-1]}が見つかりませんでした。")
-        
+    if not data:self.report({'ERROR'}, bpy.app.translations.pgettext("%s was not found.") % (file[-1]))
+            
     if "parent" in data:
         if data["parent"].split(":")[-1] == "item/generated":
             parent_file="generated.json"
@@ -111,7 +115,7 @@ def create_model(self,file):
     data=parents(self,directory,file)
     try:elements= data["elements"]
     except:
-        self.report({'ERROR_INVALID_INPUT'}, f"elementsがありません。ブロックエンティティの可能性があります。\nFILE:{file[-1]}")
+        self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("There are no elements. It could be a block entity.\nFILE: %s") % ({file[-1]}))
         return
     vertices = []
     edges = []
@@ -161,7 +165,9 @@ def create_model(self,file):
                 if not tex[-1] in bpy.data.images:
                     tex=folder+["textures"]+tex
                     image=get_pack(directory,tex)
-                    if not image : self.report({'ERROR_INVALID_INPUT'}, f"テクスチャが見つかりません。\nFILE:{file}\nTEXTUR:{tex[-1]}")
+                    if not image : 
+                        self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture not found.\nFILE:%s\nTEXTUR:%s") % (file[-1],tex[-1]))
+                        image=None
                 else:
                     image= bpy.data.images[tex[-1]]
                 tex_node.image= image
@@ -233,7 +239,7 @@ def create_model(self,file):
                             pretex=m
                     texture.append(textures[m].split("/")[-1])
                 except:
-                    self.report({'ERROR_INVALID_INPUT'}, f"テクスチャのパスが設定されていません。\nFILE:{file[-1]}")
+                    self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture path is not set.\nFILE:%s") % (file[-1]))
                     texture.append(None)
                 if "uv" in e["faces"][key]:
                     uv=e["faces"][key]["uv"]
@@ -257,11 +263,11 @@ def create_model(self,file):
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
     for p,t in zip(new_object.data.polygons,texture):
-        if t:
+        if bpy.data.materials[t].node_tree.nodes[2].image:
             p.material_index=new_object.data.materials.find(t)
             width,height=bpy.data.materials[t].node_tree.nodes[2].image.size
             ratio.append(height/width)
-        else:ratio.append(1)
+        ratio.append(1)
     new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
     for ind,p in enumerate(new_object.data.polygons):
         vecuv=[]
@@ -316,19 +322,28 @@ class OBJECTTOMCDISPLAY_UL_ResourcePacks(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
         row = layout.row()
         if index == 0:
-            row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackAdd.bl_idname)
+                row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackAdd.bl_idname)
         else:
+            row = row.row()
             row.alignment="LEFT"
             if item.image:
                 row.label(text="",icon_value=layout.icon(item.image))
             row.label(text=item.name)
             row = layout.row()
             row.alignment="RIGHT"
+            row.label(text=item.path)
             row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,icon='X').index=index
+            
+def rc_packs_update(self, context):
+    rc_packs=[]
+    for p in context.scene.O2MCD_rc_packs[1:]:
+        rc_packs.append(p.path)
+    rc_packs=",".join(rc_packs)
+    context.preferences.addons[__package__].preferences.rc_packs=rc_packs
 class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
     bl_idname = "render.o2mcd_resource_pack_add"
-    bl_label = "リソースパックを開く"
-    bl_description = ""
+    bl_label = bpy.app.translations.pgettext("open resource pack")
+    bl_description =  bpy.app.translations.pgettext("Open a resource pack.\nFolders, zips and jars are supported.")
     bl_options = {'REGISTER', 'UNDO'}
     
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
@@ -347,7 +362,7 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
             rc_pack.type='FOLDER'
             image= bpy.data.images.load(os.path.join(self.filepath,"pack.png"))
             rc_pack.image= image
-        elif os.path.splitext(self.filepath)[1] == ".zip":
+        elif os.path.splitext(self.filepath)[1] == ".zip" or os.path.splitext(self.filepath)[1] == ".jar":
             rc_pack.type='ZIP'
             with tempfile.TemporaryDirectory() as temp:
                 with zipfile.ZipFile(self.filepath) as zip:
@@ -356,11 +371,31 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
                     image.pack()
                     rc_pack.image= image
         context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
+        rc_packs_update(self, context)
         return {'FINISHED'}
     
 def JarSet(self, context):
     if len(context.scene.O2MCD_rc_packs) == 0:
         context.scene.O2MCD_rc_packs.add()
+    rc_packs=context.preferences.addons[__package__].preferences.rc_packs
+    if rc_packs :rc_packs=rc_packs.split(",")
+    for p in rc_packs[::-1]:
+        rc_pack=context.scene.O2MCD_rc_packs.add()
+        rc_pack.path = p
+        if os.path.isdir(p):
+            rc_pack.type='FOLDER'
+            try:image= bpy.data.images.load(os.path.join(p,"pack.png"))
+            except:image=None
+            rc_pack.image= image
+        elif os.path.splitext(p)[1] == ".zip" or os.path.splitext(p)[1] == ".jar":
+            rc_pack.type='ZIP'
+            with tempfile.TemporaryDirectory() as temp:
+                with zipfile.ZipFile(p) as zip:
+                    zip.extract('pack.png',temp)
+                    image= bpy.data.images.load(os.path.join(temp,"pack.png"))
+                    image.pack()
+                    rc_pack.image= image
+        context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
     return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
     bl_idname = "render.o2mcd_resource_pack_remove"
@@ -369,12 +404,13 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
     index : bpy.props.IntProperty(default=0)
     def execute(self, context):
         context.scene.O2MCD_rc_packs.remove(self.index)
+        rc_packs_update(self, context)
         return {'FINISHED'}
     
 class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
     bl_idname = "render.o2mcd_resource_pack_move"
     bl_label = ""
-    bl_description = "リソースパックを移動"
+    bl_description = bpy.app.translations.pgettext("move resource pack")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))
 
     def invoke(self, context, event):
@@ -386,10 +422,11 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
         elif self.action == 'UP' and index >= 1:
             list.move(index, index-1)
             context.preferences.addons[__package__].preferences.index -= 1
+        rc_packs_update(self, context)
         return {"FINISHED"}
 
 def json_import(self, context):
-    self.layout.operator(OBJECTTOMCDISPLAY_OT_ImpJson.bl_idname, text="json")
+    self.layout.operator(OBJECTTOMCDISPLAY_OT_ImpJson.bl_idname, text="O2MCD (.json)")
 classes = (
     OBJECTTOMCDISPLAY_OT_ImpJson,
     O2MCD_ResourcePacks,

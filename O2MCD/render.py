@@ -10,7 +10,6 @@ from . import command
 from . import object
 from . import list
 from . import json
-from . import json_import
 # 関数
 
 def update(self, context):  # 更新処理
@@ -18,10 +17,8 @@ def update(self, context):  # 更新処理
         if not list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.append(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
-        bpy.types.TOPBAR_MT_file_import.remove(json_import.json_import)
         # bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
         bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
-        bpy.types.TOPBAR_MT_file_import.append(json_import.json_import)
         # bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
@@ -34,7 +31,6 @@ def update(self, context):  # 更新処理
         if list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
         bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
-        bpy.types.TOPBAR_MT_file_import.remove(json_import.json_import)
         
 def update_auto_reload(self,context):
     if context.scene.O2MCD_props.auto_reload:  # 自動更新を有効
@@ -109,8 +105,8 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
 
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
     bl_idname = "render.o2mcd_reload"
-    bl_label = "Update"
-    bl_description = "update command"
+    bl_label = bpy.app.translations.pgettext("Update")
+    bl_description = bpy.app.translations.pgettext("update commands")
 
     def execute(self, context):
         command.command_generate(self, context)
@@ -120,7 +116,7 @@ class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
 class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
     bl_idname = "render.o2mcd_export"
     bl_label = "Export"
-    bl_description = "Generate file in specified path"
+    bl_description = bpy.app.translations.pgettext("Generate file in specified path")
     def execute(self, context):
         # テキストブロックの名前
         text_name = "Output"
@@ -157,9 +153,9 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
                             f.write(text.as_string())
                 # カレントフレームを元に戻す
                 context.scene.frame_set(current_frame)
-                self.report({'INFO'}, "File exported")
+                self.report({'INFO'}, bpy.app.translations.pgettext("File exported"))
             else:
-                self.report({'ERROR'},"File path not found")
+                self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
         else:
             # 出力先ディレクトリ
             curr_path = bpy.path.abspath(context.scene.O2MCD_props.curr_path)
@@ -175,9 +171,9 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
                 if text:
                     with open(output_file, "w", encoding="utf-8") as f:
                         f.write(text.as_string())
-                self.report({'INFO'}, "File exported")
+                self.report({'INFO'}, bpy.app.translations.pgettext("File exported"))
             else:
-                self.report({'ERROR'},"File path not found")
+                self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
         return {'FINISHED'}
 
 
@@ -185,7 +181,7 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     rou: bpy.props.IntProperty(name="Round", default=3, max=16, min=1)
     anim_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
     curr_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
-    auto_reload: bpy.props.BoolProperty(name="Auto Update", default=False, update=update_auto_reload,description="Update commands automatically")
+    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"), default=False, update=update_auto_reload,description=bpy.app.translations.pgettext("Update commands automatically"))
     output: bpy.props.EnumProperty(name="Output", items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
     enable: bpy.props.BoolProperty(name="", default=False, update=update)
     Enum: bpy.props.EnumProperty(name="Enum", items=object.enum_item, options={"ANIMATABLE"})
