@@ -82,14 +82,14 @@ class OBJECTTOMCDISPLAY_OT_ImpJson(bpy.types.Operator, ImportHelper):
         return {'FINISHED'}
 
 def parents(self,directory,file):
-    if file == 'generated.json':
-        directory=bpy.path.abspath(os.path.dirname(__file__))
+    if file[0] == 'generated.json':
+        directory=bpy.path.abspath(os.path.dirname(__file__))+os.sep
     data=get_pack(directory,file)
     if not data:self.report({'ERROR'}, bpy.app.translations.pgettext("%s was not found.") % (file[-1]))
             
     if "parent" in data:
         if data["parent"].split(":")[-1] == "item/generated":
-            parent_file="generated.json"
+            parent_file=["generated.json"]
         else:
             parent_file=data["parent"].split(":")[-1]+".json"
             parent_file=file[:file.index("models")+1]+parent_file.split("/")
@@ -265,11 +265,11 @@ def create_model(self,file):
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
     for p,t in zip(new_object.data.polygons,texture):
-        if bpy.data.materials[t].node_tree.nodes[2].image:
+        if t and bpy.data.materials[t].node_tree.nodes[2].image:
             p.material_index=new_object.data.materials.find(t)
             width,height=bpy.data.materials[t].node_tree.nodes[2].image.size
             ratio.append(height/width)
-        ratio.append(1)
+        else:ratio.append(1)
     new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
     for ind,p in enumerate(new_object.data.polygons):
         vecuv=[]
