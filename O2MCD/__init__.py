@@ -45,6 +45,7 @@ O2MCD_translation_dict = {
         ("Operator", "open resource pack"): "リソースパックを開く",
         ("*", "Open a resource pack.\nFolders, zips and jars are supported."): "リソースパックを開きます。\nフォルダ、zip、jarに対応しています",
         ("*", "Import json file as object."): "json ファイルをオブジェクトとしてインポートします",
+        ("*", "Parent Referrer:"): "ペアレントの参照元：",
     }
 }
 if "bpy" in locals():
@@ -71,17 +72,17 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     rc_packs : bpy.props.StringProperty(default="")
     def draw(self, context):
         layout = self.layout
-        row= layout.row()
+        col = layout.column()
+        col.label(text=bpy.app.translations.pgettext("ペアレントの参照元："))
+        row= col.row()
         row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", bpy.context.scene, "O2MCD_rc_packs", self, "index", rows=2,sort_lock=True)
         col = row.column()
-        col1 = col.column()
         if self.index <= 1 :
-            col1.enabled= False
-        col1.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
-        col2 = col.column()
+            col.enabled= False
+        col.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
         if self.index >= len(bpy.context.scene.O2MCD_rc_packs)-1 or self.index == 0:
-            col2.enabled= False
-        col2.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+            col.enabled= False
+        col.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
         row = layout.row(align = True)
         row.alignment = "LEFT"
 # blender起動時に実行
