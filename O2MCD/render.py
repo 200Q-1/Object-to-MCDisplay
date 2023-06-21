@@ -19,10 +19,10 @@ def update(self, context):  # 更新処理
             bpy.app.handlers.depsgraph_update_post.append(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
         bpy.types.TOPBAR_MT_file_import.remove(json_import.json_import)
-        bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
+        # bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
         bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
         bpy.types.TOPBAR_MT_file_import.append(json_import.json_import)
-        bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
+        # bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
             
@@ -81,17 +81,17 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             box.prop(context.scene.O2MCD_props, "curr_path")
         box.operator("render.o2mcd_export")
         layout.enabled = context.scene.O2MCD_props.enable
-        row= layout.row()
-        row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene.O2MCD_rc_pack, "index", rows=2,sort_lock=True)
-        col = row.column()
-        col1 = col.column()
-        if context.scene.O2MCD_rc_pack.index <= 1 or context.scene.O2MCD_rc_pack.index == len(context.scene.O2MCD_rc_packs)-1:
-            col1.enabled= False
-        col1.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
-        col2 = col.column()
-        if context.scene.O2MCD_rc_pack.index >= len(context.scene.O2MCD_rc_packs)-2 or context.scene.O2MCD_rc_pack.index == 0:
-            col2.enabled= False
-        col2.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        # row= layout.row()
+        # row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene.O2MCD_rc_pack, "index", rows=2,sort_lock=True)
+        # col = row.column()
+        # col1 = col.column()
+        # if context.scene.O2MCD_rc_pack.index <= 1 or context.scene.O2MCD_rc_pack.index == len(context.scene.O2MCD_rc_packs)-1:
+        #     col1.enabled= False
+        # col1.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
+        # col2 = col.column()
+        # if context.scene.O2MCD_rc_pack.index >= len(context.scene.O2MCD_rc_packs)-2 or context.scene.O2MCD_rc_pack.index == 0:
+        #     col2.enabled= False
+        # col2.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
         row = layout.row(align = True)
         row.alignment = "LEFT"
         row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="Object List")

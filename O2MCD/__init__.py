@@ -46,7 +46,6 @@ if "bpy" in locals():
     imp.reload(command)
     imp.reload(link)
     imp.reload(list)
-    imp.reload(json)
     imp.reload(json_import)
 else:
     from . import object
@@ -54,16 +53,36 @@ else:
     from . import command
     from . import link
     from . import list
-    from . import json
     from . import json_import
 import bpy
 from bpy.app.handlers import persistent
+
+class O2MCD_Preferences(bpy.types.AddonPreferences):
+    bl_idname = __package__
+    index : bpy.props.IntProperty(name="index",default=0)
+
+    def draw(self, context):
+        layout = self.layout
+        row= layout.row()
+        row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", bpy.context.scene, "O2MCD_rc_packs", self, "index", rows=1,sort_lock=True)
+        col = row.column()
+        col1 = col.column()
+        if self.index <= 1 :
+            col1.enabled= False
+        col1.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
+        col2 = col.column()
+        if self.index >= len(bpy.context.scene.O2MCD_rc_packs)-1:
+            col2.enabled= False
+        col2.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        row = layout.row(align = True)
+        row.alignment = "LEFT"
+
 # blender起動時に実行
 @persistent
 def load(self, context):
     render.update(None, bpy.context)
     object.item_regist()
-    json.JarSet(None, bpy.context)
+    json_import.JarSet(None, bpy.context)
 
 def register():
     bpy.app.translations.register(__name__, O2MCD_translation_dict)
@@ -73,18 +92,17 @@ def register():
     object.register()
     link.register()
     list.register()
-    json.register()
     json_import.register()
-
+    bpy.utils.register_class(O2MCD_Preferences)
 
 def unregister():
     bpy.app.translations.unregister(__name__)
+    bpy.utils.unregister_class(O2MCD_Preferences)
     render.unregister()
     command.unregister()
     object.unregister()
     link.unregister()
     list.unregister()
-    json.unregister()
     json_import.unregister()
 
 
