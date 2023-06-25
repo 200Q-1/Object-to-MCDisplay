@@ -117,62 +117,55 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
     bl_label = "Export"
     bl_description = bpy.app.translations.pgettext("Generate file in specified path")
     def execute(self, context):
-        # テキストブロックの名前
         text_name = "Output"
-        # シーンのフレーム数を取得
         frame_end = context.scene.frame_end
-        # カレントフレームを保存
         current_frame = context.scene.frame_current
 
         if context.scene.O2MCD_props.output == "ANIMATION":
-            # 出力先ディレクトリ
             anim_path = bpy.path.abspath(context.scene.O2MCD_props.anim_path)
-            if os.path.isdir(anim_path):
-                # フレームを1つずつ進めながら出力する
-                for frame in range(1, frame_end+1):
-
-                    # カレントフレームを設定
-                    context.scene.frame_set(frame)
-                    ofset = sub(".*?([0-9]*)$", "\\1",str(os.path.splitext(anim_path)[0]))
-                    ext = str(os.path.splitext(anim_path)[1])
-                    if ofset == "":
-                        ofset = 1
-                    if ext == "":
-                        ext = ".mcfunction"
-                    # 出力するファイル名を作成
-                    output_file = sub("(.*?)([0-9]*)$", "\\1", str(os.path.splitext(anim_path)[0]))+str(int(ofset)-1+frame)+ext
-
-                    # テキストブロックを取得
-                    command.command_generate(self, context)
-                    text = bpy.data.texts.get(text_name)
-
-                    # 出力
-                    if text:
+            dire= os.sep.join(anim_path.split(os.sep)[:-1])
+            file= anim_path.split(os.sep)[-1]
+            name= file.split(".")[0]
+            offset = sub(".*?([0-9]*)$", "\\1",name)
+            name= sub(offset, "",name)
+            if len(file.split(".")) >=2: ext="."+file.split(".")[1]
+            else:ext=""
+            if not offset: offset = 0
+            if not ext: ext = ".mcfunction"
+            for frame in range(1, frame_end+1):
+                print(frame)
+                context.scene.frame_set(frame)
+                command.command_generate(self, context)
+                output_file = os.path.join(dire,name+str(int(offset)-1+frame)+ext)
+                text = bpy.data.texts.get(text_name)
+                if text:
+                    try:
                         with open(output_file, "w", encoding="utf-8") as f:
                             f.write(text.as_string())
-                # カレントフレームを元に戻す
-                context.scene.frame_set(current_frame)
-                self.report({'INFO'}, bpy.app.translations.pgettext("File exported"))
-            else:
-                self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
+                    except:self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
+            context.scene.frame_set(current_frame)
+                
         else:
-            # 出力先ディレクトリ
             curr_path = bpy.path.abspath(context.scene.O2MCD_props.curr_path)
-            if os.path.isdir(curr_path):
-                ext = str(os.path.splitext(curr_path)[1])
-                if ext == "":
-                    ext = ".mcfunction"
-                output_file = str(os.path.splitext(curr_path)[0])+ext
-                # テキストブロックを取得
-                command.command_generate(self, context)
-                text = bpy.data.texts.get(text_name)
-                # 出力
-                if text:
+            dire= os.sep.join(curr_path.split(os.sep)[:-1])
+            file= curr_path.split(os.sep)[-1]
+            name= file.split(".")[0]
+            print(dire)
+            print(file)
+            print(name)
+            if len(file.split(".")) >=2 :ext="."+file.split(".")[1]
+            else:ext=""
+            if not ext: ext = ".mcfunction"
+            print(ext)
+            command.command_generate(self, context)
+            output_file = os.path.join(dire,name+ext)
+            print(output_file)
+            text = bpy.data.texts.get(text_name)
+            if text:
+                try:
                     with open(output_file, "w", encoding="utf-8") as f:
                         f.write(text.as_string())
-                self.report({'INFO'}, bpy.app.translations.pgettext("File exported"))
-            else:
-                self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
+                except:self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
         return {'FINISHED'}
 
 
