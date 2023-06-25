@@ -293,7 +293,7 @@ def create_model(self,file):
             uvs[ind][3][1]=1-(uvs[ind][3][1]/ratio[ind])
             uvs[ind][1][1]=1-(uvs[ind][1][1]/ratio[ind])
             uvs[ind][2][1]=1-(uvs[ind][2][1]/ratio[ind])
-            if key == "down":
+            if normal[ind] == "down":
                 vecuv.append(uvs[ind][1])
                 vecuv.append(uvs[ind][2])
                 vecuv.append(uvs[ind][3])
