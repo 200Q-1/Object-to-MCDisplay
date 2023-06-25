@@ -34,6 +34,7 @@ def get_pack(directory,file):
         else:
             for p in bpy.context.scene.O2MCD_rc_packs[1:]:
                 if p.type == 'FOLDER':
+                    file=os.sep.join(file)
                     if os.path.isfile(p.path+file):
                         with open(p.path+file,'r') as js:
                             data=json.load(js)
@@ -44,15 +45,19 @@ def get_pack(directory,file):
                             data=json.load(zip.open("/".join(file),'r'))
                             break
                     except:pass
+        return data
     elif os.path.splitext(file[-1])[1] == '.png':
         if os.path.isfile(directory+os.sep.join(file)):
             file=os.sep.join(file)
             data= bpy.data.images.load(directory+file)
+            is_anim= os.path.isfile(directory+file+".mcmeta")
         else:
             for p in bpy.context.scene.O2MCD_rc_packs[1:]:
                 if p.type == 'FOLDER':
+                    file=os.sep.join(file)
                     if os.path.isfile(p.path+file):
                         data= bpy.data.images.load(p.path+file)
+                        is_anim= os.path.isfile(p.path+file+".mcmeta")
                         break
                 else:
                     with zipfile.ZipFile(p.path) as zip:
@@ -61,9 +66,13 @@ def get_pack(directory,file):
                                 zip.extract("/".join(file),temp)
                                 data= bpy.data.images.load(os.path.join(temp,*file))
                                 data.pack()
+                                is_anim= "/".join(file)+".mcmeta" in zip.namelist()
                                 break
-                        except:data=None
-    return data
+                        except:
+                            data=None
+                            is_anim= False
+        return data,is_anim
+    
 
 class OBJECTTOMCDISPLAY_OT_ImpJson(bpy.types.Operator, ImportHelper):
     bl_idname = "import.json_model"
@@ -86,7 +95,6 @@ def parents(self,directory,file):
         directory=bpy.path.abspath(os.path.dirname(__file__))+os.sep
     data=get_pack(directory,file)
     if not data:self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("%s was not found.") % (file[-1]))
-            
     if "parent" in data:
         if data["parent"].split(":")[-1] == "item/generated":
             parent_file=["generated.json"]
@@ -98,8 +106,8 @@ def parents(self,directory,file):
         for k,v in parent.items():
             if k == "elements" and not "elements" in data:
                 data[k]=v
-            elif type(v) is dict:
-                if not k in data:data[k]={}
+            elif type(parent[k]) is dict:
+                if not k in data: data[k]= {}
                 for k2,v2 in v.items():
                     if not k2 in data[k]: data[k][k2]=v2
             else:
@@ -166,7 +174,8 @@ def create_model(self,file):
                 tex=(value+".png").split("/")
                 if not tex[-1] in bpy.data.images:
                     tex=folder+["textures"]+tex
-                    image=get_pack(directory,tex)
+                    image,anim=get_pack(directory,tex)
+                    material.O2MCD_is_anim= anim
                     if not image : 
                         self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture not found.\nFILE:%s\nTEXTUR:%s") % (file[-1],tex[-1]))
                         image=None
@@ -177,7 +186,6 @@ def create_model(self,file):
                 material=bpy.data.materials[os.path.basename(value)]
             if not material.name in new_object.data.materials:
                 new_object.data.materials.append(material)
-                
     for e in elements:  # 頂点作成
         ve=[0,1,2,3,4,5,6,7]
         f=len(vertices)
@@ -268,8 +276,8 @@ def create_model(self,file):
         if t and bpy.data.materials[t].node_tree.nodes[2].image:
             p.material_index=new_object.data.materials.find(t)
             width,height=bpy.data.materials[t].node_tree.nodes[2].image.size
-            if height%width == 0 : ratio.append(height/width)
-            else:ratio.append(1)
+            if bpy.data.materials[t].O2MCD_is_anim: ratio.append(height/width)
+            else: ratio.append(1)
         else:ratio.append(1)
     new_uv = new_mesh.uv_layers.new(name='UVMap')  #  UV作成
     for ind,p in enumerate(new_object.data.polygons):
@@ -447,7 +455,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.O2MCD_rc_packs = bpy.props.CollectionProperty(type=O2MCD_ResourcePacks)
-
+    bpy.types.Material.O2MCD_is_anim = bpy.props.BoolProperty(default=False)
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
