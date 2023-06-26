@@ -308,7 +308,7 @@ class OBJECTTOMCDISPLAY_UL_ResourcePacks(bpy.types.UIList):
                 row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,icon='X').index=index
 
 class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
-    bl_idname = "render.o2mcd_resource_pack_add"
+    bl_idname = "output.o2mcd_resource_pack_add"
     bl_label = "リソースパックを開く"
     bl_description = ""
     bl_options = {'REGISTER', 'UNDO'}
@@ -341,7 +341,7 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
         return {'FINISHED'}
 
 class OBJECTTOMCDISPLAY_OT_JarAdd(bpy.types.Operator): #追加
-    bl_idname = "render.o2mcd_jar_add"
+    bl_idname = "output.o2mcd_jar_add"
     bl_label = "jarを開く"
     bl_description = ""
     bl_options = {'REGISTER', 'UNDO'}
@@ -366,7 +366,7 @@ def JarSet(self, context):
         context.scene.O2MCD_rc_packs.add()
     return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
-    bl_idname = "render.o2mcd_resource_pack_remove"
+    bl_idname = "output.o2mcd_resource_pack_remove"
     bl_label = ""
     bl_description = ""
     index : bpy.props.IntProperty(default=0)
@@ -375,7 +375,7 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
         return {'FINISHED'}
     
 class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
-    bl_idname = "render.o2mcd_resource_pack_move"
+    bl_idname = "output.o2mcd_resource_pack_move"
     bl_label = ""
     bl_description = "リソースパックを移動"
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))

@@ -352,7 +352,7 @@ def rc_packs_update(self, context):
     rc_packs=",".join(rc_packs)
     context.preferences.addons[__package__].preferences.rc_packs=rc_packs
 class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
-    bl_idname = "render.o2mcd_resource_pack_add"
+    bl_idname = "output.o2mcd_resource_pack_add"
     bl_label = bpy.app.translations.pgettext("open resource pack")
     bl_description =  bpy.app.translations.pgettext("Open a resource pack.\nFolders, zips and jars are supported.")
     bl_options = {'REGISTER', 'UNDO'}
@@ -414,7 +414,7 @@ def JarSet(self, context):
                     rc_pack.image= image
     return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
-    bl_idname = "render.o2mcd_resource_pack_remove"
+    bl_idname = "output.o2mcd_resource_pack_remove"
     bl_label = ""
     bl_description = ""
     index : bpy.props.IntProperty(default=0)
@@ -424,7 +424,7 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
         return {'FINISHED'}
     
 class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
-    bl_idname = "render.o2mcd_resource_pack_move"
+    bl_idname = "output.o2mcd_resource_pack_move"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("move resource pack")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))

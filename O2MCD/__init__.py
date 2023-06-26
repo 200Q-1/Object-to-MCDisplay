@@ -51,14 +51,14 @@ O2MCD_translation_dict = {
 if "bpy" in locals():
     import imp
     imp.reload(object)
-    imp.reload(render)
+    imp.reload(output)
     imp.reload(command)
     imp.reload(link)
     imp.reload(list)
     imp.reload(json_import)
 else:
     from . import object
-    from . import render
+    from . import output
     from . import command
     from . import link
     from . import list
@@ -88,7 +88,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
 # blender起動時に実行
 @persistent
 def load(self, context):
-    render.update(None, bpy.context)
+    output.update(None, bpy.context)
     object.item_regist()
     json_import.JarSet(None, bpy.context)
 
@@ -96,7 +96,7 @@ def register():
     bpy.app.translations.register(__name__, O2MCD_translation_dict)
     bpy.utils.register_class(O2MCD_Preferences)
     bpy.app.handlers.load_post.append(load)
-    render.register()
+    output.register()
     command.register()
     object.register()
     link.register()
@@ -107,7 +107,7 @@ def register():
 def unregister():
     bpy.app.translations.unregister(__name__)
     bpy.utils.unregister_class(O2MCD_Preferences)
-    render.unregister()
+    output.unregister()
     command.unregister()
     object.unregister()
     link.unregister()
