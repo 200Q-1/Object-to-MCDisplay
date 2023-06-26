@@ -128,7 +128,7 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
         elm = sub('V?([0-9]*?)(,.*)?', "\\1", val)                  # 要素番号
         frm = sub('V?.*?,((?:\+|\-)?[0-9]*?)(,.*)?', "\\1", val)    # フレーム数
         obj = sub('V?.*?,.*?,((?:\+|\-)?.*?)', "\\1", val)          # オブジェクト
-        if not var == "math":                                       # math以外の関数を処理
+        if not var == "math" and not var == "frame":                                       # math以外の関数を処理
             if not frm == "" and not frm == val:     # フレームを設定
                 if match("(?:\+|\-)[0-9]+", frm):
                     frm = eval(str(current_frame)+frm)
@@ -235,7 +235,8 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
             elif var == "type": com = com.replace(f, type, 1)
             elif var == "num": com = com.replace(f, str(num), 1)
             elif var == "extra": com = com.replace(f, extra, 1)
-        if var == "math":com = com.replace(f,str(eval(sub('V?(.+)', "\\1", val))), 1)   # mathを処理
+        elif var == "math":com = com.replace(f,str(eval(sub('V?(.+)', "\\1", val))), 1)   # mathを処理
+        elif var == "frame": com = com.replace(f, str(current_frame), 1)
     if not current_frame == context.scene.frame_current:
         context.scene.frame_set(current_frame)
     return com
@@ -248,7 +249,7 @@ def command_generate(self, context):    # コマンド生成
         bpy.app.handlers.depsgraph_update_post.remove(command_generate)
     if "Output" not in bpy.data.texts:  # Outputが無ければ作成
         bpy.data.texts.new("Output")
-    funk_list = "(?:transf|loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra|pos|rot)"    # 関数名
+    funk_list = "(?:transf|loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra|pos|rot|frame)"    # 関数名
     input = list(bpy.data.texts["Input"].as_string().splitlines())  # コマンドをリスト化
     input = [s for s in input if not match('^#(?! +|#+)', s)]       # エスケープ
     output = []                                                     # 出力をリセット
