@@ -8,7 +8,8 @@ from re import *
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     scene=bpy.context.scene
     list=[]
-    active=bpy.context.object
+    if bpy.context.view_layer.objects.active:
+        scene.O2MCD_props.list_index = bpy.context.view_layer.objects.active.O2MCD_props.prop_id
     for i, l in enumerate(scene.O2MCD_object_list):
         if not l.obj == None and l.obj.name in context.view_layer.objects:
             list.append(l.obj)
@@ -22,6 +23,7 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
+    active=bpy.context.object
     if active and active.O2MCD_props.number >=0 and not active == scene.O2MCD_object_list[scene.O2MCD_props.obj_index].obj:
         scene.O2MCD_props.obj_index = active.O2MCD_props.number
 
