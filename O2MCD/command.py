@@ -76,9 +76,13 @@ def get_rotation(context,object):  # 回転取得
             rot = object.parent.matrix_world.to_euler()
     else:
         rot = object.matrix_world.to_euler()  
-    rot_x = mathutils.Matrix.Rotation(rot[0],4,'X')
-    rot_y = mathutils.Matrix.Rotation( -rot[2],4,'X')
-    rot_z = mathutils.Matrix.Rotation( -rot[1],4,'X')
+    rot_y = mathutils.Matrix.Rotation(rot[2],4,'Y')
+    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK':
+        rot_x = mathutils.Matrix.Rotation(-rot[0],4,'X')
+        rot_z = mathutils.Matrix.Rotation(rot[1],4,'Z')
+    else:
+        rot_x = mathutils.Matrix.Rotation(rot[0],4,'X')
+        rot_z = mathutils.Matrix.Rotation(-rot[1],4,'Z')
     rot = (rot_y @ rot_z @ rot_x).to_euler()
     rot = [round(degrees(rot[1]), rou), round(degrees(rot[2]), rou),round(degrees(rot[0]), rou)]
     return rot
@@ -87,7 +91,14 @@ def get_right_rotation(context,object):  # 右回転取得
     rou = context.scene.O2MCD_props.rou
     if object.parent:
         r_rot = object.rotation_euler
-        r_rot = mathutils.Euler((-r_rot[0], r_rot[2], r_rot[1]), 'XYZ').to_quaternion()
+        r_rot_y = mathutils.Matrix.Rotation(r_rot[2],4,'Y')
+        if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK':
+            r_rot_x = mathutils.Matrix.Rotation(-r_rot[0],4,'X')
+            r_rot_z = mathutils.Matrix.Rotation(r_rot[1],4,'Z')
+        else:
+            r_rot_x = mathutils.Matrix.Rotation(r_rot[0],4,'X')
+            r_rot_z = mathutils.Matrix.Rotation(-r_rot[1],4,'Z')
+        r_rot = (r_rot_y @ r_rot_z @ r_rot_x).to_quaternion()
     else:
         r_rot = mathutils.Matrix.Identity(4).to_quaternion()
     r_rot = [round(r_rot[1], rou), round(r_rot[2], rou),round(r_rot[3], rou), round(r_rot[0], rou)]
