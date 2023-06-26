@@ -8,9 +8,7 @@ from re import *
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     scene=bpy.context.scene
     list=[]
-
-    if bpy.context.view_layer.objects.active:
-        scene.O2MCD_props.list_index = bpy.context.view_layer.objects.active.O2MCD_props.prop_id
+    active=bpy.context.object
     for i, l in enumerate(scene.O2MCD_object_list):
         if not l.obj == None and l.obj.name in context.view_layer.objects:
             list.append(l.obj)
@@ -24,9 +22,17 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
-            
+    if active and active.O2MCD_props.number >=0 and not active == scene.O2MCD_object_list[scene.O2MCD_props.obj_index].obj:
+        scene.O2MCD_props.obj_index = active.O2MCD_props.number
+
+def select_object(self, context):
+    if not context.object == context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj:
+        context.view_layer.objects.active=context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj
+        bpy.ops.object.select_all(action='DESELECT')
+        context.view_layer.objects.active.select_set(True)
+
 class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
-    bl_idname = "render.o2mcd_list_move"
+    bl_idname = "output.o2mcd_list_move"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("Rearrange the order of objects")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", ""),('REVERSE',"reverse","")))
@@ -47,7 +53,7 @@ class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
         if context.scene.O2MCD_props.auto_reload:command.command_generate(self, context)
         return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
-    bl_idname = "render.o2mcd_sort"
+    bl_idname = "output.o2mcd_sort"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     action: bpy.props.EnumProperty(items=(('NAME', "Name", ""),('CREATE',"Create",""),('SHUFFLE',"Shuffle","")))
@@ -68,7 +74,7 @@ class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
         self.report({'INFO'}, bpy.app.translations.pgettext("Objects have been reordered"))
         return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_DataPath(bpy.types.Operator): #データパス
-    bl_idname = "render.o2mcd_data_path"
+    bl_idname = "output.o2mcd_data_path"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     bl_options = {'REGISTER', 'UNDO'}
@@ -99,10 +105,10 @@ class OBJECTTOMCDISPLAY_MT_Sort(bpy.types.Menu):
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     def draw(self, context):
         layout = self.layout
-        layout.operator("render.o2mcd_sort").action = 'NAME'
-        layout.operator("render.o2mcd_sort").action = 'CREATE'
-        layout.operator("render.o2mcd_sort").action = 'SHUFFLE'
-        layout.operator("render.o2mcd_data_path")
+        layout.operator("output.o2mcd_sort").action = 'NAME'
+        layout.operator("output.o2mcd_sort").action = 'CREATE'
+        layout.operator("output.o2mcd_sort").action = 'SHUFFLE'
+        layout.operator("output.o2mcd_data_path")
         
 class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
