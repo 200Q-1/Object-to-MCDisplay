@@ -143,6 +143,78 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
             col.operator("output.o2mcd_list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
 
+class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディタパネル
+    bl_label = "O2MCD"
+    bl_space_type = 'TEXT_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "O2MCD"
+    bl_context = "output"
+
+    def draw_header(self, context):
+        self.layout.prop(context.scene.O2MCD_props, "enable")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.enabled = context.scene.O2MCD_props.enable
+        col=layout.column(align=True)
+        col.alignment = "RIGHT"
+        col.prop(context.scene.O2MCD_props,"mc_version")
+        addons = bpy.context.preferences.addons
+        mcpp=[i for i in addons.keys() if match("MC_Particle_pro_[0-9]_[0-9]_[0-9]_[0-9]",i)]
+        if mcpp:col.prop(context.scene.O2MCD_props,"mcpp_sync")
+        col = layout.column()
+        col.use_property_split = True
+        col.use_property_decorate = False
+        col.alignment = "LEFT"
+        col = layout.column()
+        col.operator("output.o2mcd_reload")
+        col.prop(context.scene.O2MCD_props, "auto_reload", toggle=True)
+        col = layout.column()
+        col.use_property_split = True
+        col.use_property_decorate = False
+        col.prop(context.scene.O2MCD_props, "rou")
+        layout.separator()
+        col = layout.column(align=True)
+        row = col.row()
+        row.prop(context.scene.O2MCD_props, "output", expand=True)
+        box = col.box()
+        if context.scene.O2MCD_props.output == "ANIMATION":
+            box.prop(context.scene.O2MCD_props, "anim_path")
+        else:
+            box.prop(context.scene.O2MCD_props, "curr_path")
+        box.operator("output.o2mcd_export")
+        
+        row = layout.row(align = True)
+        row.alignment = "LEFT"
+        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text="ペアレントの参照元")
+        col = layout.column()
+        if context.scene.O2MCD_props.toggle_rc_pack:
+            row= col.row()
+            row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene, "O2MCD_rc_index", rows=2,sort_lock=True)
+            col = row.column()
+            row = col.row()
+            if context.scene.O2MCD_rc_index <= 1 :
+                row.enabled= False
+            row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
+            row = col.row()
+            if context.scene.O2MCD_rc_index >= len(context.scene.O2MCD_rc_packs)-1 or context.scene.O2MCD_rc_index == 0:
+                row.enabled= False
+            row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        
+        row = layout.row(align = True)
+        row.alignment = "LEFT"
+        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="オブジェクトリスト")
+        row = layout.row()
+        if context.scene.O2MCD_props.toggle_list:
+            row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
+            col = row.column()
+            if len(context.scene.O2MCD_object_list) <= 1:col.enabled = False
+            col.operator("output.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
+            col.operator("output.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
+            col.separator()
+            col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
+            col.operator("output.o2mcd_list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
+
 
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
     bl_idname = "output.o2mcd_reload"
@@ -221,6 +293,7 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     
 classes = (
     OBJECTTOMCDISPLAY_PT_MainPanel,
+    OBJECTTOMCDISPLAY_PT_TextPanel,
     OBJECTTOMCDISPLAY_OT_Reload,
     OBJECTTOMCDISPLAY_OT_Export,
     O2MCD_Meny_Props,
