@@ -323,11 +323,6 @@ def create_model(self,file):
         
         for i,u in enumerate(new_uv.uv[ind*4:ind*4+4]):
             u.vector=vecuv[i]
-class O2MCD_ResourcePacks(bpy.types.PropertyGroup):
-    path: bpy.props.StringProperty(name="ResourcePack",default="",subtype="FILE_PATH",update=check_path)
-    name: bpy.props.StringProperty(name="name",default="")
-    image: bpy.props.PointerProperty(name="image",type=bpy.types.Image)
-    type: bpy.props.EnumProperty(items=(('ZIP', "zip", ""),('JAR', "jar", ""),('FOLDER', "folder", "")))
 
 class OBJECTTOMCDISPLAY_UL_ResourcePacks(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
@@ -345,12 +340,6 @@ class OBJECTTOMCDISPLAY_UL_ResourcePacks(bpy.types.UIList):
             row.label(text=item.path)
             row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,icon='X').index=index
             
-def rc_packs_update(self, context):
-    rc_packs=[]
-    for p in context.scene.O2MCD_rc_packs[1:]:
-        rc_packs.append(p.path)
-    rc_packs=",".join(rc_packs)
-    context.preferences.addons[__package__].preferences.rc_packs=rc_packs
 class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
     bl_idname = "output.o2mcd_resource_pack_add"
     bl_label = bpy.app.translations.pgettext("open resource pack")
@@ -385,34 +374,8 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
                     except:image=None
                     rc_pack.image= image
         context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
-        rc_packs_update(self, context)
         return {'FINISHED'}
     
-def JarSet(self, context):
-    context.scene.O2MCD_rc_packs.clear()
-    context.scene.O2MCD_rc_packs.add()
-    rc_packs=context.preferences.addons[__package__].preferences.rc_packs
-    if len(rc_packs.split(",")) >= 2 :rc_packs=rc_packs.split(",")
-    else : rc_packs = [rc_packs]
-    for p in rc_packs[::-1]:
-        rc_pack=context.scene.O2MCD_rc_packs.add()
-        rc_pack.path = p
-        if os.path.isdir(p):
-            rc_pack.type='FOLDER'
-            try:image= bpy.data.images.load(os.path.join(p,"pack.png"))
-            except:image=None
-            rc_pack.image= image
-        elif os.path.splitext(p)[1] == ".zip" or os.path.splitext(p)[1] == ".jar":
-            rc_pack.type='ZIP'
-            with tempfile.TemporaryDirectory() as temp:
-                with zipfile.ZipFile(p) as zip:
-                    try:
-                        zip.extract('pack.png',temp)
-                        image= bpy.data.images.load(os.path.join(temp,"pack.png"))
-                        image.pack()
-                    except:image=None
-                    rc_pack.image= image
-    return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
     bl_idname = "output.o2mcd_resource_pack_remove"
     bl_label = ""
@@ -420,7 +383,6 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
     index : bpy.props.IntProperty(default=0)
     def execute(self, context):
         context.scene.O2MCD_rc_packs.remove(self.index)
-        rc_packs_update(self, context)
         return {'FINISHED'}
     
 class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
@@ -431,15 +393,20 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
 
     def invoke(self, context, event):
         list=context.scene.O2MCD_rc_packs
-        index=context.preferences.addons[__package__].preferences.index
+        index=bpy.context.scene.O2MCD_rc_index
         if self.action == 'DOWN' and index < len(list):
             list.move(index, index+1)
-            context.preferences.addons[__package__].preferences.index += 1
+            bpy.context.scene.O2MCD_rc_index += 1
         elif self.action == 'UP' and index >= 1:
             list.move(index, index-1)
-            context.preferences.addons[__package__].preferences.index -= 1
-        rc_packs_update(self, context)
+            bpy.context.scene.O2MCD_rc_index -= 1
         return {"FINISHED"}
+
+class O2MCD_ResourcePacks(bpy.types.PropertyGroup):
+    path: bpy.props.StringProperty(name="ResourcePack",default="",subtype="FILE_PATH",update=check_path)
+    name: bpy.props.StringProperty(name="name",default="")
+    image: bpy.props.PointerProperty(name="image",type=bpy.types.Image)
+    type: bpy.props.EnumProperty(items=(('ZIP', "zip", ""),('JAR', "jar", ""),('FOLDER', "folder", "")))
 
 def json_import(self, context):
     self.layout.operator(OBJECTTOMCDISPLAY_OT_ImpJson.bl_idname, text="O2MCD (.json)")
@@ -455,6 +422,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.O2MCD_rc_packs = bpy.props.CollectionProperty(type=O2MCD_ResourcePacks)
+    bpy.types.Scene.O2MCD_rc_index = bpy.props.IntProperty(name="Index", default=0)
     bpy.types.Material.O2MCD_is_anim = bpy.props.BoolProperty(default=False)
 def unregister():
     for cls in classes:

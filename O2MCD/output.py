@@ -9,16 +9,30 @@ from . import link
 from . import command
 from . import object
 from . import list
+from . import json_import
 # 関数
 
+def set_default(self,context):
+    if not bpy.context.blend_data.filepath:
+        context.scene.O2MCD_props.mc_version= context.preferences.addons[__package__].preferences.mc_version
+        context.scene.O2MCD_props.rou= context.preferences.addons[__package__].preferences.rou
+        context.scene.O2MCD_props.anim_path= context.preferences.addons[__package__].preferences.anim_path
+        context.scene.O2MCD_props.curr_path= context.preferences.addons[__package__].preferences.curr_path
+        context.scene.O2MCD_props.auto_reload= context.preferences.addons[__package__].preferences.auto_reload
+        context.scene.O2MCD_props.enable= context.preferences.addons[__package__].preferences.enable
+        context.scene.O2MCD_props.mcpp_sync= context.preferences.addons[__package__].preferences.mcpp_sync
+        if not context.scene.O2MCD_rc_packs: context.scene.O2MCD_rc_packs.add()
+        for p in context.preferences.addons[__package__].preferences.rc_packs.split(","):
+            context.scene.O2MCD_rc_packs.add().path= p
 def update(self, context):  # 更新処理
     if bpy.context.scene.O2MCD_props.enable:  # アドオンを有効
+        if not sync_version in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.append(sync_version)
         if not list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.append(list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
         bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
-        # bpy.types.VIEW3D_MT_mesh_add.remove(json.add_json)
-        # bpy.types.VIEW3D_MT_mesh_add.append(json.add_json)
+            
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             bpy.data.texts.new("Input")
             
@@ -42,8 +56,19 @@ def update_auto_reload(self,context):
             bpy.app.handlers.frame_change_post.remove(command.command_generate)
         if command.command_generate in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
-
-
+            
+def check_mcpp():
+    addons = bpy.context.preferences.addons
+    mcpp=[i for i in addons.keys() if match("MC_Particle_pro_[0-9]_[0-9]_[0-9]_[0-9]",i)]
+    if mcpp:mcpp= mcpp[0]
+    return mcpp
+def sync_version(self,context):
+    if check_mcpp() and context.scene.O2MCD_props.mcpp_sync and not bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager == bpy.context.scene.O2MCD_props.mc_version:
+        bpy.context.scene.O2MCD_props.mc_version = bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager
+        
+def update_version(self,context):
+    if check_mcpp() and context.scene.O2MCD_props.mcpp_sync:
+        context.preferences.addons[check_mcpp()].preferences.mc_version_manager=self.mc_version
 # クラス
 
 
@@ -58,6 +83,17 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
 
     def draw(self, context):
         layout = self.layout
+        layout.enabled = context.scene.O2MCD_props.enable
+        row=layout.row(align=True)
+        row.alignment = "RIGHT"
+        row.prop(context.scene.O2MCD_props,"mc_version")
+        addons = bpy.context.preferences.addons
+        mcpp=[i for i in addons.keys() if match("MC_Particle_pro_[0-9]_[0-9]_[0-9]_[0-9]",i)]
+        if mcpp:row.prop(context.scene.O2MCD_props,"mcpp_sync")
+        col = layout.column()
+        col.use_property_split = True
+        col.use_property_decorate = False
+        col.alignment = "LEFT"
         row = layout.row()
         row.operator("output.o2mcd_reload")
         row.prop(context.scene.O2MCD_props, "auto_reload", toggle=True)
@@ -75,21 +111,27 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         else:
             box.prop(context.scene.O2MCD_props, "curr_path")
         box.operator("output.o2mcd_export")
-        layout.enabled = context.scene.O2MCD_props.enable
-        # row= layout.row()
-        # row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene.O2MCD_rc_pack, "index", rows=2,sort_lock=True)
-        # col = row.column()
-        # col1 = col.column()
-        # if context.scene.O2MCD_rc_pack.index <= 1 or context.scene.O2MCD_rc_pack.index == len(context.scene.O2MCD_rc_packs)-1:
-        #     col1.enabled= False
-        # col1.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
-        # col2 = col.column()
-        # if context.scene.O2MCD_rc_pack.index >= len(context.scene.O2MCD_rc_packs)-2 or context.scene.O2MCD_rc_pack.index == 0:
-        #     col2.enabled= False
-        # col2.operator(json.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="Object List")
+        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text="ペアレントの参照元")
+        col = layout.column()
+        if context.scene.O2MCD_props.toggle_rc_pack:
+            row= col.row()
+            row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene, "O2MCD_rc_index", rows=2,sort_lock=True)
+            col = row.column()
+            row = col.row()
+            if context.scene.O2MCD_rc_index <= 1 :
+                row.enabled= False
+            row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
+            row = col.row()
+            if context.scene.O2MCD_rc_index >= len(context.scene.O2MCD_rc_packs)-1 or context.scene.O2MCD_rc_index == 0:
+                row.enabled= False
+            row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        
+        row = layout.row(align = True)
+        row.alignment = "LEFT"
+        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="オブジェクトリスト")
         row = layout.row()
         if context.scene.O2MCD_props.toggle_list:
             row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
@@ -162,8 +204,8 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
                 except:self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
         return {'FINISHED'}
 
-
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
+    mc_version: bpy.props.EnumProperty(name="Version", items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20',update=update_version)
     rou: bpy.props.IntProperty(name="Round", default=3, max=16, min=1)
     anim_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
     curr_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
@@ -173,8 +215,10 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     Enum: bpy.props.EnumProperty(name="Enum", items=object.enum_item, options={"ANIMATABLE"})
     list_index : bpy.props.IntProperty(name="Index", default=-1)
     obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=list.select_object)
-    toggle_list : bpy.props.BoolProperty(name="")
-
+    mcpp_sync: bpy.props.BoolProperty(name="MCPPと同期",default=False)
+    toggle_list : bpy.props.BoolProperty(default=False)
+    toggle_rc_pack: bpy.props.BoolProperty(default=False)
+    
 classes = (
     OBJECTTOMCDISPLAY_PT_MainPanel,
     OBJECTTOMCDISPLAY_OT_Reload,
