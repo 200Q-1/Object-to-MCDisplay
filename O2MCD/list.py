@@ -11,7 +11,7 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
     if bpy.context.view_layer.objects.active:
         scene.O2MCD_props.list_index = bpy.context.view_layer.objects.active.O2MCD_props.prop_id
     for i, l in enumerate(scene.O2MCD_object_list):
-        if not l.obj == None and l.obj.name in context.view_layer.objects:
+        if not l.obj == None and l.obj.name in context.view_layer.objects and l.obj.O2MCD_props.prop_id >=0:
             list.append(l.obj)
     for i in context.view_layer.objects:
         if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.O2MCD_object_list]:
@@ -28,7 +28,7 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
         scene.O2MCD_props.obj_index = active.O2MCD_props.number
 
 def select_object(self, context):
-    if not context.object == context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj:
+    if context.view_layer.objects.active and not context.view_layer.objects.active == context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj:
         context.view_layer.objects.active=context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj
         bpy.ops.object.select_all(action='DESELECT')
         context.view_layer.objects.active.select_set(True)

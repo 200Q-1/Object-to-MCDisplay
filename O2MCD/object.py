@@ -184,12 +184,14 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
             context.object.O2MCD_props.prop_id = index
         elif self.action == 'UNLINK':
             context.object.O2MCD_props.prop_id = -1
+            context.object.O2MCD_props.number =-1
         elif self.action == 'REMOVE':
             prop_list.remove(index)
             index = min(max(0, index - 1), len(prop_list) - 1)
             for i in context.scene.O2MCD_object_list:
                 if i.obj.O2MCD_props.prop_id >= index:
                     i.obj.O2MCD_props.prop_id -= 1
+                    context.object.O2MCD_props.number =-1
             context.object.O2MCD_props.prop_id = index
         context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
         return {'FINISHED'}
