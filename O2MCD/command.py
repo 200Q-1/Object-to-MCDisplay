@@ -51,21 +51,16 @@ def get_left_rotation(context,object):  # 左回転取得
     else:
         l_rot = object.matrix_world.to_euler()
     l_rot_y = mathutils.Matrix.Rotation(l_rot[2],4,'Y')
-    if context.scene.O2MCD_props.mc_version == "1.20":
-        if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK':
-            inv=mathutils.Matrix.Rotation(radians(180),4,"Y")
-            l_rot_x = mathutils.Matrix.Rotation(-l_rot[0],4,'X')
-            l_rot_z = mathutils.Matrix.Rotation(l_rot[1],4,'Z')
-        else:
-            inv=mathutils.Matrix.Identity(4)
-            l_rot_x = mathutils.Matrix.Rotation(l_rot[0],4,'X')
-            l_rot_z = mathutils.Matrix.Rotation(-l_rot[1],4,'Z')
-    elif context.scene.O2MCD_props.mc_version == "1.19":
+    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
         inv=mathutils.Matrix.Rotation(radians(180),4,"Y")
         l_rot_x = mathutils.Matrix.Rotation(-l_rot[0],4,'X')
         l_rot_z = mathutils.Matrix.Rotation(l_rot[1],4,'Z')
+    else:
+        inv=mathutils.Matrix.Identity(4)
+        l_rot_x = mathutils.Matrix.Rotation(l_rot[0],4,'X')
+        l_rot_z = mathutils.Matrix.Rotation(-l_rot[1],4,'Z')
+
     l_rot = (inv @ l_rot_y @ l_rot_z @ l_rot_x).to_quaternion()
-    
     l_rot = [round(l_rot[1], rou), round(l_rot[2], rou),round(l_rot[3], rou), round(l_rot[0], rou)]
     return l_rot
 
@@ -82,7 +77,7 @@ def get_rotation(context,object):  # 回転取得
     else:
         rot = object.matrix_world.to_euler()  
     rot_y = mathutils.Matrix.Rotation(rot[2],4,'Y')
-    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK':
+    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
         rot_x = mathutils.Matrix.Rotation(-rot[0],4,'X')
         rot_z = mathutils.Matrix.Rotation(rot[1],4,'Z')
     else:
@@ -97,7 +92,7 @@ def get_right_rotation(context,object):  # 右回転取得
     if object.parent:
         r_rot = object.rotation_euler
         r_rot_y = mathutils.Matrix.Rotation(r_rot[2],4,'Y')
-        if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK':
+        if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
             r_rot_x = mathutils.Matrix.Rotation(-r_rot[0],4,'X')
             r_rot_z = mathutils.Matrix.Rotation(r_rot[1],4,'Z')
         else:
