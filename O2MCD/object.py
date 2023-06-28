@@ -107,7 +107,52 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
                 layout.prop(item, "Properties",text="properties")
             layout.prop(item, "ExtraNBT")
 
+class OBJECTTOMCDISPLAY_PT_WindowDisplayProperties(bpy.types.Panel):  # プロパティパネル
+    bl_label = bpy.app.translations.pgettext("Display Properties") 
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "object"
 
+    @classmethod
+    def poll(cls, context):
+        return context.active_object and context.scene.O2MCD_props.enable
+
+    def draw(self, context):
+        layout = self.layout
+        br = layout.row(align=True)
+        br.alignment = "LEFT"
+        if context.scene.O2MCD_prop_list:
+            item = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index]
+        br.operator("object.search_popup", text="", icon='DOWNARROW_HLT')
+        if context.scene.O2MCD_props.list_index >= 0 and context.scene.O2MCD_prop_list:
+            br.prop(item, "name", text="")
+            br.operator("object.o2mcd_prop_action", icon='DUPLICATE').action = 'DUP'
+            br.operator("object.o2mcd_prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
+            br.operator("object.o2mcd_prop_action", icon='TRASH').action = 'REMOVE'
+        else:
+            br.alignment = "EXPAND"
+            br.operator("object.o2mcd_prop_action", icon='ADD',text="New").action = 'ADD'
+        if context.scene.O2MCD_prop_list and context.object.O2MCD_props.prop_id >= 0:
+            row=layout.row()
+            if len(context.scene.O2MCD_object_list) <= 1:row.enabled = False
+            row.operator("output.o2mcd_list_move", icon='TRIA_LEFT', text="").action = 'UP'
+            row.alignment = "CENTER"
+            row.label(text=str(context.object.O2MCD_props.number))
+            row.operator("output.o2mcd_list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
+            layout.prop(item, "Types", expand=True)
+            if item.Types == "EXTRA":
+                layout.prop(item, "type")
+            if item.Types == "ITEM":
+                layout.prop_search(context.scene.O2MCD_prop_list[context.object.O2MCD_props.prop_id], "item_id",context.scene, "O2MCD_item_list",text="id")
+                layout.prop(item, "tags")
+                layout.prop(item,"CustomModelData")
+                layout.prop(item, "ItemTag")
+            if item.Types == "BLOCK":
+                layout.prop_search(context.scene.O2MCD_prop_list[context.object.O2MCD_props.prop_id], "block_id",context.scene, "O2MCD_block_list",text="id")
+                layout.prop(item, "tags")
+                layout.prop(item, "Properties",text="properties")
+            layout.prop(item, "ExtraNBT")
+            
 class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操作
     bl_idname = "object.o2mcd_prop_action"
     bl_label = ""
@@ -192,6 +237,7 @@ class  O2MCD_BlockList(bpy.types.PropertyGroup):
 
 classes = (
     OBJECTTOMCDISPLAY_PT_DisplayProperties,
+    OBJECTTOMCDISPLAY_PT_WindowDisplayProperties,
     OBJECTTOMCDISPLAY_OT_PropAction,
     OBJECTTOMCDISPLAY_OT_SearchPopup,
     O2MCD_Obj_Props,
