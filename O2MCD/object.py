@@ -87,11 +87,12 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
             br.alignment = "EXPAND"
             br.operator("object.o2mcd_prop_action", icon='ADD',text="New").action = 'ADD'
         if context.scene.O2MCD_prop_list and context.object.O2MCD_props.prop_id >= 0:
-            row = layout.row()
-            row.enabled = False
-            row.use_property_split = True
-            row.use_property_decorate = False
-            row.prop(context.object.O2MCD_props, "number")
+            row=layout.row()
+            if len(context.scene.O2MCD_object_list) <= 1:row.enabled = False
+            row.operator("output.o2mcd_list_move", icon='TRIA_LEFT', text="").action = 'UP'
+            row.alignment = "CENTER"
+            row.label(text=str(context.object.O2MCD_props.number))
+            row.operator("output.o2mcd_list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
             layout.prop(item, "Types", expand=True)
             if item.Types == "EXTRA":
                 layout.prop(item, "type")
