@@ -1,7 +1,5 @@
 # Copyright (c) 2023 200Q
 import os
-import zipfile
-import tempfile
 from re import *
 bl_info = {
     "name": "Object to MCDisplay",
@@ -54,7 +52,6 @@ O2MCD_translation_dict = {
         ("*", "Synchronise version settings with MCPP"): "MCPPとバージョン設定を同期",
         ("*", "single frame path"): "シングルフレームのパス",
         ("*", "animation path"): "アニメーションのパス",
-        ("*", "Input (Newline with '\\n'"): "Input（'\\n'で改行）",
         ("*", "Object List"): "オブジェクトリスト",
         ("*", "Remove resource packs"): "リソースパックを削除します",
     }
@@ -141,7 +138,6 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         col.use_property_split = True
         col.prop(self, "curr_path",text=bpy.app.translations.pgettext("single frame path"))
         col.prop(self, "anim_path",text="animation path")
-        col.prop(self, "input",text=bpy.app.translations.pgettext("Input (Newline with '\\n'"))
         
         col = layout.column()
         col.split()
