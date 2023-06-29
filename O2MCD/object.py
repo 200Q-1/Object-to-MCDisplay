@@ -74,25 +74,24 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
     def draw(self, context):
         layout = self.layout
         br = layout.row(align=True)
-        br.alignment = "LEFT"
         if context.scene.O2MCD_prop_list:
             item = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index]
-        br.operator("object.search_popup", text="", icon='DOWNARROW_HLT')
+        br.operator("o2mcd.search_popup", text="", icon='DOWNARROW_HLT')
         if context.scene.O2MCD_props.list_index >= 0 and context.scene.O2MCD_prop_list:
             br.prop(item, "name", text="")
-            br.operator("object.o2mcd_prop_action", icon='DUPLICATE').action = 'DUP'
-            br.operator("object.o2mcd_prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
-            br.operator("object.o2mcd_prop_action", icon='TRASH').action = 'REMOVE'
+            br.operator("o2mcd.prop_action", icon='DUPLICATE').action = 'DUP'
+            br.operator("o2mcd.prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
+            br.operator("o2mcd.prop_action", icon='TRASH').action = 'REMOVE'
         else:
             br.alignment = "EXPAND"
-            br.operator("object.o2mcd_prop_action", icon='ADD',text="New").action = 'ADD'
+            br.operator("o2mcd.prop_action", icon='ADD',text="New").action = 'ADD'
         if context.scene.O2MCD_prop_list and context.object.O2MCD_props.prop_id >= 0:
             row=layout.row()
             if len(context.scene.O2MCD_object_list) <= 1:row.enabled = False
-            row.operator("output.o2mcd_list_move", icon='TRIA_LEFT', text="").action = 'UP'
+            row.operator("o2mcd.list_move", icon='TRIA_LEFT', text="").action = 'UP'
             row.alignment = "CENTER"
             row.label(text=str(context.object.O2MCD_props.number))
-            row.operator("output.o2mcd_list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
+            row.operator("o2mcd.list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
             layout.prop(item, "Types", expand=True)
             if item.Types == "EXTRA":
                 layout.prop(item, "type")
@@ -120,25 +119,24 @@ class OBJECTTOMCDISPLAY_PT_WindowDisplayProperties(bpy.types.Panel):  # プロ�
     def draw(self, context):
         layout = self.layout
         br = layout.row(align=True)
-        br.alignment = "LEFT"
         if context.scene.O2MCD_prop_list:
             item = context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index]
-        br.operator("object.search_popup", text="", icon='DOWNARROW_HLT')
+        br.operator("o2mcd.search_popup", text="", icon='DOWNARROW_HLT')
         if context.scene.O2MCD_props.list_index >= 0 and context.scene.O2MCD_prop_list:
             br.prop(item, "name", text="")
-            br.operator("object.o2mcd_prop_action", icon='DUPLICATE').action = 'DUP'
-            br.operator("object.o2mcd_prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
-            br.operator("object.o2mcd_prop_action", icon='TRASH').action = 'REMOVE'
+            br.operator("o2mcd.prop_action", icon='DUPLICATE').action = 'DUP'
+            br.operator("o2mcd.prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
+            br.operator("o2mcd.prop_action", icon='TRASH').action = 'REMOVE'
         else:
             br.alignment = "EXPAND"
-            br.operator("object.o2mcd_prop_action", icon='ADD',text="New").action = 'ADD'
+            br.operator("o2mcd.prop_action", icon='ADD',text="New").action = 'ADD'
         if context.scene.O2MCD_prop_list and context.object.O2MCD_props.prop_id >= 0:
             row=layout.row()
             if len(context.scene.O2MCD_object_list) <= 1:row.enabled = False
-            row.operator("output.o2mcd_list_move", icon='TRIA_LEFT', text="").action = 'UP'
+            row.operator("o2mcd.list_move", icon='TRIA_LEFT', text="").action = 'UP'
             row.alignment = "CENTER"
             row.label(text=str(context.object.O2MCD_props.number))
-            row.operator("output.o2mcd_list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
+            row.operator("o2mcd.list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
             layout.prop(item, "Types", expand=True)
             if item.Types == "EXTRA":
                 layout.prop(item, "type")
@@ -154,7 +152,7 @@ class OBJECTTOMCDISPLAY_PT_WindowDisplayProperties(bpy.types.Panel):  # プロ�
             layout.prop(item, "ExtraNBT")
             
 class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操作
-    bl_idname = "object.o2mcd_prop_action"
+    bl_idname = "o2mcd.prop_action"
     bl_label = ""
     action: bpy.props.EnumProperty(items=(('ADD', "Add", ""),('DUP', "dup", ""),('UNLINK', "unlink", ""),('REMOVE', "remove", "")))
     
@@ -197,7 +195,7 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
         return {'FINISHED'}
 
 class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
-    bl_idname = "object.search_popup"
+    bl_idname = "o2mcd.search_popup"
     bl_label = ""
     bl_property = "enum"
     bl_description= bpy.app.translations.pgettext("Browse Linked Properties")

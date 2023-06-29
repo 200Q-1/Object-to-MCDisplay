@@ -22,8 +22,9 @@ def set_default(self,context):
         context.scene.O2MCD_props.enable= context.preferences.addons[__package__].preferences.enable
         context.scene.O2MCD_props.mcpp_sync= context.preferences.addons[__package__].preferences.mcpp_sync
         if not context.scene.O2MCD_rc_packs: context.scene.O2MCD_rc_packs.add()
-        for p in context.preferences.addons[__package__].preferences.rc_packs.split(","):
-            context.scene.O2MCD_rc_packs.add().path= p
+        if context.preferences.addons[__package__].preferences.rc_packs:
+            for p in context.preferences.addons[__package__].preferences.rc_packs.split(","):
+                context.scene.O2MCD_rc_packs.add().path= p
 def update(self, context):  # 更新処理
     if bpy.context.scene.O2MCD_props.enable:  # アドオンを有効
         if not sync_version in bpy.app.handlers.depsgraph_update_post:
@@ -95,7 +96,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         col.use_property_decorate = False
         col.alignment = "LEFT"
         row = layout.row()
-        row.operator("output.o2mcd_reload")
+        row.operator("o2mcd.reload")
         row.prop(context.scene.O2MCD_props, "auto_reload", toggle=True)
         col = layout.column()
         col.use_property_split = True
@@ -110,7 +111,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             box.prop(context.scene.O2MCD_props, "anim_path")
         else:
             box.prop(context.scene.O2MCD_props, "curr_path")
-        box.operator("output.o2mcd_export")
+        box.operator("o2mcd.export")
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
@@ -137,11 +138,11 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
             col = row.column()
             if len(context.scene.O2MCD_object_list) <= 1:col.enabled = False
-            col.operator("output.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
-            col.operator("output.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
+            col.operator("o2mcd.list_move", icon='TRIA_UP', text="").action = 'UP'
+            col.operator("o2mcd.list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
             col.separator()
             col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
-            col.operator("output.o2mcd_list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
+            col.operator("o2mcd.list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
 
 class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディタパネル
     bl_label = "O2MCD"
@@ -167,7 +168,7 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
         col.use_property_decorate = False
         col.alignment = "LEFT"
         col = layout.column()
-        col.operator("output.o2mcd_reload")
+        col.operator("o2mcd.reload")
         col.prop(context.scene.O2MCD_props, "auto_reload", toggle=True)
         col = layout.column()
         col.use_property_split = True
@@ -182,7 +183,7 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
             box.prop(context.scene.O2MCD_props, "anim_path")
         else:
             box.prop(context.scene.O2MCD_props, "curr_path")
-        box.operator("output.o2mcd_export")
+        box.operator("o2mcd.export")
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
@@ -209,15 +210,15 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
             row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
             col = row.column()
             if len(context.scene.O2MCD_object_list) <= 1:col.enabled = False
-            col.operator("output.o2mcd_list_move", icon='TRIA_UP', text="").action = 'UP'
-            col.operator("output.o2mcd_list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
+            col.operator("o2mcd.list_move", icon='TRIA_UP', text="").action = 'UP'
+            col.operator("o2mcd.list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
             col.separator()
             col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
-            col.operator("output.o2mcd_list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
+            col.operator("o2mcd.list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
 
 
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
-    bl_idname = "output.o2mcd_reload"
+    bl_idname = "o2mcd.reload"
     bl_label = bpy.app.translations.pgettext("Update")
     bl_description = bpy.app.translations.pgettext("update commands")
 
@@ -227,7 +228,7 @@ class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
 
 
 class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
-    bl_idname = "output.o2mcd_export"
+    bl_idname = "o2mcd.export"
     bl_label = "Export"
     bl_description = bpy.app.translations.pgettext("Generate file in specified path")
     def execute(self, context):

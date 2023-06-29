@@ -34,7 +34,7 @@ def select_object(self, context):
         context.view_layer.objects.active.select_set(True)
 
 class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
-    bl_idname = "output.o2mcd_list_move"
+    bl_idname = "o2mcd.list_move"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("Rearrange the order of objects")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", ""),('REVERSE',"reverse","")))
@@ -55,7 +55,7 @@ class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
         if context.scene.O2MCD_props.auto_reload:command.command_generate(self, context)
         return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
-    bl_idname = "output.o2mcd_sort"
+    bl_idname = "o2mcd.sort"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     action: bpy.props.EnumProperty(items=(('NAME', "Name", ""),('CREATE',"Create",""),('RANDOM',"Random","")))
@@ -76,7 +76,7 @@ class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
         self.report({'INFO'}, bpy.app.translations.pgettext("Objects have been reordered"))
         return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_DataPath(bpy.types.Operator): #データパス
-    bl_idname = "output.o2mcd_data_path"
+    bl_idname = "o2mcd.data_path"
     bl_label = bpy.app.translations.pgettext("Sort by DataPath")
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     bl_options = {'REGISTER', 'UNDO'}
@@ -107,10 +107,10 @@ class OBJECTTOMCDISPLAY_MT_Sort(bpy.types.Menu):
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     def draw(self, context):
         layout = self.layout
-        layout.operator("output.o2mcd_sort",text=bpy.app.translations.pgettext("Sort by name")).action = 'NAME'
-        layout.operator("output.o2mcd_sort",text=bpy.app.translations.pgettext("Sort by creation")).action = 'CREATE'
-        layout.operator("output.o2mcd_sort",text=bpy.app.translations.pgettext("Sort by random")).action = 'RANDOM'
-        layout.operator("output.o2mcd_data_path")
+        layout.operator("o2mcd.sort",text=bpy.app.translations.pgettext("Sort by name")).action = 'NAME'
+        layout.operator("o2mcd.sort",text=bpy.app.translations.pgettext("Sort by creation")).action = 'CREATE'
+        layout.operator("o2mcd.sort",text=bpy.app.translations.pgettext("Sort by random")).action = 'RANDOM'
+        layout.operator("o2mcd.data_path")
         
 class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):

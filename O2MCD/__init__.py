@@ -113,7 +113,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         col = layout.column()
         col.label(text=bpy.app.translations.pgettext("  ペアレントの参照元："))
         row= col.row()
-        row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", bpy.context.scene, "O2MCD_df_packs", self, "index", rows=2,sort_lock=True)
+        row.template_list("OBJECTTOMCDISPLAY_UL_DefaultResourcePacks", "", bpy.context.scene, "O2MCD_df_packs", self, "index", rows=2,sort_lock=True)
         col = row.column()
         row = col.row()
         if self.index <= 1 :
@@ -123,6 +123,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         if self.index >= len(bpy.context.scene.O2MCD_df_packs)-1 or self.index == 0:
             row.enabled= False
         row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        layout.separator()
         
 def check_path(self,context):
     if self.path:
@@ -162,7 +163,7 @@ def rc_packs_update(self, context):
     rc_packs=",".join(rc_packs)
     context.preferences.addons[__package__].preferences.rc_packs=rc_packs
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
-    bl_idname = "output.o2mcd_resource_pack_add"
+    bl_idname = "o2mcd.df_resource_pack_add"
     bl_label = bpy.app.translations.pgettext("open resource pack")
     bl_description =  bpy.app.translations.pgettext("Open a resource pack.\nFolders, zips and jars are supported.")
     bl_options = {'REGISTER', 'UNDO'}
@@ -199,32 +200,36 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
         return {'FINISHED'}
     
 def JarSet(self, context):
+    print("Jarset")
     context.scene.O2MCD_df_packs.clear()
     context.scene.O2MCD_df_packs.add()
     rc_packs=context.preferences.addons[__package__].preferences.rc_packs
-    if len(rc_packs.split(",")) >= 2 :rc_packs=rc_packs.split(",")
-    else : rc_packs = [rc_packs]
-    for p in rc_packs[::-1]:
-        rc_pack=context.scene.O2MCD_df_packs.add()
-        rc_pack.path = p
-        if os.path.isdir(p):
-            rc_pack.type='FOLDER'
-            try:image= bpy.data.images.load(os.path.join(p,"pack.png"))
-            except:image=None
-            rc_pack.image= image
-        elif os.path.splitext(p)[1] == ".zip" or os.path.splitext(p)[1] == ".jar":
-            rc_pack.type='ZIP'
-            with tempfile.TemporaryDirectory() as temp:
-                with zipfile.ZipFile(p) as zip:
-                    try:
-                        zip.extract('pack.png',temp)
-                        image= bpy.data.images.load(os.path.join(temp,"pack.png"))
-                        image.pack()
-                    except:image=None
-                    rc_pack.image= image
+    print(rc_packs)
+    if rc_packs:
+        if len(rc_packs.split(",")) >= 2 :rc_packs=rc_packs.split(",")
+        else : rc_packs = [rc_packs]
+        print(rc_packs)
+        for p in rc_packs:
+            rc_pack=context.scene.O2MCD_df_packs.add()
+            rc_pack.path = p
+            if os.path.isdir(p):
+                rc_pack.type='FOLDER'
+                try:image= bpy.data.images.load(os.path.join(p,"pack.png"))
+                except:image=None
+                rc_pack.image= image
+            elif os.path.splitext(p)[1] == ".zip" or os.path.splitext(p)[1] == ".jar":
+                rc_pack.type='ZIP'
+                with tempfile.TemporaryDirectory() as temp:
+                    with zipfile.ZipFile(p) as zip:
+                        try:
+                            zip.extract('pack.png',temp)
+                            image= bpy.data.images.load(os.path.join(temp,"pack.png"))
+                            image.pack()
+                        except:image=None
+                        rc_pack.image= image
     return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove(bpy.types.Operator): #削除
-    bl_idname = "output.o2mcd_resource_pack_remove"
+    bl_idname = "o2mcd.df_resource_pack_remove"
     bl_label = ""
     bl_description = ""
     index : bpy.props.IntProperty(default=0)
@@ -234,7 +239,7 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove(bpy.types.Operator): #削�
         return {'FINISHED'}
     
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove(bpy.types.Operator): #移動
-    bl_idname = "output.o2mcd_resource_pack_move"
+    bl_idname = "o2mcd.df_resource_pack_move"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("move resource pack")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))
@@ -268,10 +273,10 @@ classes = (
 # blender起動時に実行
 @persistent
 def load(self, context):
-    output.set_default(None, bpy.context)
     output.update(None, bpy.context)
     object.item_regist()
     JarSet(None, bpy.context)
+    output.set_default(None, bpy.context)
 
 
 def register():
