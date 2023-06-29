@@ -4,7 +4,7 @@ from re import *
 bl_info = {
     "name": "Object to MCDisplay",
     "author": "200Q",
-    "version": (0, 2, 2),
+    "version": (0, 2, 3),
     "blender": (3, 4, 1),
     "location": "Output Properties",
     "support": "COMMUNITY",
