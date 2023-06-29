@@ -56,7 +56,7 @@ class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
         return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
     bl_idname = "o2mcd.sort"
-    bl_label = ""
+    bl_label = "Sort"
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     action: bpy.props.EnumProperty(items=(('NAME', "Name", ""),('CREATE',"Create",""),('RANDOM',"Random","")))
     def invoke(self, context, event):

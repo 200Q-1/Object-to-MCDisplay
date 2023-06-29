@@ -6,7 +6,7 @@ from re import *
 bl_info = {
     "name": "Object to MCDisplay",
     "author": "200Q",
-    "version": (0, 2, 1),
+    "version": (0, 2, 2),
     "blender": (3, 4, 1),
     "location": "Output Properties",
     "support": "COMMUNITY",
@@ -44,11 +44,19 @@ O2MCD_translation_dict = {
         ("*", "There are no elements. It could be a block entity.\nFILE: %s"): "elementsがありません。ブロックエンティティの可能性があります。\nFILE:%s",
         ("*", "Texture not found.\nFILE:%s\nTEXTUR:%s"): "テクスチャが見つかりません。\nFILE:%s\nTEXTUR:%s",
         ("*", "Texture path is not set.\nFILE:%s"): "テクスチャのパスが設定されていません。\nFILE:%s",
-        ("*", "move resource pack"): "リソースパックを移動",
+        ("*", "move resource pack"): "リソースパックを移動します",
         ("Operator", "open resource pack"): "リソースパックを開く",
         ("*", "Open a resource pack.\nFolders, zips and jars are supported."): "リソースパックを開きます。\nフォルダ、zip、jarに対応しています",
         ("*", "Import json file as object."): "json ファイルをオブジェクトとしてインポートします",
-        ("*", "Parent Referrer:"): "ペアレントの参照元：",
+        ("*", "Parent Referrer:"): "ペアレントの参照元",
+        
+        ("*", "You can set default values that are applied when you open a new project."): "新規プロジェクトを開いた際に適応される、デフォルトの値を設定することができます。",
+        ("*", "Synchronise version settings with MCPP"): "MCPPとバージョン設定を同期",
+        ("*", "single frame path"): "シングルフレームのパス",
+        ("*", "animation path"): "アニメーションのパス",
+        ("*", "Input (Newline with '\\n'"): "Input（'\\n'で改行）",
+        ("*", "Object List"): "オブジェクトリスト",
+        ("*", "Remove resource packs"): "リソースパックを削除します",
     }
 }
 if "bpy" in locals():
@@ -87,10 +95,10 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     
     def draw(self, context):
         layout = self.layout
-        layout.label(icon='DOT',text="新規プロジェクトを開いた際に適応される、デフォルトの値を設定することができます。")
+        layout.label(icon='DOT',text=bpy.app.translations.pgettext("You can set default values that are applied when you open a new project."))
         row=layout.row()
         row.alignment = "RIGHT"
-        row.label(text="有効化")
+        row.label(text="Enabled")
         row.prop(self,"enable",text="")
         row=layout.row()
         row.alignment = "RIGHT"
@@ -99,19 +107,20 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         if output.check_mcpp():
             row=layout.row()
             row.alignment = "RIGHT"
-            row.label(text="MCPPとバージョン設定を同期")
+            row.label(text=bpy.app.translations.pgettext("Synchronise version settings with MCPP"))
             row.prop(self,"mcpp_sync",text="")
         col= layout.column()
         col.use_property_split = True
         col.prop(self,"mc_version")
         col.prop(self, "rou")
         col.use_property_split = True
-        col.prop(self, "curr_path",text="シングルフレームのパス")
-        col.prop(self, "anim_path",text="アニメーションのパス")
-        col.prop(self, "input",text="Input（'\\n'で改行）")
+        col.prop(self, "curr_path",text=bpy.app.translations.pgettext("single frame path"))
+        col.prop(self, "anim_path",text="animation path")
+        col.prop(self, "input",text=bpy.app.translations.pgettext("Input (Newline with '\\n'"))
         
         col = layout.column()
-        col.label(text=bpy.app.translations.pgettext("  ペアレントの参照元："))
+        col.split()
+        col.label(text="   "+bpy.app.translations.pgettext("Parent Referrer:"))
         row= col.row()
         row.template_list("OBJECTTOMCDISPLAY_UL_DefaultResourcePacks", "", bpy.context.scene, "O2MCD_df_packs", self, "index", rows=2,sort_lock=True)
         col = row.column()
@@ -154,7 +163,7 @@ class OBJECTTOMCDISPLAY_UL_DefaultResourcePacks(bpy.types.UIList):
             row = layout.row()
             row.alignment="RIGHT"
             row.label(text=item.path)
-            row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove.bl_idname,icon='X').index=index
+            row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove.bl_idname,text="",icon='X').index=index
             
 def rc_packs_update(self, context):
     rc_packs=[]
@@ -200,15 +209,12 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
         return {'FINISHED'}
     
 def JarSet(self, context):
-    print("Jarset")
     context.scene.O2MCD_df_packs.clear()
     context.scene.O2MCD_df_packs.add()
     rc_packs=context.preferences.addons[__package__].preferences.rc_packs
-    print(rc_packs)
     if rc_packs:
         if len(rc_packs.split(",")) >= 2 :rc_packs=rc_packs.split(",")
         else : rc_packs = [rc_packs]
-        print(rc_packs)
         for p in rc_packs:
             rc_pack=context.scene.O2MCD_df_packs.add()
             rc_pack.path = p
@@ -230,8 +236,8 @@ def JarSet(self, context):
     return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove(bpy.types.Operator): #削除
     bl_idname = "o2mcd.df_resource_pack_remove"
-    bl_label = ""
-    bl_description = ""
+    bl_label = "Remove"
+    bl_description = bpy.app.translations.pgettext("Remove resource packs")
     index : bpy.props.IntProperty(default=0)
     def execute(self, context):
         context.scene.O2MCD_df_packs.remove(self.index)
@@ -240,7 +246,7 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove(bpy.types.Operator): #削�
     
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove(bpy.types.Operator): #移動
     bl_idname = "o2mcd.df_resource_pack_move"
-    bl_label = ""
+    bl_label = "Move"
     bl_description = bpy.app.translations.pgettext("move resource pack")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))
 

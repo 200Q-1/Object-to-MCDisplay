@@ -115,7 +115,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text="ペアレントの参照元")
+        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Parent Referrer:"))
         col = layout.column()
         if context.scene.O2MCD_props.toggle_rc_pack:
             row= col.row()
@@ -132,7 +132,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="オブジェクトリスト")
+        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Object List"))
         row = layout.row()
         if context.scene.O2MCD_props.toggle_list:
             row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
@@ -187,7 +187,7 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text="ペアレントの参照元")
+        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Parent Referrer:"))
         col = layout.column()
         if context.scene.O2MCD_props.toggle_rc_pack:
             row= col.row()
@@ -204,7 +204,7 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text="オブジェクトリスト")
+        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Object List"))
         row = layout.row()
         if context.scene.O2MCD_props.toggle_list:
             row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)

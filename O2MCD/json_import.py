@@ -77,7 +77,7 @@ def get_pack(directory,file):
 class OBJECTTOMCDISPLAY_OT_ImpJson(bpy.types.Operator, ImportHelper):
     bl_idname = "o2mcd.json_model"
     bl_description = bpy.app.translations.pgettext("Import json file as object.")
-    bl_label = bpy.app.translations.pgettext("jsonをインポート")
+    bl_label = bpy.app.translations.pgettext("import json")
     bl_options = {"REGISTER", "UNDO"}
     filename_ext = ".json"
 
@@ -378,8 +378,8 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
     
 class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
     bl_idname = "o2mcd.resource_pack_remove"
-    bl_label = ""
-    bl_description = ""
+    bl_label = "Remove"
+    bl_description = bpy.app.translations.pgettext("Remove resource packs")
     index : bpy.props.IntProperty(default=0)
     def execute(self, context):
         context.scene.O2MCD_rc_packs.remove(self.index)
@@ -387,7 +387,7 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackRemove(bpy.types.Operator): #削除
     
 class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
     bl_idname = "o2mcd.resource_pack_move"
-    bl_label = ""
+    bl_label = "Move"
     bl_description = bpy.app.translations.pgettext("move resource pack")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))
 
