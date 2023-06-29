@@ -36,7 +36,8 @@ def update(self, context):  # 更新処理
             
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
             input=bpy.data.texts.new("Input")
-            input.write("\n".join((context.preferences.addons[__package__].preferences.input.split(r"\n"))))
+            com= [i.command for i in context.preferences.addons[__package__].preferences.inputs]
+            input.write("\n".join(com))
             
         update_auto_reload(self,context)
                 

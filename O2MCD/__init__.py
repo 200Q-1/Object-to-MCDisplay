@@ -77,6 +77,31 @@ else:
 import bpy
 from bpy.app.handlers import persistent
 
+class O2MCD_DefaultInputs(bpy.types.PropertyGroup):
+    command: bpy.props.StringProperty(
+        name="command",
+        description="",
+        default=""
+    )
+
+class OBJECTTOMCDISPLAY_OT_AddCommand(bpy.types.Operator):  # コマンド追加
+    bl_idname = "o2mcd.add_command"
+    bl_label = bpy.app.translations.pgettext("AddCommand")
+    bl_description =  bpy.app.translations.pgettext("コマンドを追加")
+    
+    def execute(self, context):
+        context.preferences.addons[__package__].preferences.inputs.add()
+        return {'FINISHED'}
+
+class OBJECTTOMCDISPLAY_OT_RemoveCommand(bpy.types.Operator):  # コマンド削除
+    bl_idname = "o2mcd.remove_command"
+    bl_label = bpy.app.translations.pgettext("RemoveCommand")
+    bl_description =  bpy.app.translations.pgettext("コマンドを削除")
+    
+    index: bpy.props.IntProperty(name="Index")
+    def execute(self, context):
+        context.preferences.addons[__package__].preferences.inputs.remove(self.index)
+        return {'FINISHED'}
 class O2MCD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     index : bpy.props.IntProperty(name="index",default=0)
@@ -91,7 +116,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"), default=False,description=bpy.app.translations.pgettext("Update commands automatically"))
     enable: bpy.props.BoolProperty(name="", default=False)
     mcpp_sync: bpy.props.BoolProperty(default=False)
-    input: bpy.props.StringProperty(name="input", default="item:summon /type ~ ~ ~ {item:{id:\"minecraft:/id\",Count:1b},Tags:[\"O2MCD\",\"/num\"],item_display:\"none\",transformation:{/transf}}\\nblock:summon /type ~ ~ ~ {block_state:{Name:\"minecraft:/id\"},Tags:[\"O2MCD\",\"/num\"],transformation:{/transf}}")
+    inputs: bpy.props.CollectionProperty(type=O2MCD_DefaultInputs)
     
     def draw(self, context):
         layout = self.layout
@@ -132,6 +157,16 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         if self.index >= len(bpy.context.scene.O2MCD_df_packs)-1 or self.index == 0:
             row.enabled= False
         row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+        box=layout.box()
+        row = box.row(align = True)
+        row.label(text="Input ")
+        row.operator(OBJECTTOMCDISPLAY_OT_AddCommand.bl_idname, icon='ADD', text="", emboss=False)
+        col = box.column(align = True)
+        for i,item in enumerate(self.inputs):
+            row = col.row(align = True)
+            row.prop(item,"command",text="")
+            row.operator(OBJECTTOMCDISPLAY_OT_RemoveCommand.bl_idname, icon='PANEL_CLOSE', text="", emboss=False).index=i
+
         layout.separator()
         
 def check_path(self,context):
@@ -187,6 +222,7 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
         return {'RUNNING_MODAL'}
     
     def execute(self, context):
+        
         rc_pack=context.scene.O2MCD_df_packs.add()
         rc_pack.path = self.filepath
         if os.path.isdir(self.filepath):
@@ -269,6 +305,10 @@ class O2MCD_DefaultResourcePacks(bpy.types.PropertyGroup):
     type: bpy.props.EnumProperty(items=(('ZIP', "zip", ""),('JAR', "jar", ""),('FOLDER', "folder", "")))
 
 classes = (
+    O2MCD_DefaultInputs,
+    OBJECTTOMCDISPLAY_OT_AddCommand,
+    OBJECTTOMCDISPLAY_OT_RemoveCommand,
+    O2MCD_Preferences,
     O2MCD_DefaultResourcePacks,
     OBJECTTOMCDISPLAY_UL_DefaultResourcePacks,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd,
@@ -287,7 +327,6 @@ def load(self, context):
 
 def register():
     bpy.app.translations.register(__name__, O2MCD_translation_dict)
-    bpy.utils.register_class(O2MCD_Preferences)
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.O2MCD_df_packs = bpy.props.CollectionProperty(type=O2MCD_DefaultResourcePacks)
@@ -302,7 +341,8 @@ def register():
 
 def unregister():
     bpy.app.translations.unregister(__name__)
-    bpy.utils.unregister_class(O2MCD_Preferences)
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
     output.unregister()
     command.unregister()
     object.unregister()
