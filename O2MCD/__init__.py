@@ -83,6 +83,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"), default=False,description=bpy.app.translations.pgettext("Update commands automatically"))
     enable: bpy.props.BoolProperty(name="", default=False)
     mcpp_sync: bpy.props.BoolProperty(default=False)
+    input: bpy.props.StringProperty(name="input", default="item:summon /type ~ ~ ~ {item:{id:\"minecraft:/id\",Count:1b},Tags:[\"O2MCD\",\"/num\"],item_display:\"none\",transformation:{/transf}}\\nblock:summon /type ~ ~ ~ {block_state:{Name:\"minecraft:/id\"},Tags:[\"O2MCD\",\"/num\"],transformation:{/transf}}")
     
     def draw(self, context):
         layout = self.layout
@@ -107,6 +108,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         col.use_property_split = True
         col.prop(self, "curr_path",text="シングルフレームのパス")
         col.prop(self, "anim_path",text="アニメーションのパス")
+        col.prop(self, "input",text="Input（'\\n'で改行）")
         
         col = layout.column()
         col.label(text=bpy.app.translations.pgettext("  ペアレントの参照元："))

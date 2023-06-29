@@ -34,7 +34,8 @@ def update(self, context):  # 更新処理
         bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
             
         if "Input" not in bpy.data.texts:  # Inputが無ければ作成
-            bpy.data.texts.new("Input")
+            input=bpy.data.texts.new("Input")
+            input.write("\n".join((context.preferences.addons[__package__].preferences.input.split(r"\n"))))
             
         update_auto_reload(self,context)
                 
