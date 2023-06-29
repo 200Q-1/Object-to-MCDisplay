@@ -182,7 +182,6 @@ def check_path(self,context):
                 self.path= os.sep.join(self.path.split(os.sep)[:-1])+os.sep
             name= self.path.split(os.sep)[-2]
         self.name= name
-        self.icon=bpy.data.images[0]
 
 class OBJECTTOMCDISPLAY_UL_DefaultResourcePacks(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
@@ -192,8 +191,6 @@ class OBJECTTOMCDISPLAY_UL_DefaultResourcePacks(bpy.types.UIList):
         else:
             row = row.row()
             row.alignment="LEFT"
-            if item.image:
-                row.label(text="",icon_value=layout.icon(item.image))
             row.label(text=item.name)
             row = layout.row()
             row.alignment="RIGHT"
@@ -225,21 +222,6 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
         
         rc_pack=context.scene.O2MCD_df_packs.add()
         rc_pack.path = self.filepath
-        if os.path.isdir(self.filepath):
-            rc_pack.type='FOLDER'
-            try:image= bpy.data.images.load(os.path.join(self.filepath,"pack.png"))
-            except:image=None
-            rc_pack.image= image
-        elif os.path.splitext(self.filepath)[1] == ".zip" or os.path.splitext(self.filepath)[1] == ".jar":
-            rc_pack.type='ZIP'
-            with tempfile.TemporaryDirectory() as temp:
-                with zipfile.ZipFile(self.filepath) as zip:
-                    try:
-                        zip.extract('pack.png',temp)
-                        image= bpy.data.images.load(os.path.join(temp,"pack.png"))
-                        image.pack()
-                    except:image=None
-                    rc_pack.image= image
         context.scene.O2MCD_df_packs.move(len(context.scene.O2MCD_df_packs)-1,1)
         rc_packs_update(self, context)
         return {'FINISHED'}
@@ -254,21 +236,6 @@ def JarSet(self, context):
         for p in rc_packs:
             rc_pack=context.scene.O2MCD_df_packs.add()
             rc_pack.path = p
-            if os.path.isdir(p):
-                rc_pack.type='FOLDER'
-                try:image= bpy.data.images.load(os.path.join(p,"pack.png"))
-                except:image=None
-                rc_pack.image= image
-            elif os.path.splitext(p)[1] == ".zip" or os.path.splitext(p)[1] == ".jar":
-                rc_pack.type='ZIP'
-                with tempfile.TemporaryDirectory() as temp:
-                    with zipfile.ZipFile(p) as zip:
-                        try:
-                            zip.extract('pack.png',temp)
-                            image= bpy.data.images.load(os.path.join(temp,"pack.png"))
-                            image.pack()
-                        except:image=None
-                        rc_pack.image= image
     return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove(bpy.types.Operator): #削除
     bl_idname = "o2mcd.df_resource_pack_remove"
@@ -301,7 +268,6 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove(bpy.types.Operator): #移動
 class O2MCD_DefaultResourcePacks(bpy.types.PropertyGroup):
     path: bpy.props.StringProperty(name="ResourcePack",default="",subtype="FILE_PATH",update=check_path)
     name: bpy.props.StringProperty(name="name",default="")
-    image: bpy.props.PointerProperty(name="image",type=bpy.types.Image)
     type: bpy.props.EnumProperty(items=(('ZIP', "zip", ""),('JAR', "jar", ""),('FOLDER', "folder", "")))
 
 classes = (

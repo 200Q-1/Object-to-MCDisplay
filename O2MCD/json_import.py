@@ -13,19 +13,21 @@ def check_path(self,context):
     if self.path:
         if os.path.isfile(self.path):
             if os.path.splitext(self.path)[1] == ".zip" or os.path.splitext(self.path)[1] == ".jar":
-                name= self.path.split(os.sep)[-1]
+                self.name= self.path.split(os.sep)[-1]
+                self.type= "ZIP"
             else:
                 self.path=os.path.dirname(self.path)
-                name= self.path.split(os.sep)[-1]
+                self.name= self.path.split(os.sep)[-1]
+                self.type= "FOLDER"
         else:
             if os.path.splitext(self.path)[1]:
                 self.path= os.sep.join(self.path.split(os.sep)[:-1])+os.sep
-            name= self.path.split(os.sep)[-2]
-        self.name= name
-        self.icon=bpy.data.images[0]
+            self.name= self.path.split(os.sep)[-2]
+            self.type= "FOLDER"
     
 def get_pack(directory,file):
     data={}
+    is_anim=False
     if os.path.splitext(file[-1])[1] == '.json':
         if os.path.isfile(directory+os.sep.join(file)):
             file=os.sep.join(file)
@@ -332,13 +334,11 @@ class OBJECTTOMCDISPLAY_UL_ResourcePacks(bpy.types.UIList):
         else:
             row = row.row()
             row.alignment="LEFT"
-            if item.image:
-                row.label(text="",icon_value=layout.icon(item.image))
             row.label(text=item.name)
             row = layout.row()
             row.alignment="RIGHT"
             row.label(text=item.path)
-            row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,icon='X').index=index
+            row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,text="",icon='X').index=index
             
 class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
     bl_idname = "o2mcd.resource_pack_add"
@@ -358,21 +358,6 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
     def execute(self, context):
         rc_pack=context.scene.O2MCD_rc_packs.add()
         rc_pack.path = self.filepath
-        if os.path.isdir(self.filepath):
-            rc_pack.type='FOLDER'
-            try:image= bpy.data.images.load(os.path.join(self.filepath,"pack.png"))
-            except:image=None
-            rc_pack.image= image
-        elif os.path.splitext(self.filepath)[1] == ".zip" or os.path.splitext(self.filepath)[1] == ".jar":
-            rc_pack.type='ZIP'
-            with tempfile.TemporaryDirectory() as temp:
-                with zipfile.ZipFile(self.filepath) as zip:
-                    try:
-                        zip.extract('pack.png',temp)
-                        image= bpy.data.images.load(os.path.join(temp,"pack.png"))
-                        image.pack()
-                    except:image=None
-                    rc_pack.image= image
         context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
         return {'FINISHED'}
     
@@ -405,7 +390,6 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
 class O2MCD_ResourcePacks(bpy.types.PropertyGroup):
     path: bpy.props.StringProperty(name="ResourcePack",default="",subtype="FILE_PATH",update=check_path)
     name: bpy.props.StringProperty(name="name",default="")
-    image: bpy.props.PointerProperty(name="image",type=bpy.types.Image)
     type: bpy.props.EnumProperty(items=(('ZIP', "zip", ""),('JAR', "jar", ""),('FOLDER', "folder", "")))
 
 def json_import(self, context):
