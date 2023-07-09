@@ -20,18 +20,20 @@ O2MCD_translation_dict = {
         ("*", "Display Properties"): "Displayプロパティ",
         ("*", "Update"): "更新",
         ("*", "Auto Update"): "自動更新",
-        ("*", "update commands"): "コマンドを更新",
-        ("*", "Update commands automatically"): "コマンドを自動で更新",
+        ("*", "Get information about the object and generate commands in the Output according to the Input"): "オブジェクトの情報を取得してInputに応じたコマンドをOutputに生成します",
+        ("*", "Ensure that an update is performed every time there is a change in the scene or a frame is moved"): "シーンに変更があるか、フレームを移動するたびに更新をするようにします",
         ("*", "Object Number"): "番号",
         ("*", "Generate file in specified path"): "指定したパスにファイルを生成",
         ("*", "Rearrange the order of objects"): "オブジェクトの順番を入れ替える",
+        ("*", "Reverse"): "反転",
+        ("*", "Reversing the order of objects"): "オブジェクトの順番を反転する",
         ("*", "Sorting Objects"): "オブジェクトを並び替える",
         ("*", "Sort by name"): "名前順",
         ("*", "Sort by creation"): "作成順",
         ("*", "Sort by random"): "ランダム順",
         ("Operator", "Sort by DataPath"): "データパス順",
         ("Operator", "Link display properties"): "ディスプレイプロパティをリンク",
-        ("Operator", "Transfers data from the active object to the selected object"): "アクティブオブジェクトから選択オブジェクトにデータを転送します",
+        ("*", "Transfers data from the active object to the selected object"): "アクティブオブジェクトから選択オブジェクトにデータを転送します",
         ("*", "Browse Linked Properties"): "リンクするプロパティを観覧",
         ("*", "File exported"): "ファイルを書き出しました",
         ("*", "File path not found"): "ファイルパスが見つかりません",
@@ -46,14 +48,39 @@ O2MCD_translation_dict = {
         ("Operator", "open resource pack"): "リソースパックを開く",
         ("*", "Open a resource pack.\nFolders, zips and jars are supported."): "リソースパックを開きます。\nフォルダ、zip、jarに対応しています",
         ("*", "Import json file as object."): "json ファイルをオブジェクトとしてインポートします",
-        ("*", "Parent Referrer:"): "ペアレントの参照元",
+        ("*", "Parent Referrer"): "ペアレントの参照元",
         
         ("*", "You can set default values that are applied when you open a new project."): "新規プロジェクトを開いた際に適応される、デフォルトの値を設定することができます。",
-        ("*", "Synchronise version settings with MCPP"): "MCPPとバージョン設定を同期",
+        ("*", "Synchronise version settings with MCPP"): "MCPPとバージョン設定を同期します",
         ("*", "single frame path"): "シングルフレームのパス",
         ("*", "animation path"): "アニメーションのパス",
+        ("*", "Output files to the specified path"): "指定したパスにファイルを書き出します",
         ("*", "Object List"): "オブジェクトリスト",
-        ("*", "Remove resource packs"): "リソースパックを削除します",
+        ("*", "Add property"): "プロパティを追加します",
+        ("*", "Unlink property"): "プロパティのリンクを解除します",
+        ("*", "Remove property"): "プロパティを削除します",
+        ("*", "Display entity type"): "ディスプレイエンティティのタイプ",
+        ("*", "Value assigned to /tag(s)"): "/tag(s) に代入される値",
+        ("*", "Value assigned to /model"): "/model に代入される値",
+        ("*", "Value assigned to /item"): "/item に代入される値",
+        ("*", "Value assigned to /prop"): "/prop に代入される値",
+        ("*", "Value assigned to /extra"): "/extra に代入される値",
+        ("*", "Value assigned to /type"): "/type に代入される値",
+        ("*", "Value assigned to /id"): "/id に代入される値",
+        ("*", "Minecraft version"): "Minecraftのバージョン",
+        ("*", "number of decimal places to round"): "丸める少数の桁数",
+        ("*", "Enable O2MCD"): "O2MCDを有効化",
+        ("*", "Synchronised with MCPP"): "MCPPと同期",
+        ("*", "List of objects for which the Display property is set."): "Displayプロパティが設定されているオブジェクトのリストです",
+        ("*", "Add a resource pack to search for files specified as parent when importing a json model"): "jsonモデルをインポートする際にparentに指定されているファイルを検索するリソースパックを追加します",
+        ("*", "Add Command"): "コマンドを追加",
+        ("*", "Remove Command"): "コマンドを削除",
+        ("*", "Add the command to be entered when the Input is generated"): "Inputを生成した際に入力されるコマンドを追加します",
+        ("*", "Enable O2MCD"): "O2MCDを有効化",
+        ("*", "Enable O2MCD"): "O2MCDを有効化",
+        ("*", "Enable O2MCD"): "O2MCDを有効化",
+        ("*", "Enable O2MCD"): "O2MCDを有効化",
+        ("*", "Enable O2MCD"): "O2MCDを有効化",
     }
 }
 if "bpy" in locals():
@@ -76,15 +103,15 @@ from bpy.app.handlers import persistent
 
 class O2MCD_DefaultInputs(bpy.types.PropertyGroup):
     command: bpy.props.StringProperty(
-        name="command",
+        name="Command",
         description="",
         default=""
     )
 
 class OBJECTTOMCDISPLAY_OT_AddCommand(bpy.types.Operator):  # コマンド追加
     bl_idname = "o2mcd.add_command"
-    bl_label = bpy.app.translations.pgettext("AddCommand")
-    bl_description =  bpy.app.translations.pgettext("コマンドを追加")
+    bl_label = bpy.app.translations.pgettext("Add Command")
+    bl_description = ""
     
     def execute(self, context):
         context.preferences.addons[__package__].preferences.inputs.add()
@@ -92,8 +119,8 @@ class OBJECTTOMCDISPLAY_OT_AddCommand(bpy.types.Operator):  # コマンド追加
 
 class OBJECTTOMCDISPLAY_OT_RemoveCommand(bpy.types.Operator):  # コマンド削除
     bl_idname = "o2mcd.remove_command"
-    bl_label = bpy.app.translations.pgettext("RemoveCommand")
-    bl_description =  bpy.app.translations.pgettext("コマンドを削除")
+    bl_label = bpy.app.translations.pgettext("Remove Command")
+    bl_description = ""
     
     index: bpy.props.IntProperty(name="Index")
     def execute(self, context):
@@ -103,17 +130,15 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     index : bpy.props.IntProperty(name="index",default=0)
     rc_packs : bpy.props.StringProperty(default="")
-    mcpp_sync : bpy.props.BoolProperty(default=False)
-    
-    enable: bpy.props.BoolProperty(default=False)
-    mc_version: bpy.props.EnumProperty(name="Version", items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20')
-    rou: bpy.props.IntProperty(name="Round", default=3, max=16, min=1)
-    anim_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
-    curr_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
-    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"), default=False,description=bpy.app.translations.pgettext("Update commands automatically"))
-    enable: bpy.props.BoolProperty(name="", default=False)
-    mcpp_sync: bpy.props.BoolProperty(default=False)
-    inputs: bpy.props.CollectionProperty(type=O2MCD_DefaultInputs)
+
+    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20')
+    rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
+    curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("single frame path"), subtype='FILE_PATH', default="")
+    anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("animation path"), subtype='FILE_PATH', default="")
+    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"),description=bpy.app.translations.pgettext("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False)
+    enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False)
+    mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
+    inputs: bpy.props.CollectionProperty(name="Input",description=bpy.app.translations.pgettext("Add the command to be entered when the Input is generated"),type=O2MCD_DefaultInputs)
     
     def draw(self, context):
         layout = self.layout
@@ -124,12 +149,12 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         row.prop(self,"enable",text="")
         row=layout.row()
         row.alignment = "RIGHT"
-        row.label(text=bpy.app.translations.pgettext("Update commands automatically"))
+        row.label(text=bpy.app.translations.pgettext("Auto Update"))
         row.prop(self, "auto_reload",text="")
         if output.check_mcpp():
             row=layout.row()
             row.alignment = "RIGHT"
-            row.label(text=bpy.app.translations.pgettext("Synchronise version settings with MCPP"))
+            row.label(text=bpy.app.translations.pgettext("Synchronised with MCPP"))
             row.prop(self,"mcpp_sync",text="")
         col= layout.column()
         col.use_property_split = True
@@ -141,7 +166,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         
         col = layout.column()
         col.split()
-        col.label(text="   "+bpy.app.translations.pgettext("Parent Referrer:"))
+        col.label(text="   "+bpy.app.translations.pgettext("Parent Referrer"))
         row= col.row()
         row.template_list("OBJECTTOMCDISPLAY_UL_DefaultResourcePacks", "", bpy.context.scene, "O2MCD_df_packs", self, "index", rows=2,sort_lock=True)
         col = row.column()

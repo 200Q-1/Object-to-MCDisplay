@@ -81,7 +81,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
     bl_context = "output"
 
     def draw_header(self, context):
-        self.layout.prop(context.scene.O2MCD_props, "enable")
+        self.layout.prop(context.scene.O2MCD_props, "enable",text="")
 
     def draw(self, context):
         layout = self.layout
@@ -116,7 +116,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Parent Referrer:"))
+        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Parent Referrer"))
         col = layout.column()
         if context.scene.O2MCD_props.toggle_rc_pack:
             row= col.row()
@@ -143,7 +143,7 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             col.operator("o2mcd.list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
             col.separator()
             col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
-            col.operator("o2mcd.list_move", icon='UV_SYNC_SELECT', text="").action = 'REVERSE'
+            col.operator("o2mcd.list_reverse", icon='UV_SYNC_SELECT', text="")
 
 class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディタパネル
     bl_label = "O2MCD"
@@ -153,7 +153,7 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
     bl_context = "output"
 
     def draw_header(self, context):
-        self.layout.prop(context.scene.O2MCD_props, "enable")
+        self.layout.prop(context.scene.O2MCD_props, "enable",text="")
 
     def draw(self, context):
         layout = self.layout
@@ -188,7 +188,7 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Parent Referrer:"))
+        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Parent Referrer"))
         col = layout.column()
         if context.scene.O2MCD_props.toggle_rc_pack:
             row= col.row()
@@ -221,7 +221,7 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
     bl_idname = "o2mcd.reload"
     bl_label = bpy.app.translations.pgettext("Update")
-    bl_description = bpy.app.translations.pgettext("update commands")
+    bl_description = bpy.app.translations.pgettext("Get information about the object and generate commands in the Output according to the Input")
 
     def execute(self, context):
         command.command_generate(self, context)
@@ -279,19 +279,19 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
         return {'FINISHED'}
 
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
-    mc_version: bpy.props.EnumProperty(name="Version", items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20',update=update_version)
-    rou: bpy.props.IntProperty(name="Round", default=3, max=16, min=1)
-    anim_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
-    curr_path: bpy.props.StringProperty(name="Path", subtype='FILE_PATH', default="")
-    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"), default=False, update=update_auto_reload,description=bpy.app.translations.pgettext("Update commands automatically"))
-    output: bpy.props.EnumProperty(name="Output", items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
-    enable: bpy.props.BoolProperty(name="", default=False, update=update)
+    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20',update=update_version)
+    rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
+    curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("single frame path"), subtype='FILE_PATH', default="")
+    anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("animation path"), subtype='FILE_PATH', default="")
+    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"),description=bpy.app.translations.pgettext("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False, update=update_auto_reload)
+    output: bpy.props.EnumProperty(name="Output",description=bpy.app.translations.pgettext("Output files to the specified path"), items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
+    enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False, update=update)
     Enum: bpy.props.EnumProperty(name="Enum", items=object.enum_item, options={"ANIMATABLE"})
     list_index : bpy.props.IntProperty(name="Index", default=-1)
     obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=list.select_object)
-    mcpp_sync: bpy.props.BoolProperty(name="MCPPと同期",default=False)
-    toggle_list : bpy.props.BoolProperty(default=False)
-    toggle_rc_pack: bpy.props.BoolProperty(default=False)
+    mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
+    toggle_list : bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Object List"),description=bpy.app.translations.pgettext("List of objects for which the Display property is set."),default=False)
+    toggle_rc_pack: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Parent Referrer"),description=bpy.app.translations.pgettext("Add a resource pack to search for files specified as parent when importing a json model"),default=False)
     
 classes = (
     OBJECTTOMCDISPLAY_PT_MainPanel,

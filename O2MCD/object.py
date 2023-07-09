@@ -79,12 +79,12 @@ class OBJECTTOMCDISPLAY_PT_DisplayProperties(bpy.types.Panel):  # プロパテ�
         br.operator("o2mcd.search_popup", text="", icon='DOWNARROW_HLT')
         if context.scene.O2MCD_props.list_index >= 0 and context.scene.O2MCD_prop_list:
             br.prop(item, "name", text="")
-            br.operator("o2mcd.prop_action", icon='DUPLICATE').action = 'DUP'
-            br.operator("o2mcd.prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
-            br.operator("o2mcd.prop_action", icon='TRASH').action = 'REMOVE'
+            br.operator("o2mcd.prop_add", icon='DUPLICATE',text="").action='DUP'
+            br.operator("o2mcd.prop_unlink", icon='PANEL_CLOSE',text="")
+            br.operator("o2mcd.prop_remove", icon='TRASH',text="")
         else:
             br.alignment = "EXPAND"
-            br.operator("o2mcd.prop_action", icon='ADD',text="New").action = 'ADD'
+            br.operator("o2mcd.prop_add", icon='ADD').action='NEW'
         if context.scene.O2MCD_prop_list and context.object.O2MCD_props.prop_id >= 0:
             row=layout.row()
             if len(context.scene.O2MCD_object_list) <= 1:row.enabled = False
@@ -124,12 +124,12 @@ class OBJECTTOMCDISPLAY_PT_WindowDisplayProperties(bpy.types.Panel):  # プロ�
         br.operator("o2mcd.search_popup", text="", icon='DOWNARROW_HLT')
         if context.scene.O2MCD_props.list_index >= 0 and context.scene.O2MCD_prop_list:
             br.prop(item, "name", text="")
-            br.operator("o2mcd.prop_action", icon='DUPLICATE').action = 'DUP'
-            br.operator("o2mcd.prop_action", icon='PANEL_CLOSE').action = 'UNLINK'
-            br.operator("o2mcd.prop_action", icon='TRASH').action = 'REMOVE'
+            br.operator("o2mcd.prop_add", icon='DUPLICATE',text="").action='DUP'
+            br.operator("o2mcd.prop_unlink", icon='PANEL_CLOSE',text="")
+            br.operator("o2mcd.prop_remove", icon='TRASH',text="")
         else:
             br.alignment = "EXPAND"
-            br.operator("o2mcd.prop_action", icon='ADD',text="New").action = 'ADD'
+            br.operator("o2mcd.prop_add", icon='ADD').action='NEW'
         if context.scene.O2MCD_prop_list and context.object.O2MCD_props.prop_id >= 0:
             row=layout.row()
             if len(context.scene.O2MCD_object_list) <= 1:row.enabled = False
@@ -151,20 +151,22 @@ class OBJECTTOMCDISPLAY_PT_WindowDisplayProperties(bpy.types.Panel):  # プロ�
                 layout.prop(item, "Properties",text="properties")
             layout.prop(item, "ExtraNBT")
             
-class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操作
-    bl_idname = "o2mcd.prop_action"
-    bl_label = ""
-    action: bpy.props.EnumProperty(items=(('ADD', "Add", ""),('DUP', "dup", ""),('UNLINK', "unlink", ""),('REMOVE', "remove", "")))
+class OBJECTTOMCDISPLAY_OT_PropAdd(bpy.types.Operator): # プロパティ追加
+    bl_idname = "o2mcd.prop_add"
+    bl_label = "Add"
+    bl_description = bpy.app.translations.pgettext("Add property") 
+    action: bpy.props.EnumProperty(items=(('NEW', "New", ""),('DUP', "dup", "")))
     
     def invoke(self,context,event):
-        prop_list = context.scene.O2MCD_prop_list
         index = context.scene.O2MCD_props.list_index
+        prop_list = context.scene.O2MCD_prop_list
 
-        if self.action =='ADD':
+        if self.action == 'NEW':
             context.scene.O2MCD_prop_list.add().name = "New"
             index = len(context.scene.O2MCD_prop_list)-1
             context.object.O2MCD_props.prop_id = index
-        elif self.action == 'DUP':
+            context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
+        if self.action == 'DUP':
             name = sub("(.*?)(\.[0-9]+)?","\\1",prop_list[context.object.O2MCD_props.prop_id].name)
             add = context.scene.O2MCD_prop_list.add()
             add.name = name
@@ -180,25 +182,43 @@ class OBJECTTOMCDISPLAY_OT_PropAction(bpy.types.Operator): #プロパティ操�
             add.block_id= prop_list[context.object.O2MCD_props.prop_id].block_id
             index = len(context.scene.O2MCD_prop_list)-1
             context.object.O2MCD_props.prop_id = index
-        elif self.action == 'UNLINK':
-            context.object.O2MCD_props.prop_id = -1
-            context.object.O2MCD_props.number =-1
-        elif self.action == 'REMOVE':
-            prop_list.remove(index)
-            index = min(max(0, index - 1), len(prop_list) - 1)
-            for i in context.scene.O2MCD_object_list:
-                if i.obj.O2MCD_props.prop_id >= index:
-                    i.obj.O2MCD_props.prop_id -= 1
-                    context.object.O2MCD_props.number =-1
-            context.object.O2MCD_props.prop_id = index
         context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
         return {'FINISHED'}
 
+class OBJECTTOMCDISPLAY_OT_PropUnlink(bpy.types.Operator): #プロパティリンク解除
+    bl_idname = "o2mcd.prop_unlink"
+    bl_label = "Unlink"
+    bl_description = bpy.app.translations.pgettext("Unlink property")
+    
+    def invoke(self,context,event):
+        context.object.O2MCD_props.prop_id = -1
+        context.object.O2MCD_props.number =-1
+        context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
+        return {'FINISHED'}
+
+class OBJECTTOMCDISPLAY_OT_PropRemove(bpy.types.Operator): #プロパティ削除
+    bl_idname = "o2mcd.prop_remove"
+    bl_label = "Remove"
+    bl_description = bpy.app.translations.pgettext("Remove property")
+    
+    def invoke(self,context,event):
+        prop_list = context.scene.O2MCD_prop_list
+        index = context.scene.O2MCD_props.list_index
+
+        prop_list.remove(index)
+        index = min(max(0, index - 1), len(prop_list) - 1)
+        for i in context.scene.O2MCD_object_list:
+            if i.obj.O2MCD_props.prop_id > index:
+                i.obj.O2MCD_props.prop_id = -1
+                context.object.O2MCD_props.number =-1
+        context.scene.O2MCD_props.list_index = context.object.O2MCD_props.prop_id
+        return {'FINISHED'}
+    
 class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
     bl_idname = "o2mcd.search_popup"
     bl_label = ""
-    bl_property = "enum"
     bl_description= bpy.app.translations.pgettext("Browse Linked Properties")
+    bl_property = "enum"
     enum: bpy.props.EnumProperty(name="Objects", description="", items=enum_item)
 
     def execute(self, context):
@@ -214,20 +234,20 @@ class OBJECTTOMCDISPLAY_OT_SearchPopup(bpy.types.Operator):  # id検索
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
     number: bpy.props.IntProperty(name=bpy.app.translations.pgettext("Object Number"), default=-1, min=-1)
     prop_id: bpy.props.IntProperty(name="prop_id", default=-1, min=-1)
-    enable : bpy.props.BoolProperty(name="", default=True)
+    enable : bpy.props.BoolProperty(name="enable", default=True)
 
 class O2MCD_ListItem(bpy.types.PropertyGroup):  # リストのプロパティ
     name: bpy.props.StringProperty(name="Name", default="",update=change_name)
-    Types: bpy.props.EnumProperty(name="Object Type", items=[('ITEM', "Item", ""), ('BLOCK', "Block", ""), ('EXTRA', "Extra", "")], options={"ANIMATABLE"},update=setid)
-    tags: bpy.props.StringProperty(default="")
-    CustomModelData: bpy.props.IntProperty(default=0, min=0)
-    ItemTag: bpy.props.StringProperty(default="")
-    Properties:bpy.props.StringProperty(default="")
-    ExtraNBT: bpy.props.StringProperty(default="")
-    type: bpy.props.StringProperty(default="")
-    id: bpy.props.StringProperty(default="")
-    item_id: bpy.props.StringProperty(default="",update=setid)
-    block_id: bpy.props.StringProperty(default="",update=setid)
+    Types: bpy.props.EnumProperty(name="Object Type",description=bpy.app.translations.pgettext("Display entity type"), items=[('ITEM', "Item", ""), ('BLOCK', "Block", ""), ('EXTRA', "Extra", "")], options={"ANIMATABLE"},update=setid)
+    tags: bpy.props.StringProperty(name="tags",description=bpy.app.translations.pgettext("Value assigned to /tag(s)"),default="")
+    CustomModelData: bpy.props.IntProperty(name="CustomModelData",description=bpy.app.translations.pgettext("Value assigned to /model"),default=0, min=0)
+    ItemTag: bpy.props.StringProperty(name="ItemTag",description=bpy.app.translations.pgettext("Value assigned to /item"),default="")
+    Properties:bpy.props.StringProperty(name="Properties",description=bpy.app.translations.pgettext("Value assigned to /prop"),default="")
+    ExtraNBT: bpy.props.StringProperty(name="ExtraNBT",description=bpy.app.translations.pgettext("Value assigned to /extra"),default="")
+    type: bpy.props.StringProperty(name="type",description=bpy.app.translations.pgettext("Value assigned to /type"),default="")
+    id: bpy.props.StringProperty(name="id",description=bpy.app.translations.pgettext("Value assigned to /id"),default="")
+    item_id: bpy.props.StringProperty(name="id",description=bpy.app.translations.pgettext("Value assigned to /id"),default="",update=setid)
+    block_id: bpy.props.StringProperty(name="id",description=bpy.app.translations.pgettext("Value assigned to /id"),default="",update=setid)
 
 class  O2MCD_ItemList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
@@ -238,7 +258,9 @@ class  O2MCD_BlockList(bpy.types.PropertyGroup):
 classes = (
     OBJECTTOMCDISPLAY_PT_DisplayProperties,
     OBJECTTOMCDISPLAY_PT_WindowDisplayProperties,
-    OBJECTTOMCDISPLAY_OT_PropAction,
+    OBJECTTOMCDISPLAY_OT_PropAdd,
+    OBJECTTOMCDISPLAY_OT_PropUnlink,
+    OBJECTTOMCDISPLAY_OT_PropRemove,
     OBJECTTOMCDISPLAY_OT_SearchPopup,
     O2MCD_Obj_Props,
     O2MCD_ListItem,

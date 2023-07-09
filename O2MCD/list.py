@@ -33,7 +33,7 @@ def select_object(self, context):
         bpy.ops.object.select_all(action='DESELECT')
         context.view_layer.objects.active.select_set(True)
 
-class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
+class OBJECTTOMCDISPLAY_OT_ListMove(bpy.types.Operator): #移動
     bl_idname = "o2mcd.list_move"
     bl_label = ""
     bl_description = bpy.app.translations.pgettext("Rearrange the order of objects")
@@ -54,6 +54,21 @@ class OBJECTTOMCDISPLAY_OT_list_move(bpy.types.Operator): #移動
         chenge_panel(self, context)
         if context.scene.O2MCD_props.auto_reload:command.command_generate(self, context)
         return {"FINISHED"}
+    
+class OBJECTTOMCDISPLAY_OT_ListReverse(bpy.types.Operator): #反転
+    bl_idname = "o2mcd.list_reverse"
+    bl_label = bpy.app.translations.pgettext("Reverse")
+    bl_description = bpy.app.translations.pgettext("Reversing the order of objects")
+
+    def invoke(self, context, event):
+        object_list = [i.obj.name for i in context.scene.O2MCD_object_list]
+        object_list=object_list[::-1]
+        context.scene.O2MCD_object_list.clear()
+        for i in object_list: context.scene.O2MCD_object_list.add().obj=context.scene.objects[i]
+        chenge_panel(self, context)
+        if context.scene.O2MCD_props.auto_reload:command.command_generate(self, context)
+        return {"FINISHED"}
+
 class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
     bl_idname = "o2mcd.sort"
     bl_label = "Sort"
@@ -127,7 +142,8 @@ class  O2MCD_ObjectList(bpy.types.PropertyGroup):
 
 classes = (
     OBJECTTOMCDISPLAY_UL_ObjectList,
-    OBJECTTOMCDISPLAY_OT_list_move,
+    OBJECTTOMCDISPLAY_OT_ListMove,
+    OBJECTTOMCDISPLAY_OT_ListReverse,
     OBJECTTOMCDISPLAY_OT_Sort,
     OBJECTTOMCDISPLAY_MT_Sort,
     OBJECTTOMCDISPLAY_OT_DataPath,
