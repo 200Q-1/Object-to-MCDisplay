@@ -129,7 +129,7 @@ def frame_range(context, com):  # フレーム範囲指定
 def comvert_function(context, funk_list, com, num):    # 関数変換
     object_list= context.scene.O2MCD_object_list                    #オブジェクトリスト
     current_frame = context.scene.frame_current                     # 現在のフレーム
-    com = com.replace("/transf", "right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]")  # /transfだけ先に変換
+    com = com.replace("/transf", r"transformation:{right_rotation:[/r_rot],scale:[/scale],left_rotation:[/l_rot],translation:[/loc]}")  # /transfだけ先に変換
     func = findall(f'(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)', com)              # 入力から関数のリストを作成
     for f in func:                                                  # 関数を1つずつ処理
         var = sub(f'/({funk_list})(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?', "\\1", f)          # 関数名
