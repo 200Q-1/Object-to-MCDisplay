@@ -22,7 +22,7 @@ Minecraft 1.19でアイテムなどを自由に表示できるディスプレイ
 
 ### 3. 出力設定
 
-1. プロパティエディタの出力プロパティ、もしくはテキストエディタのサイドバーにあるO2MCDパネルにチェックを入れアドオンを有効化します。  
+1. プロパティエディタの出力プロパティ、もしくはテキストエディタのサイドバーにある[O2MCDパネル](#O2MCDパネル)にチェックを入れアドオンを有効化します。  
 2. mcfunctionを書き出すパスを指定します。  
 <img src="https://github.com/200Q-1/Object-to-MCDisplay/blob/master/image/output.png" width="540">
 
@@ -30,7 +30,7 @@ Minecraft 1.19でアイテムなどを自由に表示できるディスプレイ
 
 1. 追加したモデルを選択し、サイドバーのアイテムにあるDisplayプロパティの`+ 新規`をクリックします。  
 2. 表示された各種プロパティを設定します。  
-<img src="https://github.com/200Q-1/Object-to-MCDisplay/blob/master/image/display_prop.png" width="540">
+<img src="https://github.com/200Q-1/Object-to-MCDisplay/blob/master/image/add_prop.png" width="540">
 
 ### 5.  コマンド設定
 
