@@ -1,5 +1,8 @@
 # Copyright (c) 2023 200Q
 import os
+import zipfile
+import json
+import re
 from re import *
 bl_info = {
     "name": "Object to MCDisplay",
@@ -129,8 +132,11 @@ class OBJECTTOMCDISPLAY_OT_RemoveCommand(bpy.types.Operator):  # コマンド削
 class O2MCD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     index : bpy.props.IntProperty(name="index",default=0)
+    mc_jar : bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("mc_jar"), default="")
     rc_packs : bpy.props.StringProperty(default="")
-
+    block_id : bpy.props.StringProperty(default="")
+    item_id : bpy.props.StringProperty(default="")
+    
     mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20')
     rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
     curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("single frame path"), subtype='FILE_PATH', default="")
@@ -142,6 +148,11 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     
     def draw(self, context):
         layout = self.layout
+        br = layout.row(align=True)
+        br.prop(self, "mc_jar",text=".jarファイル")
+        layout.prop(self, "block_id",text="")
+        layout.prop(self, "item_id",text="")
+        br.operator(OBJECTTOMCDISPLAY_OT_JarOpen.bl_idname, text="", icon='FILE_FOLDER')
         layout.label(icon='DOT',text=bpy.app.translations.pgettext("You can set default values that are applied when you open a new project."))
         row=layout.row()
         row.alignment = "RIGHT"
@@ -224,6 +235,36 @@ def rc_packs_update(self, context):
         rc_packs.append(p.path)
     rc_packs=",".join(rc_packs)
     context.preferences.addons[__package__].preferences.rc_packs=rc_packs
+    
+class OBJECTTOMCDISPLAY_OT_JarOpen(bpy.types.Operator): #追加
+    bl_idname = "o2mcd.jar_open"
+    bl_label = "open .jar"
+    bl_description =  bpy.app.translations.pgettext("Open a resource pack.\nFolders, zips and jars are supported.")
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    filter_glob: bpy.props.StringProperty(default="*.zip;*.jar",options={"HIDDEN"})
+    def invoke(self, context, event):
+        wm = context.window_manager
+        wm.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def execute(self, context):
+        
+        context.preferences.addons[__package__].preferences.mc_jar = self.filepath
+        jar=context.preferences.addons[__package__].preferences.mc_jar
+        try:
+            with zipfile.ZipFile(jar) as zip:
+                js=json.load(zip.open('assets/minecraft/lang/en_us.json','r'))
+                block_id=[i.replace('block.minecraft.','') for i in js.keys() if re.match('block\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
+                item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
+        except:pass
+        context.preferences.addons[__package__].preferences.block_id=",".join(block_id)
+        item_id=block_id+item_id
+        item_id.sort()
+        context.preferences.addons[__package__].preferences.item_id=",".join(item_id)
+        object.item_regist(self,context)
+        return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
     bl_idname = "o2mcd.df_resource_pack_add"
     bl_label = bpy.app.translations.pgettext("open resource pack")
@@ -298,6 +339,7 @@ classes = (
     O2MCD_Preferences,
     O2MCD_DefaultResourcePacks,
     OBJECTTOMCDISPLAY_UL_DefaultResourcePacks,
+    OBJECTTOMCDISPLAY_OT_JarOpen,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove
@@ -307,7 +349,7 @@ classes = (
 @persistent
 def load(self, context):
     output.update(None, bpy.context)
-    object.item_regist()
+    object.item_regist(None, bpy.context)
     JarSet(None, bpy.context)
     output.set_default(None, bpy.context)
 
@@ -324,7 +366,6 @@ def register():
     link.register()
     list.register()
     json_import.register()
-    bpy.types.TOPBAR_MT_file_import.append(json_import.json_import)
 
 def unregister():
     bpy.app.translations.unregister(__name__)
@@ -336,7 +377,6 @@ def unregister():
     link.unregister()
     list.unregister()
     json_import.unregister()
-    bpy.types.TOPBAR_MT_file_import.remove(json_import.json_import)
 
 if __name__ == "__main__":
     register()

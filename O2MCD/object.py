@@ -7,20 +7,26 @@ from math import *
 from . import list
 # 関数
 
-def item_regist():  # アイテムとブロックを登録
-    file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\item_list.txt', 'r', encoding='UTF-8')
-    item = file.read().splitlines()
-    bpy.context.scene.O2MCD_item_list.clear()
-    for i in item:
-        bpy.context.scene.O2MCD_item_list.add().name= i
-    file.close()
-    
-    file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\block_list.txt', 'r', encoding='UTF-8')
-    block = file.read().splitlines()
+def item_regist(self,context):  # アイテムとブロックを登録
     bpy.context.scene.O2MCD_block_list.clear()
-    for i in block:
-        bpy.context.scene.O2MCD_block_list.add().name= i
-    file.close()
+    bpy.context.scene.O2MCD_item_list.clear()
+    block_id= bpy.context.preferences.addons[__package__].preferences.block_id.split(",")
+    item_id= bpy.context.preferences.addons[__package__].preferences.item_id.split(",")
+    for i in block_id: bpy.context.scene.O2MCD_block_list.add().name= i
+    for i in item_id: bpy.context.scene.O2MCD_item_list.add().name= i
+    # file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\item_list.txt', 'r', encoding='UTF-8')
+    # item = file.read().splitlines()
+    # bpy.context.scene.O2MCD_item_list.clear()
+    # for i in item:
+    #     bpy.context.scene.O2MCD_item_list.add().name= i
+    # file.close()
+    
+    # file = open(bpy.path.abspath(os.path.dirname(__file__))+'\\block_list.txt', 'r', encoding='UTF-8')
+    # block = file.read().splitlines()
+    # bpy.context.scene.O2MCD_block_list.clear()
+    # for i in block:
+    #     bpy.context.scene.O2MCD_block_list.add().name= i
+    # file.close()
 
 def setid(self,context):  # idを更新
     if context.scene.O2MCD_prop_list[context.scene.O2MCD_props.list_index].Types == "ITEM":
