@@ -236,7 +236,7 @@ def rc_packs_update(self, context):
     rc_packs=",".join(rc_packs)
     context.preferences.addons[__package__].preferences.rc_packs=rc_packs
     
-class OBJECTTOMCDISPLAY_OT_JarOpen(bpy.types.Operator): #追加
+class OBJECTTOMCDISPLAY_OT_JarOpen(bpy.types.Operator): #JAR設定
     bl_idname = "o2mcd.jar_open"
     bl_label = "open .jar"
     bl_description =  bpy.app.translations.pgettext("Open a resource pack.\nFolders, zips and jars are supported.")
@@ -258,9 +258,10 @@ class OBJECTTOMCDISPLAY_OT_JarOpen(bpy.types.Operator): #追加
                 js=json.load(zip.open('assets/minecraft/lang/en_us.json','r'))
                 block_id=[i.replace('block.minecraft.','') for i in js.keys() if re.match('block\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
                 item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
+                bni=[f.split("/")[-1] for f in zip.namelist() if f.startswith("assets/minecraft/models/item/") and not f.endswith('/')]
         except:pass
         context.preferences.addons[__package__].preferences.block_id=",".join(block_id)
-        item_id=block_id+item_id
+        item_id=[b for b in block_id if b in bni]+item_id+["air"]
         item_id.sort()
         context.preferences.addons[__package__].preferences.item_id=",".join(item_id)
         object.item_regist(self,context)

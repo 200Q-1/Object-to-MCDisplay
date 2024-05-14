@@ -4,7 +4,6 @@ import bpy
 import math
 import os
 import mathutils
-from bpy_extras.io_utils import ImportHelper
 import json
 import tempfile
 import zipfile
