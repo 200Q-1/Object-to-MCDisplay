@@ -68,6 +68,7 @@ def get_pack(directory,file):
         if os.path.isfile(directory+os.sep.join(file)):
             file=os.sep.join(file)
             data= bpy.data.images.load(directory+file)
+            data.name="/".join(file[file.index("textures")+1:])
             is_anim= os.path.isfile(directory+file+".mcmeta")
         else:
             for p in bpy.context.scene.O2MCD_rc_packs[1:]:
@@ -75,6 +76,7 @@ def get_pack(directory,file):
                     file=os.sep.join(file)
                     if os.path.isfile(p.path+file):
                         data= bpy.data.images.load(p.path+file)
+                        data.name="/".join(file[file.index("textures")+1:])
                         is_anim= os.path.isfile(p.path+file+".mcmeta")
                         break
                 else:
@@ -84,6 +86,7 @@ def get_pack(directory,file):
                                 zip.extract("/".join(file),temp)
                                 data= bpy.data.images.load(os.path.join(temp,*file))
                                 data.pack()
+                                data.name="/".join(file[file.index("textures")+1:])
                                 is_anim= "/".join(file)+".mcmeta" in zip.namelist()
                                 break
                         except:
@@ -98,7 +101,7 @@ def variants(self):
     node_tree.interface.new_socket("Rotation", in_out="INPUT", socket_type="NodeSocketRotation")
     node_tree.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
     node_tree.interface.new_socket("Name", in_out="INPUT", socket_type="NodeSocketString")
-    node_tree.interface.new_socket("Nemu", in_out="INPUT", socket_type="NodeSocketString")
+    node_tree.interface.new_socket("Menu", in_out="INPUT", socket_type="NodeSocketString")
     group_in = node_tree.nodes.new(type="NodeGroupInput")
     group_out = node_tree.nodes.new(type="NodeGroupOutput")
     atr=node_tree.nodes.new(type="GeometryNodeInputNamedAttribute")
@@ -116,7 +119,7 @@ def variants(self):
     node_tree.links.new(switch.outputs['Output'], group_out.inputs['Geometry'])
     node_tree.links.new(group_in.outputs['Rotation'], rotins.inputs['Rotation'])
     node_tree.links.new(group_in.outputs['Name'], comp.inputs["A"])
-    node_tree.links.new(group_in.outputs['Nemu'], comp.inputs["B"])
+    node_tree.links.new(group_in.outputs['Menu'], comp.inputs["B"])
     node_tree.links.new(comp.outputs['Result'], switch.inputs['Switch'])
     return node_tree
 
@@ -171,7 +174,10 @@ def parents(self,directory,file):
                     if not k2 in data[k]: data[k][k2]=v2
             else:
                 data[k]=v
-    data["name"]=file[-1][:-5]
+    if "models" in  file:
+        data["name"]="/".join(file[file.index("models"):-1]+[file[-1][:-5]])
+    else:
+        data["name"]=file[-1][:-5]
     return data
 
 def create_model(self,directory,name):
@@ -191,17 +197,22 @@ def create_model(self,directory,name):
     datas=parents(self,directory,file)
     datalist=[]
     values=None
-    if types== "item" and "overrides" in datas : 
+    
+    if types== "item" : 
+        datas["CMD"]="0"
         datalist.append(datas)
-        for ov in datas["overrides"]:
-            if len(ov["predicate"]) == 1 and "custom_model_data" in ov["predicate"]:
-                model=ov["model"].split(":")
-                of=file[:file.index("models")+1]+(model[-1]+".json").split("/")
-                if len(model)==2:
-                    of[1]=model[0]
-                datalist.append(parents(self,directory,of))
+        if "overrides" in datas: 
+            for ov in datas["overrides"]:
+                if len(ov["predicate"]) == 1 and "custom_model_data" in ov["predicate"]:
+                    model=ov["model"].split(":")
+                    of=file[:file.index("models")+1]+(model[-1]+".json").split("/")
+                    if len(model)==2:
+                        of[1]=model[0]
+                    p=parents(self,directory,of)
+                    p["CMD"]=str(ov["predicate"]["custom_model_data"])
+                    datalist.append(p)
             
-    else :
+    elif types=="variants" or types=="multipart" :
         if "variants" in datas:
             types="variants"
             values=list(datas[types].values())
@@ -249,7 +260,6 @@ def create_model(self,directory,name):
             textures=data["textures"]
             if "particle" in textures: del textures["particle"]
         else: textures={}
-            
         for key,value in textures.items():
             texfile=folder+["textures"]
             if len(value.split(":"))==2 :
@@ -259,8 +269,8 @@ def create_model(self,directory,name):
                 texfile[1]="minecraft"
             texfile=texfile+(value+".png").split("/")
             if not value[0] == "#":
-                if  not os.path.basename(value) in bpy.data.materials:
-                    material= bpy.data.materials.new(os.path.basename(value))
+                if  not value in bpy.data.materials:
+                    material= bpy.data.materials.new(value)
                     material.use_nodes = True
                     material.blend_method='CLIP'
                     material.show_transparent_back=False
@@ -287,7 +297,7 @@ def create_model(self,directory,name):
                         image= bpy.data.images[texfile[-1]]
                     tex_node.image= image
                 else:
-                    material=bpy.data.materials[os.path.basename(value)]
+                    material=bpy.data.materials[value]
                 if not material.name in new_object.data.materials:
                     new_object.data.materials.append(material)
     
@@ -353,7 +363,7 @@ def create_model(self,directory,name):
                                     raise
                                 m=textures[m][1:]
                                 pretex=m
-                        texture.append(textures[m].split("/")[-1])
+                        texture.append(textures[m])
                     except:
                         self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture path is not set.\nFILE:%s") % (file[-1]))
                         texture.append(None)
@@ -442,7 +452,6 @@ def create_model(self,directory,name):
             u.vector=vecuv[i]
             
     #  ノード生成
-    namelist=[i["name"] for i in datalist]
     modi=new_object.modifiers.new("O2MCD", "NODES")
     node_tree=bpy.data.node_groups.new(name=name, type='GeometryNodeTree')
     modi.node_group=node_tree
@@ -459,7 +468,7 @@ def create_model(self,directory,name):
     geo_to_ins.location =(800, 0)
     
     
-    if types== "variants" or "multipart":
+    if types== "variants" or types== "multipart":
         vari={}
         stjo_inv=[]
         value_list=[]
@@ -468,7 +477,6 @@ def create_model(self,directory,name):
         if types=="variants":
             value_list=[item for sublist in list(map(lambda l: [i.split("=") for i in l.split(",")],datas["variants"].keys())) for item in sublist]
         else:
-            # value_list=[[k,str(v)] for val in [i["when"] for i in values if "when" in i] for k,v in val.items()]
             value_list=[]
             for val in [i["when"] for i in values if "when" in i]:
                 for k,v in val.items():
@@ -498,7 +506,9 @@ def create_model(self,directory,name):
             node_tree.interface.new_socket(k, in_out="INPUT", socket_type="NodeSocketMenu")
             menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
             menu.data_type="STRING"
-            # print(dir(menu.enum_definition.enum_items[0]))
+            if len(v) < 2:
+                menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
+                
             for e,l in enumerate(v):
                 if e <= 1:
                     menu.enum_definition.enum_items[e].name=l
@@ -537,7 +547,7 @@ def create_model(self,directory,name):
                 sep_node.label=k
                 sep_node.location = (0, i*200-len(datas[types])*100)
                 node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
-                node_tree.links.new(stjo.outputs['String'], sep_node.inputs['Nemu'])
+                node_tree.links.new(stjo.outputs['String'], sep_node.inputs['Menu'])
                 node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
         else:
             if not "multipart" in bpy.data.node_groups:
@@ -662,12 +672,40 @@ def create_model(self,directory,name):
                 
                 
     elif types== "item":
-        for i,n in enumerate(namelist):
+        node_tree.interface.new_socket("CustomModelData", in_out="INPUT", socket_type="NodeSocketMenu")
+        menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
+        menu.data_type="STRING"
+        menu.location = (-400, 0)
+        menu.name="CustomModelData"
+        menu.label="CustomModelData"
+                
+        namelist=[(i["name"],i["CMD"]) for i in datalist]
+        for i,(n,c) in enumerate(namelist):
+            if not "variants" in bpy.data.node_groups:
+                sep=variants(self)
+            else:
+                sep=bpy.data.node_groups["variants"]
+                
+            if len(namelist) < 2:
+                menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
+                
+            if i <= 1:
+                menu.enum_definition.enum_items[i].name=c
+            else:
+                menu.enum_definition.enum_items.new(c)
+            menu.inputs[i+1].default_value=c
+            node_tree.links.new(geo_in.outputs["CustomModelData"], menu.inputs[0])
+            
             sep_node = node_tree.nodes.new("GeometryNodeGroup")
+            sep_node.node_tree = sep
             sep_node.inputs['Attribute'].default_value=n
+            sep_node.inputs['Name'].default_value=c
+            modi["Socket_2"]=0
             sep_node.location = (0, len(namelist)*80-i*160)
             node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
-            # node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
+            node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
+            node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
+        
 
 
 
