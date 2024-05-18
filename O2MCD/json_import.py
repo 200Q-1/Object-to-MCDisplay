@@ -174,12 +174,12 @@ def parents(self,directory,file):
             else:
                 data[k]=v
     if "models" in  file:
-        data["name"]="/".join(file[file.index("models"):-1]+[file[-1][:-5]])
+        data["name"]="/".join(file[file.index("models")+1:-1]+[file[-1][:-5]])
     else:
         data["name"]=file[-1][:-5]
     return data
 
-def create_model(self,directory,name):
+def create_model(self,directory,name,types):
     
     # オブジェクト作成
     new_mesh = bpy.data.meshes.new(name)
@@ -211,13 +211,13 @@ def create_model(self,directory,name):
                     p["CMD"]=str(ov["predicate"]["custom_model_data"])
                     datalist.append(p)
             
-    elif types=="variants" or types=="multipart" :
+    elif types=="block" :
         if "variants" in datas:
-            types="variants"
-            values=list(datas[types].values())
+            btype="variants"
+            values=list(datas["variants"].values())
         else:
-            types="multipart"
-            values=[i for i in datas[types]]
+            btype="multipart"
+            values=[i for i in datas["multipart"]]
             values=[dict(**i["apply"][0] if type(i["apply"]) is list else i["apply"], **dict(when=i["when"])) if len(i) > 1 else i["apply"] for i in values]
         for v in values:
             for ii,vv in v.items():
@@ -228,7 +228,6 @@ def create_model(self,directory,name):
                     if len(model)==2:
                         va[1]=model[0]
                 if not va[-1][:-5] in [n["name"] for n in datalist] :datalist.append(parents(self,directory,va))
-        
     vertices = []
     edges = []
     faces=[]
@@ -362,7 +361,7 @@ def create_model(self,directory,name):
                                     raise
                                 m=textures[m][1:]
                                 pretex=m
-                        texture.append(textures[m])
+                        texture.append(textures[m].split(":")[-1])
                     except:
                         self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture path is not set.\nFILE:%s") % (file[-1]))
                         texture.append(None)
@@ -467,13 +466,13 @@ def create_model(self,directory,name):
     geo_to_ins.location =(800, 0)
     
     
-    if types== "variants" or types== "multipart":
+    if types== "block":
         vari={}
         stjo_inv=[]
         value_list=[]
         sep_inv=[]
         
-        if types=="variants":
+        if btype=="variants":
             value_list=[item for sublist in list(map(lambda l: [i.split("=") for i in l.split(",")],datas["variants"].keys())) for item in sublist]
         else:
             value_list=[]
@@ -522,7 +521,7 @@ def create_model(self,directory,name):
             modi["Socket_"+str(i+2)]=0
                 
             
-        if types=="variants":
+        if btype=="variants":
             if not "variants" in bpy.data.node_groups:
                 sep=variants(self)
             else:
@@ -533,18 +532,18 @@ def create_model(self,directory,name):
             stjo.location =(-200, 0)
             for s in stjo_inv: node_tree.links.new(s, stjo.inputs[1])
             
-            model_data=tuple(datas[types].items())
+            model_data=tuple(datas["variants"].items())
             for i,(k,v) in enumerate(model_data[::-1]):
                 x=radians(v.get("x")) if v.get("x") else 0
                 z=radians(v.get("y")) if v.get("y") else 0
                 sep_node = node_tree.nodes.new("GeometryNodeGroup")
                 sep_node.node_tree = sep
-                sep_node.inputs['Attribute'].default_value=v["model"].split("/")[-1]
+                sep_node.inputs['Attribute'].default_value=v["model"].split(":")[-1] if ":" in v["model"] else v["model"]
                 sep_node.inputs['Rotation'].default_value=(x,0,-z)
                 sep_node.inputs['Name'].default_value=",".join(list(map(lambda l: l[l.index("=")+1:] if "=" in l else l, k.split(","))))
                 sep_node.name=k
                 sep_node.label=k
-                sep_node.location = (0, i*200-len(datas[types])*100)
+                sep_node.location = (0, i*200-len(datas["variants"])*100)
                 node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
                 node_tree.links.new(stjo.outputs['String'], sep_node.inputs['Menu'])
                 node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
@@ -567,7 +566,7 @@ def create_model(self,directory,name):
             
             
             model_data=[]
-            for da in datas[types]:
+            for da in datas["multipart"]:
                 if type(da["apply"]) is list:
                     da["apply"]=da["apply"][0]
                 if "when" in da:
@@ -596,9 +595,9 @@ def create_model(self,directory,name):
                 sep_node = node_tree.nodes.new("GeometryNodeGroup")
                 sep_node.node_tree = sep
                 sep_node.inputs["active"].default_value=True
-                sep_node.location = (600, len(datas[types])*100-i*200)
+                sep_node.location = (600, len(datas["multipart"])*100-i*200)
                 node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
-                sep_node.inputs['Attribute'].default_value=v["model"].split("/")[-1]
+                sep_node.inputs['Attribute'].default_value=v["model"].split(":")[-1] if ":" in v["model"] else v["model"]
                 sep_node.inputs['Rotation'].default_value=(x,0,-z)
                 node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
                 if type(k) is list: sep_node.label=str(k).replace("'","")[1:-1]
@@ -726,7 +725,7 @@ class OBJECTTOMCDISPLAY_OT_SearchItem(bpy.types.Operator):  # アイテム検索
 
     def execute(self, context):
         directory=context.preferences.addons[__package__].preferences.mc_jar+os.sep+os.sep.join(["assets","minecraft","models","item"])+os.sep
-        create_model(self,directory,self.enum)
+        create_model(self,directory,self.enum,"item")
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -742,7 +741,7 @@ class OBJECTTOMCDISPLAY_OT_SearchBlock(bpy.types.Operator):  # ブロック検�
 
     def execute(self, context):
         directory=context.preferences.addons[__package__].preferences.mc_jar+os.sep+os.sep.join(["assets","minecraft","blockstates"])+os.sep
-        create_model(self,directory,self.enum)
+        create_model(self,directory,self.enum,"block")
         return {'FINISHED'}
 
     def invoke(self, context, event):
