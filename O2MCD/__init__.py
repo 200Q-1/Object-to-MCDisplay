@@ -20,7 +20,6 @@ bl_info = {
 
 O2MCD_translation_dict = {
     "ja_JP": {
-        ("*", "Display Properties"): "Displayプロパティ",
         ("*", "Update"): "更新",
         ("*", "Auto Update"): "自動更新",
         ("*", "Get information about the object and generate commands in the Output according to the Input"): "オブジェクトの情報を取得してInputに応じたコマンドをOutputに生成します",
@@ -92,14 +91,14 @@ if "bpy" in locals():
     imp.reload(output)
     imp.reload(command)
     imp.reload(link)
-    imp.reload(list)
+    imp.reload(oblect_list)
     imp.reload(json_import)
 else:
     from . import object
     from . import output
     from . import command
     from . import link
-    from . import list
+    from . import oblect_list
     from . import json_import
 import bpy
 from bpy.app.handlers import persistent
@@ -129,13 +128,21 @@ class OBJECTTOMCDISPLAY_OT_RemoveCommand(bpy.types.Operator):  # コマンド削
     def execute(self, context):
         context.preferences.addons[__package__].preferences.inputs.remove(self.index)
         return {'FINISHED'}
+    
+class  O2MCD_BlockList(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name="Name", default="")
+class  O2MCD_ItemList(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name="Name", default="")
+    
 class O2MCD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     index : bpy.props.IntProperty(name="index",default=0)
     mc_jar : bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("mc_jar"), default="")
     rc_packs : bpy.props.StringProperty(default="")
     block_id : bpy.props.StringProperty(default="")
+    block_list : bpy.props.CollectionProperty(name="block_list",type=O2MCD_BlockList)
     item_id : bpy.props.StringProperty(default="")
+    item_list : bpy.props.CollectionProperty(name="item_list",type=O2MCD_ItemList)
     
     mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20')
     rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
@@ -148,10 +155,10 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     
     def draw(self, context):
         layout = self.layout
+        layout.prop_search(self, "block_id",self, "block_list",text="id")
+        layout.prop_search(self, "item_id",self, "item_list",text="id")
         br = layout.row(align=True)
         br.prop(self, "mc_jar",text=".jarファイル")
-        layout.prop(self, "block_id",text="")
-        layout.prop(self, "item_id",text="")
         br.operator(OBJECTTOMCDISPLAY_OT_JarOpen.bl_idname, text="", icon='FILE_FOLDER')
         layout.label(icon='DOT',text=bpy.app.translations.pgettext("You can set default values that are applied when you open a new project."))
         row=layout.row()
@@ -260,11 +267,12 @@ class OBJECTTOMCDISPLAY_OT_JarOpen(bpy.types.Operator): #JAR設定
                 item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
                 bni=[f.split("/")[-1] for f in zip.namelist() if f.startswith("assets/minecraft/models/item/") and not f.endswith('/')]
         except:pass
-        context.preferences.addons[__package__].preferences.block_id=",".join(block_id)
         item_id=[b for b in block_id if b in bni]+item_id+["air"]
         item_id.sort()
-        context.preferences.addons[__package__].preferences.item_id=",".join(item_id)
-        object.item_regist(self,context)
+        for i in block_id:
+            bpy.context.preferences.addons[__package__].preferences.block_list.add().name=i
+        for i in item_id:
+            bpy.context.preferences.addons[__package__].preferences.item_list.add().name=i
         return {'FINISHED'}
 class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
     bl_idname = "o2mcd.df_resource_pack_add"
@@ -319,10 +327,10 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove(bpy.types.Operator): #移動
     def invoke(self, context, event):
         list=context.scene.O2MCD_df_packs
         index=context.preferences.addons[__package__].preferences.index
-        if self.action == 'DOWN' and index < len(list):
+        if self.action == 'DOWN' :
             list.move(index, index+1)
             context.preferences.addons[__package__].preferences.index += 1
-        elif self.action == 'UP' and index >= 1:
+        elif self.action == 'UP' :
             list.move(index, index-1)
             context.preferences.addons[__package__].preferences.index -= 1
         rc_packs_update(self, context)
@@ -334,6 +342,8 @@ class O2MCD_DefaultResourcePacks(bpy.types.PropertyGroup):
     type: bpy.props.EnumProperty(items=(('ZIP', "zip", ""),('JAR', "jar", ""),('FOLDER', "folder", "")))
 
 classes = (
+    O2MCD_BlockList,
+    O2MCD_ItemList,
     O2MCD_DefaultInputs,
     OBJECTTOMCDISPLAY_OT_AddCommand,
     OBJECTTOMCDISPLAY_OT_RemoveCommand,
@@ -343,14 +353,13 @@ classes = (
     OBJECTTOMCDISPLAY_OT_JarOpen,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove,
-    OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove
+    OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove,
 )
 
 # blender起動時に実行
 @persistent
 def load(self, context):
     output.update(None, bpy.context)
-    object.item_regist(None, bpy.context)
     JarSet(None, bpy.context)
     output.set_default(None, bpy.context)
 
@@ -365,7 +374,7 @@ def register():
     command.register()
     object.register()
     link.register()
-    list.register()
+    oblect_list.register()
     json_import.register()
 
 def unregister():
@@ -376,7 +385,7 @@ def unregister():
     command.unregister()
     object.unregister()
     link.unregister()
-    list.unregister()
+    oblect_list.unregister()
     json_import.unregister()
 
 if __name__ == "__main__":

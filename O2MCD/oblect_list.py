@@ -7,23 +7,27 @@ from re import *
 
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     scene=bpy.context.scene
-    list=[]
-    if bpy.context.view_layer.objects.active:
-        scene.O2MCD_props.list_index = bpy.context.view_layer.objects.active.O2MCD_props.prop_id
+    olist=[]
+    command.cmd_set(self,context)
+    active=None
+    if bpy.context.object:
+        active=bpy.context.object
+        scene.O2MCD_props.list_index = active.O2MCD_props.prop_id
     for i, l in enumerate(scene.O2MCD_object_list):
-        if not l.obj == None and l.obj.name in context.view_layer.objects and l.obj.O2MCD_props.prop_id >=0:
-            list.append(l.obj)
-    for i in context.view_layer.objects:
-        if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.O2MCD_object_list]:
-            list.append(i)
+        if not l.obj == None and l.obj.name in context.view_layer.objects and l.obj.O2MCD_props.disp_id:
+            olist.append(l.obj)
+    for i in list(filter(lambda la : not la in [i.obj for i in scene.O2MCD_object_list],context.view_layer.objects)):
+        if i.O2MCD_props.disp_id:
+            olist.append(i)
+        # if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.O2MCD_object_list]:
+        #     list.append(i)
     scene.O2MCD_object_list.clear()
-    for i,o in enumerate(list):
+    for i,o in enumerate(olist):
         scene.O2MCD_object_list.add().obj = o
         o.O2MCD_props.number=i
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D' or 'PROPERTIES':
             area.tag_redraw()
-    active=bpy.context.object
     if active and active.O2MCD_props.number >=0 and not active == scene.O2MCD_object_list[scene.O2MCD_props.obj_index].obj:
         scene.O2MCD_props.obj_index = active.O2MCD_props.number
 
@@ -40,10 +44,10 @@ class OBJECTTOMCDISPLAY_OT_ListMove(bpy.types.Operator): #移動
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", ""),('REVERSE',"reverse","")))
 
     def invoke(self, context, event):
-        if self.action == 'DOWN' and context.scene.O2MCD_props.obj_index < len(context.scene.O2MCD_object_list) - 1:
+        if self.action == 'DOWN':
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
             context.scene.O2MCD_props.obj_index += 1
-        elif self.action == 'UP' and context.scene.O2MCD_props.obj_index >= 1:
+        elif self.action == 'UP':
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
             context.scene.O2MCD_props.obj_index -= 1
         elif self.action == 'REVERSE':

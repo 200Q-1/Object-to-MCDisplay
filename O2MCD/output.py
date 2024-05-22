@@ -8,7 +8,7 @@ from bpy.app.handlers import persistent
 from . import link
 from . import command
 from . import object
-from . import list
+from . import oblect_list
 from . import json_import
 # 関数
 
@@ -29,8 +29,8 @@ def update(self, context):  # 更新処理
     if bpy.context.scene.O2MCD_props.enable:  # アドオンを有効
         if not sync_version in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.append(sync_version)
-        if not list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
-            bpy.app.handlers.depsgraph_update_post.append(list.chenge_panel)
+        if not oblect_list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.append(oblect_list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
         bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
             
@@ -44,7 +44,7 @@ def update(self, context):  # 更新処理
     else:  # アドオンを無効
         if command.command_generate in bpy.app.handlers.frame_change_post :bpy.app.handlers.frame_change_post.remove(command.command_generate)
         if command.command_generate in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
-        if list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
+        if oblect_list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(oblect_list.chenge_panel)
         bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
         
 def update_auto_reload(self,context):
@@ -105,9 +105,9 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
         col.prop(context.scene.O2MCD_props, "rou")
         layout.separator()
         col = layout.column(align=True)
-        row = col.row()
-        row.prop(context.scene.O2MCD_props, "output", expand=True)
         box = col.box()
+        row = box.row()
+        row.prop_tabs_enum(context.scene.O2MCD_props, "output")
         if context.scene.O2MCD_props.output == "ANIMATION":
             box.prop(context.scene.O2MCD_props, "anim_path")
         else:
@@ -288,11 +288,11 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False, update=update)
     Enum: bpy.props.EnumProperty(name="Enum", items=object.enum_item, options={"ANIMATABLE"})
     list_index : bpy.props.IntProperty(name="Index", default=-1)
-    obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=list.select_object)
+    obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=oblect_list.select_object)
     mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
     toggle_list : bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Object List"),description=bpy.app.translations.pgettext("List of objects for which the Display property is set."),default=False)
     toggle_rc_pack: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Parent Referrer"),description=bpy.app.translations.pgettext("Add a resource pack to search for files specified as parent when importing a json model"),default=False)
-    
+
 classes = (
     OBJECTTOMCDISPLAY_PT_MainPanel,
     OBJECTTOMCDISPLAY_PT_TextPanel,
@@ -310,4 +310,4 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
-    if list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(list.chenge_panel)
+    if oblect_list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(oblect_list.chenge_panel)

@@ -5,6 +5,16 @@ import mathutils
 from re import *
 from math import *
 
+def cmd_set(self,context):
+    try:
+        active=bpy.context.object
+        pre=bpy.context.scene.O2MCD_object_list[bpy.context.scene.O2MCD_props.obj_index].obj
+        pre.O2MCD_command_list[pre.O2MCD_props.pre_cmd].command=bpy.data.texts["Input"].as_string()
+        active.O2MCD_props.pre_cmd=active.O2MCD_props.command_index
+    # print(scene.O2MCD_object_list[scene.O2MCD_props.obj_index].obj.O2MCD_props.command_index)
+        bpy.data.texts["Input"].from_string(active.O2MCD_command_list[active.O2MCD_props.command_index].command)
+    except:pass
+
 def get_location(context,object):  # 位置取得 
     loc = mathutils.Matrix.Rotation(radians(-90),4,'X') @ object.matrix_world
     rou = context.scene.O2MCD_props.rou
@@ -322,8 +332,38 @@ def command_generate(self, context):    # コマンド生成
         bpy.app.handlers.frame_change_post.append(command_generate)
         bpy.app.handlers.depsgraph_update_post.append(command_generate)
 
+class OBJECTTOMCDISPLAY_OT_CommandListAction(bpy.types.Operator): #移動
+    bl_idname = "o2mcd.command_list_action"
+    bl_label = ""
+    bl_description = ""
+    action: bpy.props.EnumProperty(items=(('UP', "up", ""),('DOWN', "down", ""),('ADD',"add",""),('REMOVE',"remove","")))
+
+    def invoke(self, context, event):
+        cmd_list=context.view_layer.objects.active.O2MCD_command_list
+        cmd_index=context.view_layer.objects.active.O2MCD_props.command_index
+        if self.action == 'DOWN':
+            cmd_list.move(cmd_index, cmd_index+1)
+            context.object.O2MCD_props.command_index += 1
+            context.view_layer.objects.active.O2MCD_props.pre_cmd=context.view_layer.objects.active.O2MCD_props.pre_cmd+1
+        elif self.action == 'UP':
+            cmd_list.move(cmd_index, cmd_index-1)
+            context.object.O2MCD_props.command_index -= 1
+            context.view_layer.objects.active.O2MCD_props.pre_cmd=context.view_layer.objects.active.O2MCD_props.pre_cmd-1
+        elif self.action == 'ADD':
+            newcmd=cmd_list.add()
+            newcmd.name = "cmd"+str(len(context.view_layer.objects.active.O2MCD_command_list))
+        elif self.action == 'REMOVE':
+            cmd_list.remove(cmd_index)
+        return {"FINISHED"}
+    
+    
+classes = (
+    OBJECTTOMCDISPLAY_OT_CommandListAction,
+)
+
 def register():
-    pass
+    for cls in classes:
+        bpy.utils.register_class(cls)
 
 def unregister():
     if command_generate in bpy.app.handlers.frame_change_post :bpy.app.handlers.frame_change_post.remove(command_generate)
