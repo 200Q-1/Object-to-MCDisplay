@@ -234,7 +234,7 @@ def create_model(self,context,directory,name,types,new):
                         va[va.index("blockstates")]="models"
                         if len(model)==2:
                             va[1]=model[0]
-                    if not va[-1][:-5] in [n["name"] for n in datalist] :datalist.append(parents(self,directory,va))
+                    if not "/".join(va[va.index("models")+1:])[:-5] in [n["name"] for n in datalist] :datalist.append(parents(self,directory,va))
         vertices = []
         edges = []
         faces=[]
