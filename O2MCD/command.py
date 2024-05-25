@@ -4,64 +4,69 @@ import bpy
 import mathutils
 from re import *
 from math import *
-
+from . import object
 def cmd_set(self,context):
-    try:
-        active=bpy.context.object
+    active=bpy.context.object
+    if bpy.context.scene.O2MCD_object_list: 
         pre=bpy.context.scene.O2MCD_object_list[bpy.context.scene.O2MCD_props.obj_index].obj
+    else:
+        pre=None
+    if pre and pre.O2MCD_command_list:
         pre.O2MCD_command_list[pre.O2MCD_props.pre_cmd].command=bpy.data.texts["Input"].as_string()
+    if active:
         active.O2MCD_props.pre_cmd=active.O2MCD_props.command_index
-    # print(scene.O2MCD_object_list[scene.O2MCD_props.obj_index].obj.O2MCD_props.command_index)
-        bpy.data.texts["Input"].from_string(active.O2MCD_command_list[active.O2MCD_props.command_index].command)
-    except:pass
+        if active.O2MCD_command_list:
+            bpy.data.texts["Input"].from_string(active.O2MCD_command_list[active.O2MCD_props.command_index].command)
+        else: bpy.data.texts["Input"].clear()
 
-def get_location(context,object):  # 位置取得 
-    loc = mathutils.Matrix.Rotation(radians(-90),4,'X') @ object.matrix_world
+
+def get_location(context,obj):  # 位置取得 
+    loc = mathutils.Matrix.Rotation(radians(-90),4,'X') @ obj.matrix_world
     rou = context.scene.O2MCD_props.rou
-    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == "BLOCK":
+    if obj.O2MCD_props.disp_type=="block_display":
         loc = loc @ mathutils.Matrix.Translation(mathutils.Vector((0.5, -0.5, -0.5)))
     loc = loc.translation
     loc = (round(loc[0], rou), round(loc[1], rou), round(loc[2], rou))
     return loc
 
-def get_position(context,object):  # pos取得
-    pos = mathutils.Matrix.Rotation(radians(-90),4,'X') @ object.matrix_world
+def get_position(context,obj):  # pos取得
+    pos = mathutils.Matrix.Rotation(radians(-90),4,'X') @ obj.matrix_world
     rou = context.scene.O2MCD_props.rou
     pos = pos.translation
     pos = (round(pos[0], rou), round(pos[1], rou), round(pos[2], rou))
     return pos
 
-def get_scale(context,object):  # スケール取得
-    scale = object.matrix_world.to_scale()
+def get_scale(context,obj):  # スケール取得
+    scale = obj.matrix_world.to_scale()
     rou = context.scene.O2MCD_props.rou
-    if object.parent:
-        if object.parent_type == "BONE":
-            pscale = object.parent.pose.bones[object.parent_bone].matrix @ object.matrix_world
+    if obj.parent:
+        if obj.parent_type == "BONE":
+            pscale = obj.parent.pose.bones[obj.parent_bone].matrix @ obj.matrix_world
             pscale = pscale.to_scale()
         else:
-            pscale = object.parent.matrix_world.to_scale()
+            pscale = obj.parent.matrix_world.to_scale()
         if not round(pscale[0], rou) == round(pscale[1], rou) == round(pscale[2], rou):
-            object.scale = (1, 1, 1)
+            obj.scale = (1, 1, 1)
             scale = pscale
     scale = (round(scale[0], rou), round(scale[2], rou), round(scale[1], rou))
     return scale
 
 
-def get_left_rotation(context,object):  # 左回転取得
+def get_left_rotation(context,obj):  # 左回転取得
     rou = context.scene.O2MCD_props.rou
-    if object.parent:
-        if object.parent_type == "BONE":
-            l_rot = object.parent.pose.bones[object.parent_bone].matrix
-            l_rot = object.parent.matrix_world @ l_rot
+    if obj.parent:
+        if obj.parent_type == "BONE":
+            l_rot = obj.parent.pose.bones[obj.parent_bone].matrix
+            l_rot = obj.parent.matrix_world @ l_rot
             l_rot = l_rot.to_euler()
             l_rot = mathutils.Euler(
                 (l_rot[0]-1.5708, l_rot[1], l_rot[2]), 'XYZ')
         else:
-            l_rot = object.parent.matrix_world.to_euler()
+            l_rot = obj.parent.matrix_world.to_euler()
     else:
-        l_rot = object.matrix_world.to_euler()
+        l_rot = obj.matrix_world.to_euler()
     l_rot_y = mathutils.Matrix.Rotation(l_rot[2],4,'Y')
-    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
+    if obj.O2MCD_props.disp_type == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
         inv=mathutils.Matrix.Rotation(radians(180),4,"Y")
         l_rot_x = mathutils.Matrix.Rotation(-l_rot[0],4,'X')
         l_rot_z = mathutils.Matrix.Rotation(l_rot[1],4,'Z')
@@ -74,20 +79,20 @@ def get_left_rotation(context,object):  # 左回転取得
     l_rot = [round(l_rot[1], rou), round(l_rot[2], rou),round(l_rot[3], rou), round(l_rot[0], rou)]
     return l_rot
 
-def get_rotation(context,object):  # 回転取得
+def get_rotation(context,obj):  # 回転取得
     rou = context.scene.O2MCD_props.rou
-    if object.parent:
-        if object.parent_type == "BONE":
-            rot = object.parent.pose.bones[object.parent_bone].matrix
-            rot = object.parent.matrix_world @ rot
+    if obj.parent:
+        if obj.parent_type == "BONE":
+            rot = obj.parent.pose.bones[obj.parent_bone].matrix
+            rot = obj.parent.matrix_world @ rot
             rot = rot.to_euler()
             rot = mathutils.Euler((rot[0]-1.5708, rot[1], rot[2]), 'XYZ')
         else:
-            rot = object.parent.matrix_world.to_euler()
+            rot = obj.parent.matrix_world.to_euler()
     else:
-        rot = object.matrix_world.to_euler()  
+        rot = obj.matrix_world.to_euler()  
     rot_y = mathutils.Matrix.Rotation(rot[2],4,'Y')
-    if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
+    if obj.O2MCD_props.disp_type == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
         rot_x = mathutils.Matrix.Rotation(-rot[0],4,'X')
         rot_z = mathutils.Matrix.Rotation(rot[1],4,'Z')
     else:
@@ -97,12 +102,12 @@ def get_rotation(context,object):  # 回転取得
     rot = [round(degrees(rot[1]), rou), round(degrees(rot[2]), rou),round(degrees(rot[0]), rou)]
     return rot
 
-def get_right_rotation(context,object):  # 右回転取得
+def get_right_rotation(context,obj):  # 右回転取得
     rou = context.scene.O2MCD_props.rou
-    if object.parent:
-        r_rot = object.rotation_euler
+    if obj.parent:
+        r_rot = obj.rotation_euler
         r_rot_y = mathutils.Matrix.Rotation(r_rot[2],4,'Y')
-        if context.scene.O2MCD_prop_list[object.O2MCD_props.prop_id].Types == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
+        if obj.O2MCD_props.disp_type == 'BLOCK' or context.scene.O2MCD_props.mc_version == "1.19":
             r_rot_x = mathutils.Matrix.Rotation(-r_rot[0],4,'X')
             r_rot_z = mathutils.Matrix.Rotation(r_rot[1],4,'Z')
         else:
@@ -185,23 +190,20 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
             elif var == "name":     # 名前を取得
                 name = obj.name
             elif var == "id":       # idを取得
-                id = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].id
-            elif var == "extra":    # extraNBTを取得
-                extra = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].ExtraNBT
-            elif var == "type":     # タイプを取得
-                if context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
-                    type = "item_display"
-                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
-                    type = "block_display"
-                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
-                    type = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].type
+                id = obj.O2MCD_props.disp_id
+            # elif var == "extra":    # extraNBTを取得
+            #     extra = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].ExtraNBT
             elif var == "prop":     # ブロックのプロパティを取得
-                if context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
-                    prop = ""
-                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "BLOCK":
-                    prop = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Properties
-                elif context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "EXTRA":
-                    prop = ""
+                prop=""
+                if obj.O2MCD_props.disp_type == "item_display" or obj.O2MCD_props.disp_type == "block_display":
+                    modi= list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and m.node_group.name == obj.data.name , obj.modifiers))[0]
+                    for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
+                        if val[1:]== n.name:
+                            prop=n.name+":"+"\""+str(obj.modifiers[modi.name][f"Socket_{i+2}"])+"\""
+                # elif obj.O2MCD_props.disp_type == "blopck_display":
+                #     prop = context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Properties
+                # elif obj.O2MCD_props.disp_type == "EXTRA":
+                #     prop = ""
             elif var == "model":    # カスタムモデルデータを取得
                 if context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].Types == "ITEM":
                     model = str(context.scene.O2MCD_prop_list[obj.O2MCD_props.prop_id].CustomModelData)
@@ -245,7 +247,7 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
             if var == "prop":
                 if not prop == "": com = com.replace(f, prop, 1)
                 else: com = com.replace(f, "", 1)
-            elif var == "model":
+            if var == "model":
                 if not model == "": com = com.replace(f, model, 1)
                 else: com = com.replace(f, "", 1)
             elif var == "item":
@@ -253,9 +255,9 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                 else: com = com.replace(f, "", 1)
             elif var == "name": com = com.replace(f, name, 1)
             elif var == "id": com = com.replace(f, id, 1)
-            elif var == "type": com = com.replace(f, type, 1)
+            elif var == "type": com = com.replace(f, obj.O2MCD_props.disp_type, 1)
             elif var == "num": com = com.replace(f, str(num), 1)
-            elif var == "extra": com = com.replace(f, extra, 1)
+            # elif var == "extra": com = com.replace(f, extra, 1)
         elif var == "math":com = com.replace(f,str(eval(sub('V?(.+)', "\\1", val))), 1)   # mathを処理
         elif var == "frame": com = com.replace(f, str(current_frame), 1)
     if not current_frame == context.scene.frame_current:
@@ -270,55 +272,51 @@ def command_generate(self, context):    # コマンド生成
         bpy.app.handlers.depsgraph_update_post.remove(command_generate)
     if "Output" not in bpy.data.texts:  # Outputが無ければ作成
         bpy.data.texts.new("Output")
+    object.mesh_update(self, context)
     funk_list = "(?:transf|loc|scale|l_rot|r_rot|name|id|type|model|item|prop|tags?|num|math|extra|pos|rot|frame)"    # 関数名
-    input = list(bpy.data.texts["Input"].as_string().splitlines())  # コマンドをリスト化
-    input = [s for s in input if not match('^#(?! +|#+)', s)]       # エスケープ
+    # input = list(bpy.data.texts["Input"].as_string().splitlines())  # コマンドをリスト化
     output = []                                                     # 出力をリセット
 
-    for i,c in enumerate(input) :
-        if match(f"(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", c):
-            f=sub(f"(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?(?:\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?)\s?:.*", "\\1", c)
-            f= comvert_function(context, funk_list, f, None)
-            f=str(int(float(f)))
-            input[i]=f+":"+sub(f"/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?(?:\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:(.*)", "\\1", c)
+    # for i,c in enumerate(input) :
+    #     if match(f"(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", c):
+    #         f=sub(f"(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?(?:\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?)\s?:.*", "\\1", c)
+    #         f= comvert_function(context, funk_list, f, None)
+    #         f=str(int(float(f)))
+    #         input[i]=f+":"+sub(f"/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?(?:\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:(.*)", "\\1", c)
 
-    #  startを出力に追加
-    com = [sub("^start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
-    com = frame_range(context, com)
-    if com:
-        if [i for i in  com if match(f".*/({funk_list}).*", i)]:
-            com = "\n".join(com)
-            com = comvert_function(context, funk_list, com, None)
-        else:com = "\n".join(com)
-        output.append(com)
+    # #  startを出力に追加
+    # com = [sub("^start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("start(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
+    # com = frame_range(context, com)
+    # if com:
+    #     if [i for i in  com if match(f".*/({funk_list}).*", i)]:
+    #         com = "\n".join(com)
+    #         com = comvert_function(context, funk_list, com, None)
+    #     else:com = "\n".join(com)
+    #     output.append(com)  
     #   メインコマンドを出力に追加
     for l in context.scene.O2MCD_object_list:
         o = l.obj
         if not o.hide_viewport and o.O2MCD_props.enable:
-            com = []
-            typ= context.scene.O2MCD_prop_list[o.O2MCD_props.prop_id].Types.lower()
-            num= o.O2MCD_props.number
-            for s in input:
-                if match(f"({num}|{typ})(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s) or not match(f".+?(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s):
-                    com.append(sub(f"^(?:{num}|{typ})(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s))
-                    if match(f"{num}(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s): 
-                        o= context.scene.O2MCD_object_list[int(sub(f"^({num})(?:\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:.*", "\\1", s))].obj
-            com = frame_range(context, com)
-            if com:
-                if [i for i in  com if match(f".*/({funk_list}).*", i)]:
-                    com = "\n".join(com)
-                    com = comvert_function(context, funk_list, com, o.O2MCD_props.number)
-                else:com = "\n".join(com)
-                output.append(com)
-    # endを出力に追加
-    com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
-    com = frame_range(context, com)
-    if com:
-        if [i for i in  com if match(f".*/({funk_list}).*", i)]:
-            com = "\n".join(com)
-            com = comvert_function(context, funk_list, com, None)
-        else:com = "\n".join(com)
-        output.append(com)
+            input=[]
+            input=[c for cl in o.O2MCD_command_list for c in cl.command.split("\n")]
+            # for c in o.O2MCD_command_list:
+            #     if c.enable: input+=[*c.command.split("\n")]
+            input = [s for s in input if not match('^#(?! +|#+)', s)]       # エスケープ
+            if input:
+                if [i for i in  input if match(f".*/({funk_list}).*", i)]:
+                    input = "\n".join(input)
+                    input = comvert_function(context, funk_list, input, o.O2MCD_props.number)
+                else:input = "\n".join(input)
+                output.append(input)
+    # # endを出力に追加
+    # com = [sub("^end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", "\\1", s)for s in input if match("end(\[(?:[0-9]+|[0-9]+\-[0-9]+)\])?\s?:\s?", s)]
+    # com = frame_range(context, com)
+    # if com:
+    #     if [i for i in  com if match(f".*/({funk_list}).*", i)]:
+    #         com = "\n".join(com)
+    #         com = comvert_function(context, funk_list, com, None)
+    #     else:com = "\n".join(com)
+    #     output.append(com)
 
     # Outputに書き込み
     output = "\n".join(output)
@@ -350,6 +348,8 @@ class OBJECTTOMCDISPLAY_OT_CommandListAction(bpy.types.Operator): #移動
             context.object.O2MCD_props.command_index -= 1
             context.view_layer.objects.active.O2MCD_props.pre_cmd=context.view_layer.objects.active.O2MCD_props.pre_cmd-1
         elif self.action == 'ADD':
+            if "Input" not in bpy.data.texts:
+                bpy.data.texts.new("Input")
             newcmd=cmd_list.add()
             newcmd.name = "cmd"+str(len(context.view_layer.objects.active.O2MCD_command_list))
         elif self.action == 'REMOVE':

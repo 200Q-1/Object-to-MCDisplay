@@ -21,10 +21,13 @@ def set_default(self,context):
         context.scene.O2MCD_props.auto_reload= context.preferences.addons[__package__].preferences.auto_reload
         context.scene.O2MCD_props.enable= context.preferences.addons[__package__].preferences.enable
         context.scene.O2MCD_props.mcpp_sync= context.preferences.addons[__package__].preferences.mcpp_sync
-        if not context.scene.O2MCD_rc_packs: context.scene.O2MCD_rc_packs.add()
-        if context.preferences.addons[__package__].preferences.rc_packs:
-            for p in context.preferences.addons[__package__].preferences.rc_packs.split(","):
-                context.scene.O2MCD_rc_packs.add().path= p
+        if context.preferences.addons[__package__].preferences.df_packs: 
+            for p in context.preferences.addons[__package__].preferences.df_packs:
+                context.scene.O2MCD_rc_packs.add().path=p.path
+        else:
+            context.preferences.addons[__package__].preferences.df_packs.add()
+        
+
 def update(self, context):  # 更新処理
     if bpy.context.scene.O2MCD_props.enable:  # アドオンを有効
         if not sync_version in bpy.app.handlers.depsgraph_update_post:
@@ -38,7 +41,6 @@ def update(self, context):  # 更新処理
             input=bpy.data.texts.new("Input")
             com= [i.command for i in context.preferences.addons[__package__].preferences.inputs]
             input.write("\n".join(com))
-            
         update_auto_reload(self,context)
                 
     else:  # アドオンを無効
@@ -125,9 +127,11 @@ class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
             row = col.row()
             if context.scene.O2MCD_rc_index <= 1 :
                 row.enabled= False
+            if context.scene.O2MCD_rc_index <= 1 or context.scene.O2MCD_rc_index == len(context.scene.O2MCD_rc_packs)-1:
+                row.enabled= False
             row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
             row = col.row()
-            if context.scene.O2MCD_rc_index >= len(context.scene.O2MCD_rc_packs)-1 or context.scene.O2MCD_rc_index == 0:
+            if context.scene.O2MCD_rc_index >= len(context.scene.O2MCD_rc_packs)-2 or context.scene.O2MCD_rc_index == 0:
                 row.enabled= False
             row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
         
@@ -195,11 +199,11 @@ class OBJECTTOMCDISPLAY_PT_TextPanel(bpy.types.Panel):  # テキストエディ�
             row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene, "O2MCD_rc_index", rows=2,sort_lock=True)
             col = row.column()
             row = col.row()
-            if context.scene.O2MCD_rc_index <= 1 :
+            if context.scene.O2MCD_rc_index <= 1 or context.scene.O2MCD_rc_index == len(context.scene.O2MCD_rc_packs)-1:
                 row.enabled= False
             row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
             row = col.row()
-            if context.scene.O2MCD_rc_index >= len(context.scene.O2MCD_rc_packs)-1 or context.scene.O2MCD_rc_index == 0:
+            if context.scene.O2MCD_rc_index >= len(context.scene.O2MCD_rc_packs)-2 or context.scene.O2MCD_rc_index == 0:
                 row.enabled= False
             row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
         
@@ -224,6 +228,7 @@ class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
     bl_description = bpy.app.translations.pgettext("Get information about the object and generate commands in the Output according to the Input")
 
     def execute(self, context):
+        command.cmd_set(self,context)
         command.command_generate(self, context)
         return {'FINISHED'}
 
@@ -286,7 +291,6 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"),description=bpy.app.translations.pgettext("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False, update=update_auto_reload)
     output: bpy.props.EnumProperty(name="Output",description=bpy.app.translations.pgettext("Output files to the specified path"), items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
     enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False, update=update)
-    Enum: bpy.props.EnumProperty(name="Enum", items=object.enum_item, options={"ANIMATABLE"})
     list_index : bpy.props.IntProperty(name="Index", default=-1)
     obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=oblect_list.select_object)
     mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)

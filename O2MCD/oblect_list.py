@@ -44,10 +44,10 @@ class OBJECTTOMCDISPLAY_OT_ListMove(bpy.types.Operator): #移動
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", ""),('REVERSE',"reverse","")))
 
     def invoke(self, context, event):
-        if self.action == 'DOWN':
+        if self.action == 'UP':
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
             context.scene.O2MCD_props.obj_index += 1
-        elif self.action == 'UP':
+        elif self.action == 'DOWN"':
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
             context.scene.O2MCD_props.obj_index -= 1
         elif self.action == 'REVERSE':

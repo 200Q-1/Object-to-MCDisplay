@@ -473,7 +473,7 @@ def create_model(self,context,directory,name,types,new):
         geo_to_ins.location =(800, 0)
     
         if types== "block":
-            new_object.O2MCD_props.disp_type="BLOCK"
+            new_object.O2MCD_props.disp_type="block_display"
             vari={}
             stjo_inv=[]
             value_list=[]
@@ -506,6 +506,8 @@ def create_model(self,context,directory,name,types,new):
                     pass
                 else:
                     vari[v[0]]=[v[1]]
+                if v[1]== "true" and not "false" in vari[v[0]]:  vari[v[0]].append("false")
+                if v[1]== "false" and not "true" in vari[v[0]]:  vari[v[0]].append("true")
             vari_sort = sorted(vari.items(), key=lambda x:x[0])
             for i,(k,v) in enumerate(vari_sort):
                 node_tree.interface.new_socket(k, in_out="INPUT", socket_type="NodeSocketMenu")
@@ -677,7 +679,7 @@ def create_model(self,context,directory,name,types,new):
                     
                     
         elif types== "item":
-            new_object.O2MCD_props.disp_type="ITEM"
+            new_object.O2MCD_props.disp_type="item_display"
             node_tree.interface.new_socket("CustomModelData", in_out="INPUT", socket_type="NodeSocketMenu")
             menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
             menu.data_type="STRING"
@@ -713,9 +715,9 @@ def create_model(self,context,directory,name,types,new):
                 node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
     else:
         if types == "item":
-            new_object.O2MCD_props.disp_type="ITEM"
+            new_object.O2MCD_props.disp_type="item_display"
         elif types == "block":
-            new_object.O2MCD_props.disp_type="BLOCK"
+            new_object.O2MCD_props.disp_type="block_display"
         modi=new_object.modifiers.new("O2MCD", "NODES")
         node_tree=bpy.data.node_groups[name]
         modi.node_group=node_tree
@@ -780,7 +782,8 @@ class OBJECTTOMCDISPLAY_UL_ResourcePacks(bpy.types.UIList):
             row = layout.row()
             row.alignment="RIGHT"
             row.label(text=item.path)
-            row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,text="",icon='X').index=index
+            if index != len(context.scene.O2MCD_rc_packs)-1:
+                row.operator(OBJECTTOMCDISPLAY_OT_ResourcePackRemove.bl_idname,text="",icon='X').index=index
             
 class OBJECTTOMCDISPLAY_OT_ResourcePackAdd(bpy.types.Operator): #追加
     bl_idname = "o2mcd.resource_pack_add"
