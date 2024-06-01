@@ -4,11 +4,13 @@ import bpy
 import random
 from . import command
 from re import *
+from . import object
 
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     scene=bpy.context.scene
     olist=[]
-    command.cmd_set(self,context)
+    command.cmd_set(context,context.view_layer.objects.active)
+    object.mesh_update(self, context)
     active=None
     if bpy.context.object:
         active=bpy.context.object
@@ -19,8 +21,6 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
     for i in list(filter(lambda la : not la in [i.obj for i in scene.O2MCD_object_list],context.view_layer.objects)):
         if i.O2MCD_props.disp_id:
             olist.append(i)
-        # if i.O2MCD_props.prop_id >= 0 and not i in [i.obj for i in scene.O2MCD_object_list]:
-        #     list.append(i)
     scene.O2MCD_object_list.clear()
     for i,o in enumerate(olist):
         scene.O2MCD_object_list.add().obj = o
@@ -33,6 +33,7 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
 
 def select_object(self, context):
     if context.view_layer.objects.active and not context.view_layer.objects.active == context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj:
+        command.cmd_set(bpy.context,bpy.context.scene.O2MCD_object_list[bpy.context.scene.O2MCD_props.obj_index].obj if bpy.context.scene.O2MCD_object_list else None)
         context.view_layer.objects.active=context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj
         bpy.ops.object.select_all(action='DESELECT')
         context.view_layer.objects.active.select_set(True)
@@ -43,11 +44,11 @@ class OBJECTTOMCDISPLAY_OT_ListMove(bpy.types.Operator): #移動
     bl_description = bpy.app.translations.pgettext("Rearrange the order of objects")
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", ""),('REVERSE',"reverse","")))
 
-    def invoke(self, context, event):
-        if self.action == 'UP':
+    def execute(self, context):
+        if self.action == 'DOWN':
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
             context.scene.O2MCD_props.obj_index += 1
-        elif self.action == 'DOWN"':
+        elif self.action == 'UP':
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
             context.scene.O2MCD_props.obj_index -= 1
         elif self.action == 'REVERSE':
@@ -64,7 +65,7 @@ class OBJECTTOMCDISPLAY_OT_ListReverse(bpy.types.Operator): #反転
     bl_label = bpy.app.translations.pgettext("Reverse")
     bl_description = bpy.app.translations.pgettext("Reversing the order of objects")
 
-    def invoke(self, context, event):
+    def execute(self, context):
         object_list = [i.obj.name for i in context.scene.O2MCD_object_list]
         object_list=object_list[::-1]
         context.scene.O2MCD_object_list.clear()
@@ -78,7 +79,7 @@ class OBJECTTOMCDISPLAY_OT_Sort(bpy.types.Operator): #ソート
     bl_label = "Sort"
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     action: bpy.props.EnumProperty(items=(('NAME', "Name", ""),('CREATE',"Create",""),('RANDOM',"Random","")))
-    def invoke(self, context, event):
+    def execute(self, context):
         object_list = [i.obj.name for i in context.scene.O2MCD_object_list]
         objects = [i.name for i in context.scene.objects if i.name in object_list]
         if self.action == 'NAME':

@@ -91,48 +91,25 @@ if "bpy" in locals():
     imp.reload(output)
     imp.reload(command)
     imp.reload(link)
-    imp.reload(oblect_list)
+    imp.reload(object_list)
     imp.reload(json_import)
 else:
     from . import object
     from . import output
     from . import command
     from . import link
-    from . import oblect_list
+    from . import object_list
     from . import json_import
 import bpy
 from bpy.app.handlers import persistent
-
-class O2MCD_DefaultInputs(bpy.types.PropertyGroup):
-    command: bpy.props.StringProperty(
-        name="Command",
-        description="",
-        default=""
-    )
-
-class OBJECTTOMCDISPLAY_OT_AddCommand(bpy.types.Operator):  # コマンド追加
-    bl_idname = "o2mcd.add_command"
-    bl_label = bpy.app.translations.pgettext("Add Command")
-    bl_description = ""
-    
-    def execute(self, context):
-        context.preferences.addons[__package__].preferences.inputs.add()
-        return {'FINISHED'}
-
-class OBJECTTOMCDISPLAY_OT_RemoveCommand(bpy.types.Operator):  # コマンド削除
-    bl_idname = "o2mcd.remove_command"
-    bl_label = bpy.app.translations.pgettext("Remove Command")
-    bl_description = ""
-    
-    index: bpy.props.IntProperty(name="Index")
-    def execute(self, context):
-        context.preferences.addons[__package__].preferences.inputs.remove(self.index)
-        return {'FINISHED'}
     
 class  O2MCD_BlockList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
 class  O2MCD_ItemList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
+class  O2MCD_TempCmd(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name="name", default="")
+    cmd: bpy.props.StringProperty(name="cmd", default="")
     
 def check_path(self,context):
     if self.path:
@@ -162,6 +139,9 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     block_list : bpy.props.CollectionProperty(name="block_list",type=O2MCD_BlockList)
     item_id : bpy.props.StringProperty(default="")
     item_list : bpy.props.CollectionProperty(name="item_list",type=O2MCD_ItemList)
+    tmp_cmd: bpy.props.CollectionProperty(name="temp_cmd",type=O2MCD_TempCmd)
+    tmp_index: bpy.props.IntProperty(name="index",default=0)
+    cmd_func: bpy.props.StringProperty(name="Func",description="", subtype='FILE_PATH', default="matrix,loc,scale,l_rot,r_rot,pos,rot,id,type,prop,tag,name,num,frame,math")
     
     mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20')
     rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
@@ -170,30 +150,36 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"),description=bpy.app.translations.pgettext("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False)
     enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False)
     mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
-    inputs: bpy.props.CollectionProperty(name="Input",description=bpy.app.translations.pgettext("Add the command to be entered when the Input is generated"),type=O2MCD_DefaultInputs)
     
     def draw(self, context):
         layout = self.layout
-        layout.prop_search(self, "block_id",self, "block_list",text="id")
-        layout.prop_search(self, "item_id",self, "item_list",text="id")
         br = layout.row(align=True)
         br.prop(self, "mc_jar",text=".jarファイル")
         br.operator(OBJECTTOMCDISPLAY_OT_JarOpen.bl_idname, text="", icon='FILE_FOLDER')
         layout.label(icon='DOT',text=bpy.app.translations.pgettext("You can set default values that are applied when you open a new project."))
         row=layout.row()
+        if not self.mc_jar:
+            br.alert=True
+            row.active = False
         row.alignment = "RIGHT"
         row.label(text="Enabled")
         row.prop(self,"enable",text="")
         row=layout.row()
+        if not self.mc_jar:
+            row.active = False
         row.alignment = "RIGHT"
         row.label(text=bpy.app.translations.pgettext("Auto Update"))
         row.prop(self, "auto_reload",text="")
         if output.check_mcpp():
             row=layout.row()
+            if not self.mc_jar:
+                row.active = False
             row.alignment = "RIGHT"
             row.label(text=bpy.app.translations.pgettext("Synchronised with MCPP"))
             row.prop(self,"mcpp_sync",text="")
         col= layout.column()
+        if not self.mc_jar:
+            col.active = False
         col.use_property_split = True
         col.prop(self,"mc_version")
         col.prop(self, "rou")
@@ -202,6 +188,8 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         col.prop(self, "anim_path",text="animation path")
         
         col = layout.column()
+        if not self.mc_jar:
+            col.active = False
         col.split()
         col.label(text="   "+bpy.app.translations.pgettext("Parent Referrer"))
         row= col.row()
@@ -215,16 +203,6 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         if self.index >= len(bpy.context.preferences.addons[__package__].preferences.df_packs)-2 or self.index == 0:
             row.enabled= False
         row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
-        box=layout.box()
-        row = box.row(align = True)
-        row.label(text="Input ")
-        row.operator(OBJECTTOMCDISPLAY_OT_AddCommand.bl_idname, icon='ADD', text="", emboss=False)
-        col = box.column(align = True)
-        for i,item in enumerate(self.inputs):
-            row = col.row(align = True)
-            row.prop(item,"command",text="")
-            row.operator(OBJECTTOMCDISPLAY_OT_RemoveCommand.bl_idname, icon='PANEL_CLOSE', text="", emboss=False).index=i
-
         layout.separator()
         
 
@@ -242,8 +220,75 @@ class OBJECTTOMCDISPLAY_UL_DefaultResourcePacks(bpy.types.UIList):
             row.label(text=item.path)
             if index != len(context.preferences.addons[__package__].preferences.df_packs)-1:
                 row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove.bl_idname,text="",icon='X').index=index
-
+class OBJECTTOMCDISPLAY_UL_TemplateList(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
+        row = layout.row(align=True)
+        if context.window_manager.O2MCD_func_toggle:
+            row.label(icon='TEXT')
+            sp = row.split(align=True,factor=0.3)
+            sp.prop(item,"name",text="")
+            sp.prop(item,"cmd",text="")
+        else:
+            tmp=row.operator("o2mcd.temp", text=item.name)
+            tmp.name = item.name
+            tmp.cmd = item.cmd
+class OBJECTTOMCDISPLAY_OT_Temp(bpy.types.Operator):
+    bl_idname = "o2mcd.temp"
+    bl_label = ""
+    bl_description = ""
+    name : bpy.props.StringProperty(default="")
+    cmd : bpy.props.StringProperty(default="")
     
+    def execute(self, context):
+        Input=bpy.data.texts.get("Input")
+        Input.write(self.cmd)
+        return {'FINISHED'}
+    
+class OBJECTTOMCDISPLAY_OT_TempAction(bpy.types.Operator): #移動
+    bl_idname = "o2mcd.temp_action"
+    bl_label = ""
+    bl_description = ""
+    action: bpy.props.EnumProperty(items=(('UP', "up", ""),('DOWN', "down", ""),('ADD',"add",""),('REMOVE',"remove",""),('SAVE',"save","")))
+    index : bpy.props.IntProperty(default=0)
+    
+    @classmethod 
+    def description(self,context, prop):
+        match prop.action:
+            case 'UP':
+                des="選択中のテンプレートを上に移動します"
+            case 'DOWN':
+                des="選択中のテンプレートを下に移動します"
+            case 'ADD':
+                des=""
+            case 'REMOVE':
+                des="選択中のテンプレートを削除します"
+            case 'SAVE':
+                des="ユーザープリファレンスを保存します"
+            case _:
+                des=""
+        return des
+    def invoke(self, context, event):
+        tmp_list=context.preferences.addons[__package__].preferences.tmp_cmd
+        tmp_index=context.preferences.addons[__package__].preferences.tmp_index
+        match self.action:
+            case 'DOWN':
+                tmp_list.move(tmp_index, tmp_index+1)
+                context.preferences.addons[__package__].preferences.tmp_index += 1
+            case 'UP':
+                tmp_list.move(tmp_index, tmp_index-1)
+                context.preferences.addons[__package__].preferences.tmp_index -= 1
+            case 'ADD':
+                tmp =context.preferences.addons[__package__].preferences.tmp_cmd.add()
+                tmp.name = context.window_manager.O2MCD_temp_name
+                tmp.cmd = context.window_manager.O2MCD_temp_cmd
+                context.window_manager.O2MCD_temp_name=""
+                context.window_manager.O2MCD_temp_cmd=""
+                context.view_layer.objects.active.O2MCD_props.tmp_index=len(tmp_list)-1
+            case 'REMOVE':
+                tmp_list.remove(self.index)
+            case 'SAVE':
+                bpy.ops.wm.save_userpref()
+        return {"FINISHED"}
 class OBJECTTOMCDISPLAY_OT_JarOpen(bpy.types.Operator): #JAR設定
     bl_idname = "o2mcd.jar_open"
     bl_label = "open .jar"
@@ -264,12 +309,14 @@ class OBJECTTOMCDISPLAY_OT_JarOpen(bpy.types.Operator): #JAR設定
         try:
             with zipfile.ZipFile(jar) as zip:
                 js=json.load(zip.open('assets/minecraft/lang/en_us.json','r'))
-                block_id=[i.replace('block.minecraft.','') for i in js.keys() if re.match('block\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
-                item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
-                bni=[f.split("/")[-1] for f in zip.namelist() if f.startswith("assets/minecraft/models/item/") and not f.endswith('/')]
+                block_id=[i.replace('block.minecraft.','') for i in js.keys() if re.match('block\.minecraft\..+(?!\.)',i) and len(i.split(align=True,factor=0.3)("."))==3]
+                item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split(align=True,factor=0.3)("."))==3]
+                bni=[f.split(align=True,factor=0.3)("/")[-1] for f in zip.namelist() if f.startswith("assets/minecraft/models/item/") and not f.endswith('/')]
         except:pass
-        item_id=[b for b in block_id if b in bni]+item_id+["air"]
+        item_id=[b for b in block_id if b+".json" in bni]+item_id+["air"]
         item_id.sort()
+        bpy.context.preferences.addons[__package__].preferences.block_list.clear()
+        bpy.context.preferences.addons[__package__].preferences.item_list.clear()
         for i in block_id:
             bpy.context.preferences.addons[__package__].preferences.block_list.add().name=i
         for i in item_id:
@@ -338,11 +385,12 @@ class OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove(bpy.types.Operator): #移動
 classes = (
     O2MCD_BlockList,
     O2MCD_ItemList,
-    O2MCD_DefaultInputs,
-    OBJECTTOMCDISPLAY_OT_AddCommand,
-    OBJECTTOMCDISPLAY_OT_RemoveCommand,
     O2MCD_DefaultResourcePacks,
     OBJECTTOMCDISPLAY_UL_DefaultResourcePacks,
+    O2MCD_TempCmd,
+    OBJECTTOMCDISPLAY_UL_TemplateList,
+    OBJECTTOMCDISPLAY_OT_Temp,
+    OBJECTTOMCDISPLAY_OT_TempAction,
     OBJECTTOMCDISPLAY_OT_JarOpen,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd,
     OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove,
@@ -367,7 +415,7 @@ def register():
     command.register()
     object.register()
     link.register()
-    oblect_list.register()
+    object_list.register()
     json_import.register()
 
 def unregister():
@@ -378,7 +426,7 @@ def unregister():
     command.unregister()
     object.unregister()
     link.unregister()
-    oblect_list.unregister()
+    object_list.unregister()
     json_import.unregister()
 
 if __name__ == "__main__":

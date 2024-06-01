@@ -10,8 +10,9 @@ import zipfile
 from math import *
 
 def menu_fn(self, context):
-    self.layout.separator()
-    self.layout.menu("OBJECTTOMCDISPLAY_MT_ObjectSub", text='O2MCD')
+    if context.preferences.addons[__package__].preferences.mc_jar:
+        self.layout.separator()
+        self.layout.menu("OBJECTTOMCDISPLAY_MT_ObjectSub", text='O2MCD')
 
 def enum_item(self, context):  # アイテムリスト
     enum_items = []
@@ -183,10 +184,10 @@ def create_model(self,context,directory,name,types,new):
     
     # オブジェクト作成
     if name in bpy.data.meshes:
-        new_mesh=bpy.data.meshes[name]
+        new_mesh=bpy.data.meshes["/".join([types,name])]
         make_mesh=False
     else:
-        new_mesh = bpy.data.meshes.new(name)
+        new_mesh = bpy.data.meshes.new("/".join([types,name]))
         make_mesh=True
     if new:
         new_object = bpy.data.objects.new(name, new_mesh)
@@ -458,7 +459,7 @@ def create_model(self,context,directory,name,types,new):
                 
         #  ノード生成
         modi=new_object.modifiers.new("O2MCD", "NODES")
-        node_tree=bpy.data.node_groups.new(name=name, type='GeometryNodeTree')
+        node_tree=bpy.data.node_groups.new(name="/".join([types,name]), type='GeometryNodeTree')
         modi.node_group=node_tree
         node_tree.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
         node_tree.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
@@ -719,12 +720,13 @@ def create_model(self,context,directory,name,types,new):
         elif types == "block":
             new_object.O2MCD_props.disp_type="block_display"
         modi=new_object.modifiers.new("O2MCD", "NODES")
-        node_tree=bpy.data.node_groups[name]
+        node_tree=bpy.data.node_groups["/".join([types,name])]
         modi.node_group=node_tree
         for m in range(len(list(filter(lambda x: x.type=='MENU_SWITCH', [n for n in node_tree.nodes])))):
             modi["Socket_"+str(m+2)]=0
     new_object.O2MCD_props.disp_id=name
     new_object.O2MCD_mesh_list.add().mesh = new_mesh
+    context.view_layer.objects.active= new_object
 
 
 
@@ -747,6 +749,8 @@ class OBJECTTOMCDISPLAY_OT_SearchItem(bpy.types.Operator):  # アイテム検索
     def execute(self, context):
         directory=context.preferences.addons[__package__].preferences.mc_jar+os.sep+os.sep.join(["assets","minecraft","models","item"])+os.sep
         create_model(self,context,directory,self.enum,"item",True)
+        if not context.view_layer.objects.active.O2MCD_command_list:
+            bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -763,6 +767,8 @@ class OBJECTTOMCDISPLAY_OT_SearchBlock(bpy.types.Operator):  # ブロック検�
     def execute(self, context):
         directory=context.preferences.addons[__package__].preferences.mc_jar+os.sep+os.sep.join(["assets","minecraft","blockstates"])+os.sep
         create_model(self,context,directory,self.enum,"block",True)
+        if not context.view_layer.objects.active.O2MCD_command_list:
+            bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
 
     def invoke(self, context, event):
