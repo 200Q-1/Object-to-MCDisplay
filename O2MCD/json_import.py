@@ -222,7 +222,11 @@ def create_model(self,context,directory,name,types,new):
         elif types=="block" :
             if "variants" in datas:
                 btype="variants"
-                values=list(datas["variants"].values())
+                values=[]
+                for v in datas["variants"].values():
+                    if type(v) == list:
+                        v=v[0]
+                    values.append(v)
             else:
                 btype="multipart"
                 values=[i for i in datas["multipart"]]
@@ -458,21 +462,6 @@ def create_model(self,context,directory,name,types,new):
                 u.vector=vecuv[i]
                 
         #  ノード生成
-        modi=new_object.modifiers.new("O2MCD", "NODES")
-        node_tree=bpy.data.node_groups.new(name="/".join([types,name]), type='GeometryNodeTree')
-        modi.node_group=node_tree
-        node_tree.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
-        node_tree.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
-        geo_in =      node_tree.nodes.new(type="NodeGroupInput")
-        geo_out =     node_tree.nodes.new(type="NodeGroupOutput")
-        geo_to_ins =  node_tree.nodes.new(type="GeometryNodeGeometryToInstance")
-        
-        node_tree.links.new(geo_to_ins.outputs['Instances'], geo_out.inputs['Geometry'])
-        
-        geo_in.location = (-600, 0)
-        geo_out.location = (1000, 0)
-        geo_to_ins.location =(800, 0)
-    
         if types== "block":
             new_object.O2MCD_props.disp_type="block_display"
             vari={}
@@ -481,7 +470,8 @@ def create_model(self,context,directory,name,types,new):
             sep_inv=[]
             
             if btype=="variants":
-                value_list=[item for sublist in list(map(lambda l: [i.split("=") for i in l.split(",")],datas["variants"].keys())) for item in sublist]
+                # value_list=[item for sublist in list(map(lambda l: [i.split("=") for i in l.split(",")],datas["variants"].keys())) for item in sublist]
+                value_list= [i.split("=") for l in datas["variants"].keys() if l for i in l.split(",") if i]
             else:
                 value_list=[]
                 for val in [i["when"] for i in values if "when" in i]:
@@ -509,211 +499,232 @@ def create_model(self,context,directory,name,types,new):
                     vari[v[0]]=[v[1]]
                 if v[1]== "true" and not "false" in vari[v[0]]:  vari[v[0]].append("false")
                 if v[1]== "false" and not "true" in vari[v[0]]:  vari[v[0]].append("true")
-            vari_sort = sorted(vari.items(), key=lambda x:x[0])
-            for i,(k,v) in enumerate(vari_sort):
-                node_tree.interface.new_socket(k, in_out="INPUT", socket_type="NodeSocketMenu")
+            value_list = sorted(vari.items(), key=lambda x:x[0])
+        elif types == "item":
+            value_list=[(i["name"],i["CMD"]) for i in datalist]
+            if len(value_list) == 1 and value_list[0][1] == "0":
+                value_list = []
+        if value_list:
+            modi=new_object.modifiers.new("O2MCD", "NODES")
+            node_tree=bpy.data.node_groups.new(name="/".join([types,name]), type='GeometryNodeTree')
+            modi.node_group=node_tree
+            node_tree.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
+            node_tree.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
+            geo_in =      node_tree.nodes.new(type="NodeGroupInput")
+            geo_out =     node_tree.nodes.new(type="NodeGroupOutput")
+            geo_to_ins =  node_tree.nodes.new(type="GeometryNodeGeometryToInstance")
+            
+            node_tree.links.new(geo_to_ins.outputs['Instances'], geo_out.inputs['Geometry'])
+            
+            geo_in.location = (-600, 0)
+            geo_out.location = (1000, 0)
+            geo_to_ins.location =(800, 0)
+        
+            if types== "block":
+                for i,(k,v) in enumerate(value_list):
+                    node_tree.interface.new_socket(k, in_out="INPUT", socket_type="NodeSocketMenu")
+                    menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
+                    menu.data_type="STRING"
+                    if len(v) < 2:
+                        menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
+                        
+                    for e,l in enumerate(v):
+                        if e <= 1:
+                            menu.enum_definition.enum_items[e].name=l
+                        else:
+                            menu.enum_definition.enum_items.new(l)
+                        menu.inputs[e+1].default_value=l
+                    node_tree.links.new(geo_in.outputs[k], menu.inputs[0])
+                    menu.location = (-400, len(vari)*80-i*160)
+                    menu.name=k
+                    menu.label=k
+                    stjo_inv.insert(0,menu.outputs[0])
+                    modi["Socket_"+str(i+2)]=0
+                        
+                    
+                if btype=="variants":
+                    if not "variants" in bpy.data.node_groups:
+                        sep=variants(self)
+                    else:
+                        sep=bpy.data.node_groups["variants"]
+                        
+                    stjo =  node_tree.nodes.new(type="GeometryNodeStringJoin")
+                    stjo.inputs[0].default_value=","
+                    stjo.location =(-200, 0)
+                    for s in stjo_inv: node_tree.links.new(s, stjo.inputs[1])
+                    
+                    model_data=tuple(datas["variants"].items())
+                    for i,(k,v) in enumerate(model_data[::-1]):
+                        if type(v) == list: v=v[0]
+                        x=radians(v.get("x")) if v.get("x") else 0
+                        z=radians(v.get("y")) if v.get("y") else 0
+                        sep_node = node_tree.nodes.new("GeometryNodeGroup")
+                        sep_node.node_tree = sep
+                        sep_node.inputs['Attribute'].default_value=v["model"].split(":")[-1] if ":" in v["model"] else v["model"]
+                        sep_node.inputs['Rotation'].default_value=(x,0,-z)
+                        sep_node.inputs['Name'].default_value=",".join(list(map(lambda l: l[l.index("=")+1:] if "=" in l else l, k.split(","))))
+                        sep_node.name=k
+                        sep_node.label=k
+                        sep_node.location = (0, i*200-len(datas["variants"])*100)
+                        node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
+                        node_tree.links.new(stjo.outputs['String'], sep_node.inputs['Menu'])
+                        node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
+                else:
+                    if not "multipart" in bpy.data.node_groups:
+                        sep=multipart(self)
+                    else:
+                        sep=bpy.data.node_groups["multipart"]
+                    
+                    for i,(k,v) in enumerate(value_list):
+                        for e,l in enumerate(v):
+                            comp=node_tree.nodes.new(type="FunctionNodeCompare")
+                            comp.data_type="STRING"
+                            comp.name=k+"="+l
+                            comp.label=k+"="+l
+                            comp.inputs["B"].default_value=l
+                            comp.location = (-200, (len(value_list)*len(v))*80-(e+(len(v))*i)*160)
+                            node_tree.links.new(node_tree.nodes[k].outputs[0],comp.inputs["A"])
+                    for s in sep_inv: node_tree.links.new(s, geo_to_ins.inputs['Geometry'])
+                    
+                    
+                    model_data=[]
+                    for da in datas["multipart"]:
+                        if type(da["apply"]) is list:
+                            da["apply"]=da["apply"][0]
+                        if "when" in da:
+                            d=[]
+                            for k,v in da["when"].items():
+                                if k== "OR":
+                                    for o in v:
+                                        d=[]
+                                        for kk,vv in o.items():
+                                            d.append(kk+"="+vv)
+                                        model_data.append((d,da["apply"]))
+                                    continue
+                                elif k== "AND":
+                                    for o in v:
+                                        for kk,vv in o.items():
+                                            d.append(kk+"="+vv)
+                                else:
+                                    d.append(k+"="+v)
+                        else:
+                            d=name
+                        model_data.append((d,da["apply"]))
+                        
+                    for i,(k,v) in enumerate(model_data):
+                        x=radians(v.get("x")) if v.get("x") else 0
+                        z=radians(v.get("y")) if v.get("y") else 0
+                        sep_node = node_tree.nodes.new("GeometryNodeGroup")
+                        sep_node.node_tree = sep
+                        sep_node.inputs["active"].default_value=True
+                        sep_node.location = (600, len(datas["multipart"])*100-i*200)
+                        node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
+                        sep_node.inputs['Attribute'].default_value=v["model"].split(":")[-1] if ":" in v["model"] else v["model"]
+                        sep_node.inputs['Rotation'].default_value=(x,0,-z)
+                        node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
+                        if type(k) is list: sep_node.label=str(k).replace("'","")[1:-1]
+                        sep_inv.insert(0,sep_node.outputs['Geometry'])
+                        comp_pre=None
+                        for kin,w in enumerate(k) :
+                            if not type(k) is str:
+                                if kin+1 == len(k):
+                                    if len(k) == 1:
+                                        if "|" in w :
+                                            cor_pre=None
+                                            for win,l in enumerate(w.split("=")[-1].split("|")):
+                                                if win+1 == len(w.split("|")):
+                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
+                                                else:
+                                                    cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
+                                                    cor.operation='OR'
+                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
+                                                    if cor_pre:
+                                                        node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
+                                                    else:
+                                                        node_tree.links.new(cor.outputs[0],sep_node.inputs["active"])
+                                                    cor_pre=cor
+                                            comp=cor_pre
+                                        else:
+                                            node_tree.links.new(node_tree.nodes[w].outputs[0],sep_node.inputs["active"])
+                                    else:
+                                        if "|" in w :
+                                            cor_pre=None
+                                            for win,l in enumerate(w.split("=")[-1].split("|")):
+                                                if win+1 == len(w.split("|")):
+                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
+                                                else:
+                                                    cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
+                                                    cor.operation='OR'
+                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
+                                                    if cor_pre:
+                                                        node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
+                                                    else:
+                                                        node_tree.links.new(cor.outputs[0],comp_pre.inputs[1])
+                                                    cor_pre=cor
+                                            comp=cor_pre
+                                        else:
+                                            node_tree.links.new(node_tree.nodes[w].outputs[0],comp_pre.inputs[1])
+                                else:
+                                    comp=node_tree.nodes.new(type="FunctionNodeBooleanMath")
+                                    if "|" in w :
+                                            cor_pre=None
+                                            for win,l in enumerate(w.split("=")[-1].split("|")):
+                                                if win+1 == len(w.split("|")):
+                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
+                                                else:
+                                                    cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
+                                                    cor.operation='OR'
+                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
+                                                    if cor_pre:
+                                                        node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
+                                                    else:
+                                                        node_tree.links.new(cor.outputs[0],sep_node.inputs["active"])
+                                                    cor_pre=cor
+                                            comp=cor_pre
+                                    else:
+                                        node_tree.links.new(node_tree.nodes[w].outputs[0],comp.inputs[0])
+                                    if comp_pre:
+                                        node_tree.links.new(comp.outputs[0],comp_pre.inputs[1])
+                                    else:
+                                        node_tree.links.new(comp.outputs[0],sep_node.inputs["active"])
+                            comp_pre=comp
+                    
+                        
+                        
+            elif types== "item":
+                new_object.O2MCD_props.disp_type="item_display"
+                node_tree.interface.new_socket("CustomModelData", in_out="INPUT", socket_type="NodeSocketMenu")
                 menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
                 menu.data_type="STRING"
-                if len(v) < 2:
-                    menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
-                    
-                for e,l in enumerate(v):
-                    if e <= 1:
-                        menu.enum_definition.enum_items[e].name=l
+                menu.location = (-400, 0)
+                menu.name="CustomModelData"
+                menu.label="CustomModelData"
+                        
+                for i,(n,c) in enumerate(value_list):
+                    if not "variants" in bpy.data.node_groups:
+                        sep=variants(self)
                     else:
-                        menu.enum_definition.enum_items.new(l)
-                    menu.inputs[e+1].default_value=l
-                node_tree.links.new(geo_in.outputs[k], menu.inputs[0])
-                menu.location = (-400, len(vari)*80-i*160)
-                menu.name=k
-                menu.label=k
-                stjo_inv.insert(0,menu.outputs[0])
-                modi["Socket_"+str(i+2)]=0
+                        sep=bpy.data.node_groups["variants"]
+                        
+                    if len(value_list) < 2:
+                        menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
+                        
+                    if i <= 1:
+                        menu.enum_definition.enum_items[i].name=c
+                    else:
+                        menu.enum_definition.enum_items.new(c)
+                    menu.inputs[i+1].default_value=c
+                    node_tree.links.new(geo_in.outputs["CustomModelData"], menu.inputs[0])
                     
-                
-            if btype=="variants":
-                if not "variants" in bpy.data.node_groups:
-                    sep=variants(self)
-                else:
-                    sep=bpy.data.node_groups["variants"]
-                    
-                stjo =  node_tree.nodes.new(type="GeometryNodeStringJoin")
-                stjo.inputs[0].default_value=","
-                stjo.location =(-200, 0)
-                for s in stjo_inv: node_tree.links.new(s, stjo.inputs[1])
-                
-                model_data=tuple(datas["variants"].items())
-                for i,(k,v) in enumerate(model_data[::-1]):
-                    x=radians(v.get("x")) if v.get("x") else 0
-                    z=radians(v.get("y")) if v.get("y") else 0
                     sep_node = node_tree.nodes.new("GeometryNodeGroup")
                     sep_node.node_tree = sep
-                    sep_node.inputs['Attribute'].default_value=v["model"].split(":")[-1] if ":" in v["model"] else v["model"]
-                    sep_node.inputs['Rotation'].default_value=(x,0,-z)
-                    sep_node.inputs['Name'].default_value=",".join(list(map(lambda l: l[l.index("=")+1:] if "=" in l else l, k.split(","))))
-                    sep_node.name=k
-                    sep_node.label=k
-                    sep_node.location = (0, i*200-len(datas["variants"])*100)
+                    sep_node.inputs['Attribute'].default_value=n
+                    sep_node.inputs['Name'].default_value=c
+                    modi["Socket_2"]=0
+                    sep_node.location = (0, len(value_list)*80-i*160)
                     node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
-                    node_tree.links.new(stjo.outputs['String'], sep_node.inputs['Menu'])
                     node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
-            else:
-                if not "multipart" in bpy.data.node_groups:
-                    sep=multipart(self)
-                else:
-                    sep=bpy.data.node_groups["multipart"]
-                
-                for i,(k,v) in enumerate(vari_sort):
-                    for e,l in enumerate(v):
-                        comp=node_tree.nodes.new(type="FunctionNodeCompare")
-                        comp.data_type="STRING"
-                        comp.name=k+"="+l
-                        comp.label=k+"="+l
-                        comp.inputs["B"].default_value=l
-                        comp.location = (-200, (len(vari_sort)*len(v))*80-(e+(len(v))*i)*160)
-                        node_tree.links.new(node_tree.nodes[k].outputs[0],comp.inputs["A"])
-                for s in sep_inv: node_tree.links.new(s, geo_to_ins.inputs['Geometry'])
-                
-                
-                model_data=[]
-                for da in datas["multipart"]:
-                    if type(da["apply"]) is list:
-                        da["apply"]=da["apply"][0]
-                    if "when" in da:
-                        d=[]
-                        for k,v in da["when"].items():
-                            if k== "OR":
-                                for o in v:
-                                    d=[]
-                                    for kk,vv in o.items():
-                                        d.append(kk+"="+vv)
-                                    model_data.append((d,da["apply"]))
-                                continue
-                            elif k== "AND":
-                                for o in v:
-                                    for kk,vv in o.items():
-                                        d.append(kk+"="+vv)
-                            else:
-                                d.append(k+"="+v)
-                    else:
-                        d=name
-                    model_data.append((d,da["apply"]))
-                    
-                for i,(k,v) in enumerate(model_data):
-                    x=radians(v.get("x")) if v.get("x") else 0
-                    z=radians(v.get("y")) if v.get("y") else 0
-                    sep_node = node_tree.nodes.new("GeometryNodeGroup")
-                    sep_node.node_tree = sep
-                    sep_node.inputs["active"].default_value=True
-                    sep_node.location = (600, len(datas["multipart"])*100-i*200)
-                    node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
-                    sep_node.inputs['Attribute'].default_value=v["model"].split(":")[-1] if ":" in v["model"] else v["model"]
-                    sep_node.inputs['Rotation'].default_value=(x,0,-z)
-                    node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
-                    if type(k) is list: sep_node.label=str(k).replace("'","")[1:-1]
-                    sep_inv.insert(0,sep_node.outputs['Geometry'])
-                    comp_pre=None
-                    for kin,w in enumerate(k) :
-                        if not type(k) is str:
-                            if kin+1 == len(k):
-                                if len(k) == 1:
-                                    if "|" in w :
-                                        cor_pre=None
-                                        for win,l in enumerate(w.split("=")[-1].split("|")):
-                                            if win+1 == len(w.split("|")):
-                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
-                                            else:
-                                                cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
-                                                cor.operation='OR'
-                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
-                                                if cor_pre:
-                                                    node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
-                                                else:
-                                                    node_tree.links.new(cor.outputs[0],sep_node.inputs["active"])
-                                                cor_pre=cor
-                                        comp=cor_pre
-                                    else:
-                                        node_tree.links.new(node_tree.nodes[w].outputs[0],sep_node.inputs["active"])
-                                else:
-                                    if "|" in w :
-                                        cor_pre=None
-                                        for win,l in enumerate(w.split("=")[-1].split("|")):
-                                            if win+1 == len(w.split("|")):
-                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
-                                            else:
-                                                cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
-                                                cor.operation='OR'
-                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
-                                                if cor_pre:
-                                                    node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
-                                                else:
-                                                    node_tree.links.new(cor.outputs[0],comp_pre.inputs[1])
-                                                cor_pre=cor
-                                        comp=cor_pre
-                                    else:
-                                        node_tree.links.new(node_tree.nodes[w].outputs[0],comp_pre.inputs[1])
-                            else:
-                                comp=node_tree.nodes.new(type="FunctionNodeBooleanMath")
-                                if "|" in w :
-                                        cor_pre=None
-                                        for win,l in enumerate(w.split("=")[-1].split("|")):
-                                            if win+1 == len(w.split("|")):
-                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
-                                            else:
-                                                cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
-                                                cor.operation='OR'
-                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
-                                                if cor_pre:
-                                                    node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
-                                                else:
-                                                    node_tree.links.new(cor.outputs[0],sep_node.inputs["active"])
-                                                cor_pre=cor
-                                        comp=cor_pre
-                                else:
-                                    node_tree.links.new(node_tree.nodes[w].outputs[0],comp.inputs[0])
-                                if comp_pre:
-                                    node_tree.links.new(comp.outputs[0],comp_pre.inputs[1])
-                                else:
-                                    node_tree.links.new(comp.outputs[0],sep_node.inputs["active"])
-                        comp_pre=comp
-                
-                    
-                    
-        elif types== "item":
-            new_object.O2MCD_props.disp_type="item_display"
-            node_tree.interface.new_socket("CustomModelData", in_out="INPUT", socket_type="NodeSocketMenu")
-            menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
-            menu.data_type="STRING"
-            menu.location = (-400, 0)
-            menu.name="CustomModelData"
-            menu.label="CustomModelData"
-                    
-            namelist=[(i["name"],i["CMD"]) for i in datalist]
-            for i,(n,c) in enumerate(namelist):
-                if not "variants" in bpy.data.node_groups:
-                    sep=variants(self)
-                else:
-                    sep=bpy.data.node_groups["variants"]
-                    
-                if len(namelist) < 2:
-                    menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
-                    
-                if i <= 1:
-                    menu.enum_definition.enum_items[i].name=c
-                else:
-                    menu.enum_definition.enum_items.new(c)
-                menu.inputs[i+1].default_value=c
-                node_tree.links.new(geo_in.outputs["CustomModelData"], menu.inputs[0])
-                
-                sep_node = node_tree.nodes.new("GeometryNodeGroup")
-                sep_node.node_tree = sep
-                sep_node.inputs['Attribute'].default_value=n
-                sep_node.inputs['Name'].default_value=c
-                modi["Socket_2"]=0
-                sep_node.location = (0, len(namelist)*80-i*160)
-                node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
-                node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
-                node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
+                    node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
     else:
         if types == "item":
             new_object.O2MCD_props.disp_type="item_display"
