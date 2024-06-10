@@ -14,7 +14,6 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
     active=None
     if bpy.context.object:
         active=bpy.context.object
-        scene.O2MCD_props.list_index = active.O2MCD_props.prop_id
     for i, l in enumerate(scene.O2MCD_object_list):
         if not l.obj == None and l.obj.name in context.view_layer.objects and l.obj.O2MCD_props.disp_id:
             olist.append(l.obj)
@@ -45,10 +44,10 @@ class OBJECTTOMCDISPLAY_OT_ListMove(bpy.types.Operator): #移動
     action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", ""),('REVERSE',"reverse","")))
 
     def execute(self, context):
-        if self.action == 'DOWN':
+        if self.action == 'DOWN'and context.scene.O2MCD_props.obj_index < len(context.scene.O2MCD_object_list)-1:
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
             context.scene.O2MCD_props.obj_index += 1
-        elif self.action == 'UP':
+        elif self.action == 'UP' and context.scene.O2MCD_props.obj_index > 0:
             context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
             context.scene.O2MCD_props.obj_index -= 1
         elif self.action == 'REVERSE':
@@ -127,10 +126,10 @@ class OBJECTTOMCDISPLAY_MT_Sort(bpy.types.Menu):
     bl_description = bpy.app.translations.pgettext("Sorting Objects")
     def draw(self, context):
         layout = self.layout
-        layout.operator("o2mcd.sort",text=bpy.app.translations.pgettext("Sort by name")).action = 'NAME'
-        layout.operator("o2mcd.sort",text=bpy.app.translations.pgettext("Sort by creation")).action = 'CREATE'
+        layout.operator("o2mcd.sort",icon='SORTALPHA',text=bpy.app.translations.pgettext("Sort by name")).action = 'NAME'
+        layout.operator("o2mcd.sort",icon='SORTTIME',text=bpy.app.translations.pgettext("Sort by creation")).action = 'CREATE'
         layout.operator("o2mcd.sort",text=bpy.app.translations.pgettext("Sort by random")).action = 'RANDOM'
-        layout.operator("o2mcd.data_path")
+        layout.operator("o2mcd.data_path",icon='PROPERTIES')
         
 class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):

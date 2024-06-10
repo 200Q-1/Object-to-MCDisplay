@@ -3,6 +3,7 @@
 import bpy
 import math
 import os
+import re
 import mathutils
 import json
 import tempfile
@@ -10,7 +11,7 @@ import zipfile
 from math import *
 
 def menu_fn(self, context):
-    if context.preferences.addons[__package__].preferences.mc_jar:
+    if context.preferences.addons[__package__].preferences.jar_path:
         self.layout.separator()
         self.layout.menu("OBJECTTOMCDISPLAY_MT_ObjectSub", text='O2MCD')
 
@@ -149,31 +150,75 @@ def multipart(self):
     return node_tree
 
 def parents(self,directory,file):
-    if file[0] == 'generated.json':
-        directory=bpy.path.abspath(os.path.dirname(__file__))+os.sep
+    blc=["banner","generated","chest","ender_chest","conduit","decorated_pot","shulker_box"]
+    colors="(black|blue|brown|cyan|gray|green|light_blue|light_gray|lime|magenta|orange|pink|purple|red|white|yellow)"
+    if file[-1][:-5] in blc and len(file) > 4 and file[3] == "block":
+            directory=bpy.path.abspath(os.path.dirname(__file__))+os.sep
+            file=["model",file[-1]]
+                
     data=get_pack(directory,file)
-    if not data:self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("%s was not found.") % (file[-1]))
-    if "parent" in data:
-        if data["parent"].split(":")[-1] == "item/generated":
-            parent_file=["generated.json"]
-        else:
-            parent_file=data["parent"].split(":")[-1]+".json"
-            parent_file=file[:file.index("models")+1]+parent_file.split("/")
-            if len(data["parent"].split(":"))==2 :
-                parent_file[1]=data["parent"].split(":")[0]
+    if not "blockstates" in file:
+        if re.fullmatch(f"{colors}_bed",file[-1][:-5]):
+            data["parent"]="block/bed"
+            n=file[-1][:-5].split("_")[0]
+            data["textures"]={}
+            data["textures"]["0"]=f"entity/bed/{n}"
+        elif re.fullmatch(f"{colors}_shulker_box",file[-1][:-5]):
+            col=re.sub(f"{colors}.*","\\1",file[-1][:-5])
+            data["textures"]["0"]=f"entity/shulker/shulker_{col}"
+            data["parent"]="block/shulker_box"
+        elif file[-1][:-5] == "ender_chest":
+            data["textures"]["0"]=f"entity/chest/ender"
+        if not data and not file[-1][:-5] == "air" :self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("%s was not found.") % (file[-1]))
+        if re.fullmatch("bed",file[-1][:-5]) and not "elements" in data:
+            data["parent"]="builtin/entity"
+            
+        if "parent" in data:
+            if data["parent"].split(":")[-1] == "builtin/entity":
+                parent={"builtin/entity":"True"}
             else:
-                parent_file[1]="minecraft"
-        parent=parents(self,directory,parent_file)
-        del data["parent"]
-        for k,v in parent.items():
-            if k == "elements" and not "elements" in data:
-                data[k]=v
-            elif type(parent[k]) is dict:
-                if not k in data: data[k]= {}
-                for k2,v2 in v.items():
-                    if not k2 in data[k]: data[k][k2]=v2
-            else:
-                data[k]=v
+                if data["parent"].split(":")[-1] == "item/generated":
+                    parent_file=["generated.json"]
+                elif data["parent"].split(":")[-1] == "model/chest":
+                    parent_file=["chest.json"]
+                else:
+                    parent_file=data["parent"].split(":")[-1]+".json"
+                    parent_file=file[:file.index("models")+1]+parent_file.split("/")
+                    if len(data["parent"].split(":"))==2 :
+                        parent_file[1]=data["parent"].split(":")[0]
+                    else:
+                        parent_file[1]="minecraft"
+                parent=parents(self,directory,parent_file)
+            del data["parent"]
+            
+            if "builtin/entity" in parent:
+                directory=bpy.path.abspath(os.path.dirname(__file__))+os.sep
+                if file[-1][:-5] == "template_banner":
+                    parent_file=["model","banner.json"]
+                elif file[-1][:-5] == "template_skull":
+                    parent_file=["model","template_skull.json"]
+                elif re.fullmatch("skeleton_skull|wither_skeleton_skull|creeper_head|player_head|zombie_head",file[-1][:-5]):
+                    parent_file=["model","player_head.json"]
+                else:
+                    parent_file=["model",file[-1]]
+                parent=parents(self,directory,parent_file)
+                
+            elif re.fullmatch("skeleton_skull|wither_skeleton_skull|creeper_head|zombie_head",file[-1][:-5]):
+                t=file[-1][:-5].split("_")[0]
+                parent["textures"]["0"]=f"entity/{t}/{t}"
+                
+            for k,v in parent.items():
+                if k == "elements" and not "elements" in data:
+                    data[k]=v
+                elif type(parent[k]) is dict:
+                    if not k in data: data[k]= {}
+                    for k2,v2 in v.items():
+                        if not k2 in data[k]: data[k][k2]=v2
+                else:
+                    data[k]=v
+    elif re.fullmatch(f"{colors}_bed",file[-1][:-5]):
+        f=file[-1][:-5]
+        data["variants"][""]["model"]=f"block/{f}"
     if "models" in  file:
         data["name"]="/".join(file[file.index("models")+1:-1]+[file[-1][:-5]])
     else:
@@ -181,7 +226,6 @@ def parents(self,directory,file):
     return data
 
 def create_model(self,context,directory,name,types,new):
-    
     # オブジェクト作成
     if name in bpy.data.meshes:
         new_mesh=bpy.data.meshes["/".join([types,name])]
@@ -239,7 +283,9 @@ def create_model(self,context,directory,name,types,new):
                         va[va.index("blockstates")]="models"
                         if len(model)==2:
                             va[1]=model[0]
-                    if not "/".join(va[va.index("models")+1:])[:-5] in [n["name"] for n in datalist] :datalist.append(parents(self,directory,va))
+                    if not "/".join(va[va.index("models")+1:])[:-5] in [n["name"] for n in datalist] :
+                        data=parents(self,directory,va)
+                        datalist.append(data)
         vertices = []
         edges = []
         faces=[]
@@ -250,10 +296,12 @@ def create_model(self,context,directory,name,types,new):
         uv_rot=[]
         megu={}
         for data in datalist:
-            try:elements= data["elements"]
+            try:
+                elements= data["elements"]
             except:
-                self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("There are no elements. It could be a block entity.\nFILE: %s") % ({file[-1]}))
-                # return
+                if not name== "air":
+                    self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("There are no elements. It could be a block entity.\nFILE: %s") % ({file[-1]}))
+                continue
             axis={"x":(-1,0,0),"y":"Z","z":"Y"}
             dire = (
             "east",
@@ -463,7 +511,6 @@ def create_model(self,context,directory,name,types,new):
                 
         #  ノード生成
         if types== "block":
-            new_object.O2MCD_props.disp_type="block_display"
             vari={}
             stjo_inv=[]
             value_list=[]
@@ -692,7 +739,6 @@ def create_model(self,context,directory,name,types,new):
                         
                         
             elif types== "item":
-                new_object.O2MCD_props.disp_type="item_display"
                 node_tree.interface.new_socket("CustomModelData", in_out="INPUT", socket_type="NodeSocketMenu")
                 menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
                 menu.data_type="STRING"
@@ -726,17 +772,17 @@ def create_model(self,context,directory,name,types,new):
                     node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
                     node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
     else:
-        if types == "item":
-            new_object.O2MCD_props.disp_type="item_display"
-        elif types == "block":
-            new_object.O2MCD_props.disp_type="block_display"
         modi=new_object.modifiers.new("O2MCD", "NODES")
         node_tree=bpy.data.node_groups["/".join([types,name])]
         modi.node_group=node_tree
         for m in range(len(list(filter(lambda x: x.type=='MENU_SWITCH', [n for n in node_tree.nodes])))):
             modi["Socket_"+str(m+2)]=0
+    if types == "item":
+        new_object.O2MCD_props.disp_type="item_display"
+    elif types == "block":    
+        new_object.O2MCD_props.disp_type="block_display"
     new_object.O2MCD_props.disp_id=name
-    new_object.O2MCD_mesh_list.add().mesh = new_mesh
+    new_object.O2MCD_props.mesh_list.add().mesh = new_mesh
     context.view_layer.objects.active= new_object
 
 
@@ -758,9 +804,9 @@ class OBJECTTOMCDISPLAY_OT_SearchItem(bpy.types.Operator):  # アイテム検索
     enum: bpy.props.EnumProperty(name="Objects", description="", items=enum_item)
 
     def execute(self, context):
-        directory=context.preferences.addons[__package__].preferences.mc_jar+os.sep+os.sep.join(["assets","minecraft","models","item"])+os.sep
+        directory=context.preferences.addons[__package__].preferences.jar_path+os.sep+os.sep.join(["assets","minecraft","models","item"])+os.sep
         create_model(self,context,directory,self.enum,"item",True)
-        if not context.view_layer.objects.active.O2MCD_command_list:
+        if not context.view_layer.objects.active.O2MCD_props.command_list:
             bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
 
@@ -776,9 +822,9 @@ class OBJECTTOMCDISPLAY_OT_SearchBlock(bpy.types.Operator):  # ブロック検�
     enum: bpy.props.EnumProperty(name="Objects", description="", items=enum_block)
 
     def execute(self, context):
-        directory=context.preferences.addons[__package__].preferences.mc_jar+os.sep+os.sep.join(["assets","minecraft","blockstates"])+os.sep
+        directory=context.preferences.addons[__package__].preferences.jar_path+os.sep+os.sep.join(["assets","minecraft","blockstates"])+os.sep
         create_model(self,context,directory,self.enum,"block",True)
-        if not context.view_layer.objects.active.O2MCD_command_list:
+        if not context.view_layer.objects.active.O2MCD_props.command_list:
             bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
 

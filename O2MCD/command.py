@@ -10,14 +10,14 @@ from . import object_list
 def cmd_set(context,active):
     pre_obj=context.scene.O2MCD_props.pre_obj
     if pre_obj and pre_obj.O2MCD_props.pre_cmd >= 0:
-        pre_obj.O2MCD_command_list[pre_obj.O2MCD_props.pre_cmd].command=bpy.data.texts["Input"].as_string()
+        pre_obj.O2MCD_props.command_list[pre_obj.O2MCD_props.pre_cmd].command=bpy.data.texts["O2MCD_input"].as_string()
     if active:
-        if active.O2MCD_command_list:
+        if active.O2MCD_props.command_list:
             active.O2MCD_props.pre_cmd=active.O2MCD_props.command_index
-            bpy.data.texts["Input"].from_string(active.O2MCD_command_list[active.O2MCD_props.command_index].command)
+            bpy.data.texts["O2MCD_input"].from_string(active.O2MCD_props.command_list[active.O2MCD_props.command_index].command)
         else:
             active.O2MCD_props.pre_cmd=-1
-            bpy.data.texts["Input"].from_string("コマンドリストが選択されていません。")
+            bpy.data.texts["O2MCD_input"].from_string("コマンドリストが選択されていません。")
         context.scene.O2MCD_props.pre_obj=active
 
 
@@ -134,7 +134,8 @@ def get_matrix(context,obj,typ):
             loc=loc.translation
             result = (str(round(loc[0], rou)), str(round(loc[1], rou)), str(round(loc[2], rou)))
         else:
-            loc = mathutils.Matrix.Translation(loc.translation)
+            loc=loc.translation
+            loc = mathutils.Matrix.Translation(mathutils.Vector((-loc[0], loc[1], -loc[2])))
     
     if typ == "matrix":
         result=[str(round(t,rou)) for m in loc @ l_rot @ scale @ r_rot for t in m]
@@ -182,7 +183,7 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                                 prop=n.name+":"+"\""+str(obj.modifiers[modi.name][f"Socket_{i+2}"])+"\""
             elif var == "tag" or var == "tags":     # タグをリスト化
                 tags = ",".join([t.tag for t in obj.O2MCD_tag_list])
-                if tags and not tags == f and match(f".*/{funk_list}.*", tags):  # 引数の中の関数を変換
+                if tags and not tags == f and match(f"/{funk_list}", tags):  # 引数の中の関数を変換
                     tags = comvert_function(context, funk_list, tags, num).split(",")
                     
             if elm == "" or elm == val:             # 置き換え
@@ -223,8 +224,8 @@ def command_generate(self, context):    # コマンド生成
             bpy.app.handlers.frame_change_post.remove(command_generate)
     if command_generate in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(command_generate)
-    if "Output" not in bpy.data.texts:  # Outputが無ければ作成
-        bpy.data.texts.new("Output")
+    if "O2MCD_output" not in bpy.data.texts:  # Outputが無ければ作成
+        bpy.data.texts.new("O2MCD_output")
         
     object_list.chenge_panel(self, context)
     funk_list = "(?:"+"|".join(bpy.context.preferences.addons[__package__].preferences.cmd_func.split(","))+")"    # 関数名
@@ -234,8 +235,8 @@ def command_generate(self, context):    # コマンド生成
         o = l.obj
         if not o.hide_viewport and o.O2MCD_props.enable:
             input=[]
-            input=[c for cl in o.O2MCD_command_list for c in cl.command.split("\n")]
-            # for c in o.O2MCD_command_list:
+            input=[c for cl in o.O2MCD_props.command_list for c in cl.command.split("\n")]
+            # for c in o.O2MCD_props.command_list:
             #     if c.enable: input+=[*c.command.split("\n")]
             input = [s for s in input if not match('^#(?! +|#+)', s)]       # エスケープ
             if input:
@@ -248,7 +249,7 @@ def command_generate(self, context):    # コマンド生成
     # Outputに書き込み
     output = "\n".join(output)
     output = sub("[,\.][,\.]|([\{\[\(])[,\.]|[,\.]([\]\}\)])", "\\1\\2", output)
-    bpy.data.texts["Output"].from_string(output)
+    bpy.data.texts["O2MCD_output"].from_string(output)
     # テキストエディタの表示を更新
     for area in bpy.context.screen.areas:
         if area.type == 'TEXT_EDITOR':
@@ -264,21 +265,21 @@ class OBJECTTOMCDISPLAY_OT_CommandListAction(bpy.types.Operator): #移動
     action: bpy.props.EnumProperty(items=(('UP', "up", ""),('DOWN', "down", ""),('ADD',"add",""),('REMOVE',"remove","")))
 
     def execute(self, context):
-        cmd_list=context.view_layer.objects.active.O2MCD_command_list
+        cmd_list=context.view_layer.objects.active.O2MCD_props.command_list
         cmd_index=context.view_layer.objects.active.O2MCD_props.command_index
-        if self.action == 'DOWN':
+        if self.action == 'DOWN' and context.active_object.O2MCD_props.command_index < len(context.active_object.O2MCD_props.command_list)-1:
             cmd_list.move(cmd_index, cmd_index+1)
             context.object.O2MCD_props.command_index += 1
             context.view_layer.objects.active.O2MCD_props.pre_cmd=context.view_layer.objects.active.O2MCD_props.pre_cmd+1
-        elif self.action == 'UP':
+        elif self.action == 'UP' and context.active_object.O2MCD_props.command_index > 0:
             cmd_list.move(cmd_index, cmd_index-1)
             context.object.O2MCD_props.command_index -= 1
             context.view_layer.objects.active.O2MCD_props.pre_cmd=context.view_layer.objects.active.O2MCD_props.pre_cmd-1
         elif self.action == 'ADD':
-            if "Input" not in bpy.data.texts:
-                bpy.data.texts.new("Input")
+            if "O2MCD_input" not in bpy.data.texts:
+                bpy.data.texts.new("O2MCD_input")
             newcmd=cmd_list.add()
-            newcmd.name = "cmd"+str(len(context.view_layer.objects.active.O2MCD_command_list))
+            newcmd.name = "cmd"+str(len(context.view_layer.objects.active.O2MCD_props.command_list))
             object_list.chenge_panel(self, context)
             context.view_layer.objects.active.O2MCD_props.command_index=len(cmd_list)-1
         elif self.action == 'REMOVE':

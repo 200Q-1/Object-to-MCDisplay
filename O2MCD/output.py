@@ -4,8 +4,6 @@ import bpy
 import os
 from re import *
 from math import *
-from bpy.app.handlers import persistent
-from . import link
 from . import command
 from . import object_list
 from . import json_import
@@ -19,11 +17,6 @@ def set_default(self,context):
         context.scene.O2MCD_props.curr_path= context.preferences.addons[__package__].preferences.curr_path
         context.scene.O2MCD_props.auto_reload= context.preferences.addons[__package__].preferences.auto_reload
         context.scene.O2MCD_props.mcpp_sync= context.preferences.addons[__package__].preferences.mcpp_sync
-        if context.preferences.addons[__package__].preferences.df_packs: 
-            for p in context.preferences.addons[__package__].preferences.df_packs:
-                context.scene.O2MCD_rc_packs.add().path=p.path
-        else:
-            context.preferences.addons[__package__].preferences.df_packs.add()
         
 
 def update(self, context):  # 更新処理
@@ -31,12 +24,12 @@ def update(self, context):  # 更新処理
         bpy.app.handlers.depsgraph_update_post.append(sync_version)
     if not object_list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(object_list.chenge_panel)
-    bpy.types.VIEW3D_MT_make_links.remove(link.prop_link)
-    bpy.types.VIEW3D_MT_make_links.append(link.prop_link)
         
-    if "Input" not in bpy.data.texts:  # Inputが無ければ作成
-        input=bpy.data.texts.new("Input")
+    if "O2MCD_input" not in bpy.data.texts:  # Inputが無ければ作成
+        input=bpy.data.texts.new("O2MCD_input")
         input.from_string("コマンドリストが選択されていません。")
+    if "O2MCD_output" not in bpy.data.texts:  # Outputが無ければ作成
+        bpy.data.texts.new("O2MCD_output")
     update_auto_reload(self,context)
         
 def update_auto_reload(self,context):
@@ -67,7 +60,7 @@ def update_version(self,context):
 
 def panel_output(self,context):
     layout = self.layout
-    if context.preferences.addons[__package__].preferences.mc_jar:
+    if context.preferences.addons[__package__].preferences.jar_path:
         row=layout.row(align=True)
         row.alignment = "RIGHT"
         row.prop(context.scene.O2MCD_props,"mc_version")
@@ -121,18 +114,12 @@ def panel_output(self,context):
         row = layout.row()
         if context.scene.O2MCD_props.toggle_list:
             row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
-            col = row.column()
-            row = col.column()
-            col = row.column()
-            if context.scene.O2MCD_props.obj_index <= 0:col.enabled = False
+            col = row.column(align = True)
             col.operator("o2mcd.list_move", icon='TRIA_UP', text="").action = 'UP'
-            col = row.column()
-            if context.scene.O2MCD_props.obj_index >= len(context.scene.O2MCD_object_list)-1 :col.enabled = False
             col.operator("o2mcd.list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
-            col = row.column()
             col.separator()
             col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
-            col.operator("o2mcd.list_reverse", icon='UV_SYNC_SELECT', text="")
+            col.operator("o2mcd.list_reverse", icon='ARROW_LEFTRIGHT', text="")
     else:
         layout.label(text="アドオン設定から.jarファイルを指定してください。")
 class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
@@ -162,32 +149,29 @@ class OBJECTTOMCDISPLAY_PT_TextOutputPanel(bpy.types.Panel):  # テキストエ�
         row.operator("o2mcd.reload")
         row.prop(context.scene.O2MCD_props, "auto_reload", toggle=True)
         
-        layout.label(text=bpy.app.translations.pgettext("Object List"))
-        row = layout.row()
+        col=layout.column(align=True)
+        col.separator()
+        col.label(text=bpy.app.translations.pgettext("Object List"))
+        row= col.row()
         row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
-        col = row.column()
-        if len(context.scene.O2MCD_object_list) <= 1:col.enabled = False
+        col = row.column(align = True)
         col.operator("o2mcd.list_move", icon='TRIA_UP', text="").action = 'UP'
         col.operator("o2mcd.list_move", icon='TRIA_DOWN', text="").action = 'DOWN'
         col.separator()
         col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
-        col.operator("o2mcd.list_reverse", icon='UV_SYNC_SELECT', text="")
+        col.operator("o2mcd.list_reverse", icon='ARROW_LEFTRIGHT', text="")
         
-        layout.label(text="コマンドリスト")
-        row= layout.row()
-        row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object, "O2MCD_command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
-        col = row.column()
-        col2=col.column()
-        col2.operator("o2mcd.command_list_action", icon='ADD', text="").action = 'ADD'
-        col2.operator("o2mcd.command_list_action", icon='REMOVE', text="").action = 'REMOVE'
-        row = col.row()
-        if context.active_object.O2MCD_props.command_index == 0 :
-            row.enabled= False
-        row.operator("o2mcd.command_list_action", icon='TRIA_UP', text="").action = 'UP'
-        row = col.row()
-        if context.active_object.O2MCD_props.command_index >= len(context.active_object.O2MCD_command_list)-1 :
-            row.enabled= False
-        row.operator("o2mcd.command_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+        col=layout.column(align=True)
+        col.separator()
+        col.label(text="コマンドリスト")
+        row= col.row()
+        row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
+        col = row.column(align=True)
+        col.operator("o2mcd.command_list_action", icon='ADD', text="").action = 'ADD'
+        col.operator("o2mcd.command_list_action", icon='REMOVE', text="").action = 'REMOVE'
+        col.separator()
+        col.operator("o2mcd.command_list_action", icon='TRIA_UP', text="").action = 'UP'
+        col.operator("o2mcd.command_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
         
 class OBJECTTOMCDISPLAY_PT_TextFuncPanel(bpy.types.Panel):  # テキストエディタパネル
     bl_label = "Function"
@@ -251,7 +235,7 @@ class OBJECTTOMCDISPLAY_OT_FuncButton(bpy.types.Operator):
         return des
     
     def execute(self, context):
-        Input=bpy.data.texts.get("Input")
+        Input=bpy.data.texts.get("O2MCD_input")
         Input.write("/"+self.action.lower())
         return {'FINISHED'}
             
@@ -281,17 +265,13 @@ class OBJECTTOMCDISPLAY_PT_TextTempPanel(bpy.types.Panel):  # テキストエデ
         col.operator("o2mcd.temp_action", icon='ADD', text="").action = 'ADD'
         row= layout.row()
         row.template_list("OBJECTTOMCDISPLAY_UL_TemplateList", "", context.preferences.addons[__package__].preferences, "tmp_cmd", context.preferences.addons[__package__].preferences, "tmp_index", rows=4)
-        col = row.column()
+        col = row.column(align=True)
         col.prop(context.window_manager,"O2MCD_func_toggle",text="",icon='SETTINGS',toggle=True)
         if context.window_manager.O2MCD_func_toggle:
-            row = col.row()
-            if context.preferences.addons[__package__].preferences.tmp_index == 0 :
-                row.enabled= False
-            row.operator("o2mcd.temp_action", icon='TRIA_UP', text="").action = 'UP'
-            row = col.row()
-            if context.preferences.addons[__package__].preferences.tmp_index >= len(context.preferences.addons[__package__].preferences.tmp_cmd)-1 :
-                row.enabled= False
-            row.operator("o2mcd.temp_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+            col.separator()
+            col.operator("o2mcd.temp_action", icon='TRIA_UP', text="").action = 'UP'
+            col.operator("o2mcd.temp_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+            col.separator()
             col.operator("o2mcd.temp_action", icon='X', text="").action = 'REMOVE'
         elif not context.preferences.use_preferences_save:
             col.operator("o2mcd.temp_action", icon='FILE_TICK', text="").action = 'SAVE'
@@ -311,7 +291,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
     bl_label = "Export"
     bl_description = bpy.app.translations.pgettext("Generate file in specified path")
     def execute(self, context):
-        text_name = "Output"
+        text_name = "O2MCD_output"
         frame_end = context.scene.frame_end
         current_frame = context.scene.frame_current
 
@@ -364,7 +344,6 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"),description=bpy.app.translations.pgettext("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False, update=update_auto_reload)
     output: bpy.props.EnumProperty(name="Output",description=bpy.app.translations.pgettext("Output files to the specified path"), items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
     enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False)
-    list_index : bpy.props.IntProperty(name="Index", default=-1)
     obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=object_list.select_object)
     mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
     toggle_list : bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Object List"),description=bpy.app.translations.pgettext("List of objects for which the Display property is set."),default=False)
