@@ -6,13 +6,12 @@ from re import *
 from math import *
 from . import object_list
 
-
 def cmd_set(context,active):
     pre_obj=context.scene.O2MCD_props.pre_obj
     if pre_obj and pre_obj.O2MCD_props.pre_cmd >= 0:
         pre_obj.O2MCD_props.command_list[pre_obj.O2MCD_props.pre_cmd].command=bpy.data.texts["O2MCD_input"].as_string()
     if active:
-        if active.O2MCD_props.command_list:
+        if active.O2MCD_props.command_list and active.O2MCD_props.command_index > -1:
             active.O2MCD_props.pre_cmd=active.O2MCD_props.command_index
             bpy.data.texts["O2MCD_input"].from_string(active.O2MCD_props.command_list[active.O2MCD_props.command_index].command)
         else:
@@ -178,13 +177,17 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                     for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
                         if val[1:]== n.name:
                             if n.name == "CustomModelData":
-                                prop=n.name+":"+str(obj.modifiers[modi.name][f"Socket_{i+2}"])
+                                if context.scene.O2MCD_props.mc_version == "1.19" or context.scene.O2MCD_props.mc_version == "1.20":
+                                    prop=n.name+":"+str(obj.modifiers[modi.name][f"Socket_{i+2}"])
+                                else:
+                                    prop="components:{\"minecraft:custom_model_data\":"+str(obj.modifiers[modi.name][f"Socket_{i+2}"])+"}"
                             else:
                                 prop=n.name+":"+"\""+str(obj.modifiers[modi.name][f"Socket_{i+2}"])+"\""
             elif var == "tag" or var == "tags":     # タグをリスト化
-                tags = ",".join([t.tag for t in obj.O2MCD_tag_list])
+                tags = ",".join([t.tag for t in obj.O2MCD_props.tag_list])
                 if tags and not tags == f and match(f"/{funk_list}", tags):  # 引数の中の関数を変換
-                    tags = comvert_function(context, funk_list, tags, num).split(",")
+                    tags = comvert_function(context, funk_list, tags, num)
+                tags=tags.split(",")
                     
             if elm == "" or elm == val:             # 置き換え
                 if match("loc|pos|scale|r_rot|l_rot|rot|matrix",var): com = com.replace(f, ",".join(list(map(lambda x : x+"f",result))), 1)
@@ -235,7 +238,7 @@ def command_generate(self, context):    # コマンド生成
         o = l.obj
         if not o.hide_viewport and o.O2MCD_props.enable:
             input=[]
-            input=[c for cl in o.O2MCD_props.command_list for c in cl.command.split("\n")]
+            input=[c for cl in o.O2MCD_props.command_list if cl.enable for c in cl.command.split("\n")]
             # for c in o.O2MCD_props.command_list:
             #     if c.enable: input+=[*c.command.split("\n")]
             input = [s for s in input if not match('^#(?! +|#+)', s)]       # エスケープ

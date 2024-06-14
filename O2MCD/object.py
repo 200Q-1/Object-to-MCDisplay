@@ -41,11 +41,13 @@ def panel_object(self,context):
             col=layout.column(align=True)
             col.separator()
             row=col.row()
-            row.label(text="メッシュリスト")
             row2=row.row()
-            row2.alignment = "RIGHT"
+            row2.alignment = "LEFT"
+            row2.label(text="メッシュリスト")
             row2.operator("o2mcd.copy_prop",icon='COPYDOWN').action='MESH'
-            row2.prop(context.window_manager,"O2MCD_mesh_toggle",text="",icon='SETTINGS',toggle=True)
+            row3=row.row()
+            row3.alignment = "RIGHT"
+            row3.prop(context.window_manager,"O2MCD_mesh_toggle",text="",icon='SETTINGS',toggle=True)
             if not context.window_manager.O2MCD_mesh_toggle:
                 row=col.row()
                 row.use_property_split = True
@@ -82,7 +84,11 @@ def panel_object(self,context):
             except:pass
             col=layout.column(align=True)
             col.separator()
-            col.label(text="コマンドリスト")
+            row=col.row()
+            row2=row.row()
+            row2.alignment = "LEFT"
+            row2.label(text="コマンドリスト")
+            row2.operator("o2mcd.copy_prop",icon='COPYDOWN').action='COMMAND'
             row= col.row()
             row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
             col = row.column(align=True)
@@ -92,19 +98,17 @@ def panel_object(self,context):
             col.operator("o2mcd.command_list_action", icon='TRIA_UP', text="").action = 'UP'
             col.operator("o2mcd.command_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
             
-            row=layout.row()
-            if len(context.scene.O2MCD_object_list) <= 1:row.enabled = False
-            row.operator("o2mcd.list_move", icon='TRIA_LEFT', text="").action = 'UP'
-            row.alignment = "CENTER"
-            row.label(text=str(context.active_object.O2MCD_props.number))
-            row.operator("o2mcd.list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
             box=layout.box()
             row = box.row(align = True)
-            row.label(text="Tags")
-            row.operator("o2mcd.copy_prop",icon='COPYDOWN').action='TAG'
-            row.operator("o2mcd.tag_action", icon='ADD', text="", emboss=False).action='ADD'
+            row2=row.row()
+            row2.alignment = "LEFT"
+            row2.label(text="タグ")
+            row2.operator("o2mcd.copy_prop",icon='COPYDOWN').action='TAG'
+            row3=row.row()
+            row3.alignment = "RIGHT"
+            row3.operator("o2mcd.tag_action", icon='ADD', text="", emboss=False).action='ADD'
             col = box.column(align = True)
-            for i,item in enumerate(context.active_object.O2MCD_tag_list):
+            for i,item in enumerate(context.active_object.O2MCD_props.tag_list):
                 row = col.row(align = True)
                 row.prop(item,"tag",text="")
                 ac=row.operator("o2mcd.tag_action", icon='PANEL_CLOSE', text="", emboss=False)
@@ -131,19 +135,26 @@ class OBJECTTOMCDISPLAY_PT_WindowObjectProperties(bpy.types.Panel):  # プロパ
         panel_object(self,context)
 
 def mesh_items(self,context):
-    return ((i.mesh.name.upper(),i.mesh.name,"") for i in context.scene.O2MCD_object_list[self.number].obj.O2MCD_props.mesh_list)
+    items=()
+    if self.number >=0:
+        items=((i.mesh.name.upper(),i.mesh.name,"") for i in context.scene.O2MCD_object_list[self.number].obj.O2MCD_props.mesh_list)
+    elif context.active_object and context.active_object.O2MCD_props.mesh_enum:
+        items=((i.mesh.name.upper(),i.mesh.name,"") for i in context.active_object.O2MCD_props.mesh_list)
+    return items
 
 # メッシュリスト
 class  O2MCD_MeshList(bpy.types.PropertyGroup):
     mesh: bpy.props.PointerProperty(name="Mesh",type=bpy.types.Mesh)
 # コマンドリスト
 def cmd_list_update(self,context):
-    if context.active_object.O2MCD_props.command_list and self == context.active_object.O2MCD_props.command_list[context.active_object.O2MCD_props.command_index]:
+    if context.active_object and  context.active_object.O2MCD_props.command_list and self == context.active_object.O2MCD_props.command_list[context.active_object.O2MCD_props.command_index]:
         bpy.data.texts["O2MCD_input"].from_string(self.command)
 class  O2MCD_CommandList(bpy.types.PropertyGroup): 
     name: bpy.props.StringProperty(name="Name",description="",default="")
     command: bpy.props.StringProperty(name="Command",description="",default="",update=cmd_list_update)
     enable: bpy.props.BoolProperty(name="Enable",description="", default=True)
+class  O2MCD_TagList(bpy.types.PropertyGroup): 
+    tag: bpy.props.StringProperty(name="tag",description="",default="")
 
 
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
@@ -157,6 +168,7 @@ class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロ�
     mesh_list: bpy.props.CollectionProperty(name="mesh",type=O2MCD_MeshList)
     command_list : bpy.props.CollectionProperty(type=O2MCD_CommandList)
     mesh_index:bpy.props.IntProperty(name="mesh_index", default=0,update=mesh_update)
+    tag_list : bpy.props.CollectionProperty(type=O2MCD_TagList)
 
 
 class  O2MCD_ItemList(bpy.types.PropertyGroup):
@@ -173,17 +185,6 @@ class OBJECTTOMCDISPLAY_UL_CommandList(bpy.types.UIList):
         sp.prop(item, "name", text="", emboss=False)
         sp.prop(item, "command", text="", emboss=True)
         
-# タグリスト
-class  O2MCD_TagList(bpy.types.PropertyGroup): 
-    tag: bpy.props.StringProperty(name="tag",description="",default="")
-class OBJECTTOMCDISPLAY_UL_TagList(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
-        row = layout.row(align=True)
-        row.alignment="LEFT"
-        row.prop(item, "enable", text="")
-        row.label(icon='TEXT')
-        row.prop(item, "name", text="", emboss=True)
-        row.prop(item, "command", text="", emboss=False)
 class OBJECTTOMCDISPLAY_OT_TagAction(bpy.types.Operator):  # コマンド追加
     bl_idname = "o2mcd.tag_action"
     bl_label = ""
@@ -194,9 +195,9 @@ class OBJECTTOMCDISPLAY_OT_TagAction(bpy.types.Operator):  # コマンド追加
     def execute(self, context):
         match self.action:
             case 'ADD':
-                context.object.O2MCD_tag_list.add()
+                context.object.O2MCD_props.tag_list.add()
             case 'REMOVE':
-                context.object.O2MCD_tag_list.remove(self.index)
+                context.object.O2MCD_props.tag_list.remove(self.index)
         return {'FINISHED'}
     
 class OBJECTTOMCDISPLAY_UL_MeshList(bpy.types.UIList):
@@ -234,7 +235,7 @@ class OBJECTTOMCDISPLAY_OT_MeshListAction(bpy.types.Operator): #移動
                 directory=context.preferences.addons[__package__].preferences.jar_path+os.sep+os.sep.join(["assets","minecraft","blockstates"])+os.sep
                 json_import.create_model(self,context,directory,context.preferences.addons[__package__].preferences.block_id,"block",False)
                 context.preferences.addons[__package__].preferences.block_id=""
-            context.view_layer.objects.active.O2MCD_props.mesh_index=len(mesh_list)-1
+            context.view_layer.objects.active.O2MCD_props.mesh_enum=context.view_layer.objects.active.O2MCD_props.mesh_list[len(mesh_list)-1].mesh.name.upper()
             mesh_update(self,context)
         elif self.action == 'REMOVE':
             for modi in list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) , context.active_object.modifiers)):
@@ -299,21 +300,97 @@ class OBJECTTOMCDISPLAY_OT_CopyProp(bpy.types.Operator):
     bl_idname = "o2mcd.copy_prop"
     bl_label = ""
     bl_description= ""
-    action: bpy.props.EnumProperty(items=(('MESH',"mesh",""),('TAG',"tag","")))
+    action: bpy.props.EnumProperty(items=(('MESH',"mesh",""),('COMMAND',"command",""),('TAG',"tag","")))
     def execute(self, context):
         if self.action=='MESH':
             am=[m.mesh for m in context.active_object.O2MCD_props.mesh_list]
+            active_fcurve=[]
+            if context.active_object.animation_data and context.active_object.animation_data.action:
+                active_fcurve=list(filter(lambda a: fullmatch("O2MCD_props.mesh_enum|modifiers\[\"O2MCD(.[0-9]+)?\"\]\[\"Socket_[0-9]+\"\]",a.data_path),context.active_object.animation_data.action.fcurves))
             for o in list(filter(lambda s:s != context.active_object and s.type=='MESH',context.selected_objects)):
                 o.O2MCD_props.disp_type=context.active_object.O2MCD_props.disp_type
                 o.O2MCD_props.mesh_list.clear()
-                for m in am:
-                    o.O2MCD_props.mesh_list.add().mesh=m
-            o.O2MCD_props.mesh_enum=context.active_object.O2MCD_props.mesh_enum
-            o.O2MCD_props.disp_id=context.active_object.O2MCD_props.mesh_enum
+                if o.animation_data and o.animation_data.action:
+                    target_fcurve=list(filter(lambda a: fullmatch("O2MCD_props.mesh_enum|modifiers\[\"O2MCD(.[0-9]+)?\"\]\[\"Socket_[0-9]+\"\]",a.data_path),o.animation_data.action.fcurves))
+                    for f in target_fcurve:
+                        o.animation_data.action.fcurves.remove(f)
+                if am:
+                    for m in am:
+                        o.O2MCD_props.mesh_list.add().mesh=m
+                        if not o.O2MCD_props.command_list:
+                            o.O2MCD_props.command_list.add().name="cmd1"
+                o.O2MCD_props.mesh_enum=context.active_object.O2MCD_props.mesh_enum
+                o.O2MCD_props.disp_id=context.active_object.O2MCD_props.mesh_enum
+                for modi in list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) , context.active_object.modifiers)):
+                    if not modi.node_group.name in [m.node_group.name for m in o.modifiers if m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name)]:
+                        new_modi=o.modifiers.new("O2MCD", "NODES")
+                        node_tree=bpy.data.node_groups[modi.node_group.name]
+                        new_modi.node_group=node_tree
+                    else:
+                        new_modi=[m.node_group.name for m in o.modifiers if m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and m.node_group.name == modi.node_group.name][0]
+                        node_tree=new_modi.node_group
+                    for m in range(len(list(filter(lambda x: x.type=='MENU_SWITCH', [n for n in node_tree.nodes])))):
+                        new_modi["Socket_"+str(m+2)]=modi["Socket_"+str(m+2)]
+                for active_action in active_fcurve:
+                    if not o.animation_data:
+                        o.animation_data_create()
+                    if not o.animation_data.action:
+                        n=o.name
+                        o.animation_data.action = bpy.data.actions.new(name=f"{n}Action")
+                    action=o.animation_data.action
+                    target_fcurve = action.fcurves.new(data_path=active_action.data_path,index=active_action.array_index)
+                    for keyframe in active_action.keyframe_points:
+                        kfp = target_fcurve.keyframe_points.insert(frame=keyframe.co[0], value=keyframe.co[1])
+                        kfp.handle_left = keyframe.handle_left
+                        kfp.handle_right = keyframe.handle_right
+                        kfp.interpolation = keyframe.interpolation
+                        kfp.easing = keyframe.easing
+                        kfp.back = keyframe.back
+                        kfp.amplitude = keyframe.amplitude
+                        kfp.period = keyframe.period
             object_list.chenge_panel(self,context)
-
+        elif self.action=='COMMAND':
+            ac=[(m.name,m.command,m.enable) for m in context.active_object.O2MCD_props.command_list]
+            active_fcurve=[]
+            if context.active_object.animation_data and context.active_object.animation_data.action:
+                active_fcurve=list(filter(lambda a:fullmatch("O2MCD_props.command_list\[[0-9]+\].enable",a.data_path),context.active_object.animation_data.action.fcurves))
+            for o in list(filter(lambda s:s != context.active_object,context.selected_objects)):
+                o.O2MCD_props.command_list.clear()
+                if o.animation_data and o.animation_data.action:
+                    target_fcurve=list(filter(lambda a:fullmatch("O2MCD_props.command_list\[[0-9]+\].enable",a.data_path),o.animation_data.action.fcurves))
+                    for f in target_fcurve:
+                        o.animation_data.action.fcurves.remove(f)
+                if ac:
+                    for c in ac:
+                        cmd=o.O2MCD_props.command_list.add()
+                        cmd.name=c[0]
+                        cmd.command=c[1]
+                        cmd.enable=c[2]
+                for active_action in active_fcurve:
+                    if not o.animation_data:
+                        o.animation_data_create()
+                    if not o.animation_data.action:
+                        n=o.name
+                        o.animation_data.action = bpy.data.actions.new(name=f"{n}Action")
+                    action=o.animation_data.action
+                    target_fcurve = action.fcurves.new(data_path=active_action.data_path,index=active_action.array_index)
+                    for keyframe in active_action.keyframe_points:
+                        kfp = target_fcurve.keyframe_points.insert(frame=keyframe.co[0], value=keyframe.co[1])
+                        kfp.handle_left = keyframe.handle_left
+                        kfp.handle_right = keyframe.handle_right
+                        kfp.interpolation = keyframe.interpolation
+                        kfp.easing = keyframe.easing
+                        kfp.back = keyframe.back
+                        kfp.amplitude = keyframe.amplitude
+                        kfp.period = keyframe.period
+                        
         elif self.action=='TAG':
-            print("tag")
+            at=[m.tag for m in context.active_object.O2MCD_props.tag_list]
+            for o in list(filter(lambda s:s != context.active_object,context.selected_objects)):
+                o.O2MCD_props.tag_list.clear()
+                if at:
+                    for t in at:
+                        o.O2MCD_props.tag_list.add().tag=t
         return {'FINISHED'}
 
 classes = (
@@ -321,13 +398,12 @@ classes = (
     OBJECTTOMCDISPLAY_UL_MeshList,
     O2MCD_CommandList,
     OBJECTTOMCDISPLAY_UL_CommandList,
+    O2MCD_TagList,
     OBJECTTOMCDISPLAY_PT_ObjectProperties,
     OBJECTTOMCDISPLAY_PT_WindowObjectProperties,
     O2MCD_Obj_Props,
     O2MCD_ItemList,
     O2MCD_BlockList,
-    O2MCD_TagList,
-    OBJECTTOMCDISPLAY_UL_TagList,
     OBJECTTOMCDISPLAY_OT_TagAction,
     OBJECTTOMCDISPLAY_MT_SetId,
     OBJECTTOMCDISPLAY_OT_SetItem,
@@ -342,7 +418,6 @@ def register():
     bpy.types.Object.O2MCD_props = bpy.props.PointerProperty(type=O2MCD_Obj_Props)
     bpy.types.Scene.O2MCD_item_list = bpy.props.CollectionProperty(type=O2MCD_ItemList)
     bpy.types.Scene.O2MCD_block_list = bpy.props.CollectionProperty(type=O2MCD_BlockList)
-    bpy.types.Object.O2MCD_tag_list = bpy.props.CollectionProperty(type=O2MCD_TagList)
     bpy.types.WindowManager.O2MCD_mesh_toggle = bpy.props.BoolProperty(default = False)
 
 

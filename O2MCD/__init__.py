@@ -151,14 +151,8 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     item_list : bpy.props.CollectionProperty(name="item_list",type=O2MCD_ItemList)
     tmp_cmd: bpy.props.CollectionProperty(name="temp_cmd",type=O2MCD_TempCmd)
     tmp_index: bpy.props.IntProperty(name="index",default=0)
-    cmd_func: bpy.props.StringProperty(name="Func",description="", subtype='FILE_PATH', default="matrix,loc,scale,l_rot,r_rot,pos,rot,id,type,prop,tag,name,num,frame,math")
+    cmd_func: bpy.props.StringProperty(name="Func",description="", subtype='FILE_PATH', default="matrix,loc,scale,l_rot,r_rot,pos,rot,id,type,prop,tags?,name,num,frame,math")
     
-    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20')
-    rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
-    curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("single frame path"), subtype='FILE_PATH', default="")
-    anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("animation path"), subtype='FILE_PATH', default="")
-    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"),description=bpy.app.translations.pgettext("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False)
-    enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False)
     mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
     
     def draw(self, context):
@@ -167,19 +161,6 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         if not self.jar_path or self.jar_path[-4:] != ".jar":
             br.alert=True
         br.prop(self, "jar_path",text=".jarファイル")
-        layout.label(icon='DOT',text=bpy.app.translations.pgettext("You can set default values that are applied when you open a new project."))
-        row=layout.row()
-        if not self.jar_path or self.jar_path[-4:] != ".jar":
-            row.active = False
-        row.alignment = "RIGHT"
-        row.label(text="Enabled")
-        row.prop(self,"enable",text="")
-        row=layout.row()
-        if not self.jar_path or self.jar_path[-4:] != ".jar":
-            row.active = False
-        row.alignment = "RIGHT"
-        row.label(text=bpy.app.translations.pgettext("Auto Update"))
-        row.prop(self, "auto_reload",text="")
         if output.check_mcpp():
             row=layout.row()
             if not self.jar_path or self.jar_path[-4:] != ".jar":
@@ -190,12 +171,6 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
         col= layout.column()
         if not self.jar_path or self.jar_path[-4:] != ".jar":
             col.active = False
-        col.use_property_split = True
-        col.prop(self,"mc_version")
-        col.prop(self, "rou")
-        col.use_property_split = True
-        col.prop(self, "curr_path",text=bpy.app.translations.pgettext("single frame path"))
-        col.prop(self, "anim_path",text="animation path")
         layout.separator()
         
 

@@ -7,15 +7,11 @@ from math import *
 from . import command
 from . import object_list
 from . import json_import
+import numpy as np
 # 関数
 
 def set_default(self,context):
     if not bpy.context.blend_data.filepath:
-        context.scene.O2MCD_props.mc_version= context.preferences.addons[__package__].preferences.mc_version
-        context.scene.O2MCD_props.rou= context.preferences.addons[__package__].preferences.rou
-        context.scene.O2MCD_props.anim_path= context.preferences.addons[__package__].preferences.anim_path
-        context.scene.O2MCD_props.curr_path= context.preferences.addons[__package__].preferences.curr_path
-        context.scene.O2MCD_props.auto_reload= context.preferences.addons[__package__].preferences.auto_reload
         context.scene.O2MCD_props.mcpp_sync= context.preferences.addons[__package__].preferences.mcpp_sync
         
 
@@ -44,6 +40,27 @@ def update_auto_reload(self,context):
         if command.command_generate in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
             
+def near_version(prop,prop_list):
+    enum_ver=[]
+    cur_ver= np.zeros(3)
+    version=[]
+    for v in prop_list:
+        v.split(".")
+        ver= np.zeros(3)
+        for i,s in enumerate(v.split(".")):
+            ver[i]=int(s)
+        enum_ver.append(ver)
+    enum_ver=np.transpose(enum_ver)
+    for i,s in enumerate(prop.split(".")):
+        cur_ver[i]=int(s)
+
+    for p,o in zip(enum_ver,cur_ver):
+        idx = np.abs(np.asarray(p) - o).argmin()
+        version.append(str(int(p[idx])))
+    if version[-1]=="0":version.pop(-1)
+    version=".".join(version)
+    return version
+
 def check_mcpp():
     addons = bpy.context.preferences.addons
     mcpp=[i for i in addons.keys() if match("MC_Particle_pro_[0-9]_[0-9]_[0-9]_[0-9]",i)]
@@ -51,12 +68,11 @@ def check_mcpp():
     return mcpp
 def sync_version(self,context):
     if check_mcpp() and context.scene.O2MCD_props.mcpp_sync and not bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager == bpy.context.scene.O2MCD_props.mc_version:
-        bpy.context.scene.O2MCD_props.mc_version = bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager
-        
+        if bpy.context.scene.O2MCD_props.mc_version in [e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items]:
+            bpy.context.scene.O2MCD_props.mc_version=bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager
 def update_version(self,context):
     if check_mcpp() and context.scene.O2MCD_props.mcpp_sync:
-        context.preferences.addons[check_mcpp()].preferences.mc_version_manager=self.mc_version
-
+        bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager=near_version(bpy.context.scene.O2MCD_props.mc_version,[e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items])
 
 def panel_output(self,context):
     layout = self.layout
@@ -163,15 +179,16 @@ class OBJECTTOMCDISPLAY_PT_TextOutputPanel(bpy.types.Panel):  # テキストエ�
         
         col=layout.column(align=True)
         col.separator()
-        col.label(text="コマンドリスト")
-        row= col.row()
-        row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
-        col = row.column(align=True)
-        col.operator("o2mcd.command_list_action", icon='ADD', text="").action = 'ADD'
-        col.operator("o2mcd.command_list_action", icon='REMOVE', text="").action = 'REMOVE'
-        col.separator()
-        col.operator("o2mcd.command_list_action", icon='TRIA_UP', text="").action = 'UP'
-        col.operator("o2mcd.command_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+        if context.active_object:
+            col.label(text="コマンドリスト")
+            row= col.row()
+            row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
+            col = row.column(align=True)
+            col.operator("o2mcd.command_list_action", icon='ADD', text="").action = 'ADD'
+            col.operator("o2mcd.command_list_action", icon='REMOVE', text="").action = 'REMOVE'
+            col.separator()
+            col.operator("o2mcd.command_list_action", icon='TRIA_UP', text="").action = 'UP'
+            col.operator("o2mcd.command_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
         
 class OBJECTTOMCDISPLAY_PT_TextFuncPanel(bpy.types.Panel):  # テキストエディタパネル
     bl_label = "Function"
@@ -183,12 +200,14 @@ class OBJECTTOMCDISPLAY_PT_TextFuncPanel(bpy.types.Panel):  # テキストエデ
     def draw(self, context):
         layout = self.layout
         col=layout.column()
-        for action in [bpy.context.preferences.addons[__package__].preferences.cmd_func.split(",")[i:i + 2] for i in range(0, len(bpy.context.preferences.addons[__package__].preferences.cmd_func.split(",")), 2)]:
+        func=bpy.context.preferences.addons[__package__].preferences.cmd_func.replace("tags?","tag,tags")
+        for action in [func.split(",")[i:i + 2] for i in range(0, len(func.split(",")), 2)]:
             row = col.row()
             row.operator("o2mcd.func_button", text=action[0]).action = action[0].upper()
             if len(action) == 2:row.operator("o2mcd.func_button", text=action[1]).action = action[1].upper()
 def func_item(sefl,context):
-    item=((f.upper(),f,"") for f in bpy.context.preferences.addons[__package__].preferences.cmd_func.split(","))
+    func=bpy.context.preferences.addons[__package__].preferences.cmd_func.replace("tags?","tag,tags")
+    item=((f.upper(),f,"") for f in func.split(","))
     return item
 class OBJECTTOMCDISPLAY_OT_FuncButton(bpy.types.Operator):
     bl_idname = "o2mcd.func_button"
@@ -221,7 +240,9 @@ class OBJECTTOMCDISPLAY_OT_FuncButton(bpy.types.Operator):
             case "PROP":
                 des=""
             case "TAG":
-                des=""
+                des="tag=A,tag=B"
+            case "TAGS":
+                des="\"A\",\"B\""
             case "NAME":
                 des="Cube.001"
             case "NUM":
@@ -281,7 +302,6 @@ class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
     bl_description = bpy.app.translations.pgettext("Get information about the object and generate commands in the Output according to the Input")
 
     def execute(self, context):
-        print(bpy.context.space_data)
         command.command_generate(self, context)
         return {'FINISHED'}
 
@@ -336,8 +356,15 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
                 except:self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
         return {'FINISHED'}
 
+def version_items(self,context):
+    items=['1.19','1.20','1.20.5']
+    if check_mcpp() and context.scene.O2MCD_props.mcpp_sync:
+        items+=[e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items if not e.name in items]
+    items.sort()
+    items=(((i,i,"") for i in items))
+    return items
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
-    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=[('1.19', "1.19", ""), ('1.20', "1.20", "")], default='1.20',update=update_version)
+    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=version_items,update=update_version)
     rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
     curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("single frame path"), subtype='FILE_PATH', default="")
     anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("animation path"), subtype='FILE_PATH', default="")

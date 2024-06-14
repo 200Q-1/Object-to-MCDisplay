@@ -97,6 +97,7 @@ def get_pack(directory,file):
     
 def variants(self):
     node_tree=bpy.data.node_groups.new(name="variants", type='GeometryNodeTree')
+    node_tree.is_modifier=True
     node_tree.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
     node_tree.interface.new_socket("Attribute", in_out="INPUT", socket_type="NodeSocketString")
     node_tree.interface.new_socket("Rotation", in_out="INPUT", socket_type="NodeSocketRotation")
@@ -126,6 +127,7 @@ def variants(self):
 
 def multipart(self):
     node_tree=bpy.data.node_groups.new(name="multipart", type='GeometryNodeTree')
+    node_tree.is_modifier=True
     node_tree.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
     node_tree.interface.new_socket("Attribute", in_out="INPUT", socket_type="NodeSocketString")
     node_tree.interface.new_socket("Rotation", in_out="INPUT", socket_type="NodeSocketRotation")
@@ -150,7 +152,7 @@ def multipart(self):
     return node_tree
 
 def parents(self,directory,file):
-    blc=["banner","generated","chest","ender_chest","conduit","decorated_pot","shulker_box"]
+    blc=["banner","chest","ender_chest","conduit","decorated_pot","shulker_box"]
     colors="(black|blue|brown|cyan|gray|green|light_blue|light_gray|lime|magenta|orange|pink|purple|red|white|yellow)"
     if file[-1][:-5] in blc and len(file) > 4 and file[3] == "block":
             directory=bpy.path.abspath(os.path.dirname(__file__))+os.sep
@@ -178,7 +180,8 @@ def parents(self,directory,file):
                 parent={"builtin/entity":"True"}
             else:
                 if data["parent"].split(":")[-1] == "item/generated":
-                    parent_file=["generated.json"]
+                    directory=bpy.path.abspath(os.path.dirname(__file__))+os.sep
+                    parent_file=["model","generated.json"]
                 elif data["parent"].split(":")[-1] == "model/chest":
                     parent_file=["chest.json"]
                 else:
@@ -203,7 +206,7 @@ def parents(self,directory,file):
                     parent_file=["model",file[-1]]
                 parent=parents(self,directory,parent_file)
                 
-            elif re.fullmatch("skeleton_skull|wither_skeleton_skull|creeper_head|zombie_head",file[-1][:-5]):
+            if re.fullmatch("skeleton_skull|wither_skeleton_skull|creeper_head|zombie_head",file[-1][:-5]):
                 t=file[-1][:-5].split("_")[0]
                 parent["textures"]["0"]=f"entity/{t}/{t}"
                 
@@ -428,15 +431,27 @@ def create_model(self,context,directory,name,types,new):
                         if "uv" in e["faces"][key]:
                             uv=e["faces"][key]["uv"]
                             xfrm = uv[0] / 16.0
+                            yfrm = uv[1] / 16.0
                             xto = uv[2] / 16.0
-                            yfrom = uv[3] / 16.0
-                            yto = uv[1] / 16.0
-                            uvs.append(
-                            (   mathutils.Vector((xto, yfrom)),
-                                mathutils.Vector((xto, yto)),
-                                mathutils.Vector((xfrm, yto)),
-                                mathutils.Vector((xfrm, yfrom)))
-                            )
+                            yto = uv[3] / 16.0
+                            if key == "up":
+                                uvs.append(
+                                (   mathutils.Vector((xfrm, yfrm)),
+                                    mathutils.Vector((xfrm, yto)),
+                                    mathutils.Vector((xto, yto)),
+                                    mathutils.Vector((xto, yfrm))))
+                            elif key == "down":
+                                uvs.append(
+                                (   mathutils.Vector((xto, yfrm)),
+                                    mathutils.Vector((xfrm, yfrm)),
+                                    mathutils.Vector((xfrm, yto)),
+                                    mathutils.Vector((xto, yto))))
+                            else:
+                                uvs.append(
+                                (   mathutils.Vector((xto, yto)),
+                                    mathutils.Vector((xto, yfrm)),
+                                    mathutils.Vector((xfrm, yfrm)),
+                                    mathutils.Vector((xfrm, yto))))
                         else:
                             uvs.append("SET")
                         if "rotation" in e["faces"][key]:
@@ -470,34 +485,21 @@ def create_model(self,context,directory,name,types,new):
             if uvs[ind] == "SET":
                 vecuv=[new_object.data.vertices[i].co for i in p.vertices]
                 if normal[ind] == "east":
-                    vecuv=[mathutils.Vector((v[1]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+                    vecuv=[mathutils.Vector((1-v[1]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
                 elif normal[ind] == "south":
-                    vecuv=[mathutils.Vector((v[0]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+                    vecuv=[mathutils.Vector((1-v[0]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
                 elif normal[ind] == "west":
-                    vecuv=[mathutils.Vector((v[1]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+                    vecuv=[mathutils.Vector((v[1]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
                 elif normal[ind] == "north":
-                    vecuv=[mathutils.Vector((v[0]+0.5,((v[2]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+                    vecuv=[mathutils.Vector((v[0]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
                 elif normal[ind] == "down":
-                    vecuv=[mathutils.Vector((v[0]+0.5,((v[1]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+                    vecuv=[mathutils.Vector((1-v[0]+0.5,((v[1]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
                 elif normal[ind] == "up":
-                    vecuv=[mathutils.Vector((v[0]+0.5,((v[1]+0.5)+ratio[ind]-1)/ratio[ind])) for v in vecuv]
+                    vecuv=[mathutils.Vector((1-v[0]+0.5,((1-v[1]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
             else:
-                uvs[ind][0][1]=1-(uvs[ind][0][1]/ratio[ind])
-                uvs[ind][3][1]=1-(uvs[ind][3][1]/ratio[ind])
-                uvs[ind][1][1]=1-(uvs[ind][1][1]/ratio[ind])
-                uvs[ind][2][1]=1-(uvs[ind][2][1]/ratio[ind])
-                if normal[ind] == "down":
-                    vecuv.append(uvs[ind][1])
-                    vecuv.append(uvs[ind][2])
-                    vecuv.append(uvs[ind][3])
-                    vecuv.append(uvs[ind][0])
-                else:
-                    vecuv.append(uvs[ind][0])
-                    vecuv.append(uvs[ind][1])
-                    vecuv.append(uvs[ind][2])
-                    vecuv.append(uvs[ind][3])
-            if normal[ind] == "up":
-                vecuv=[vecuv[2],vecuv[3],vecuv[0],vecuv[1]]
+                for u in uvs[ind]:
+                    u[1]=(1-u[1])/ratio[ind]
+                    vecuv.append(u)
 
             if uv_rot[ind] == 90:
                 vecuv=[vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
@@ -517,7 +519,6 @@ def create_model(self,context,directory,name,types,new):
             sep_inv=[]
             
             if btype=="variants":
-                # value_list=[item for sublist in list(map(lambda l: [i.split("=") for i in l.split(",")],datas["variants"].keys())) for item in sublist]
                 value_list= [i.split("=") for l in datas["variants"].keys() if l for i in l.split(",") if i]
             else:
                 value_list=[]
@@ -554,6 +555,7 @@ def create_model(self,context,directory,name,types,new):
         if value_list:
             modi=new_object.modifiers.new("O2MCD", "NODES")
             node_tree=bpy.data.node_groups.new(name="/".join([types,name]), type='GeometryNodeTree')
+            node_tree.is_modifier=True
             modi.node_group=node_tree
             node_tree.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
             node_tree.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
