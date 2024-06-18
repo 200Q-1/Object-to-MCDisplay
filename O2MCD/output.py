@@ -10,11 +10,6 @@ from . import json_import
 import numpy as np
 # 関数
 
-def set_default(self,context):
-    if not bpy.context.blend_data.filepath:
-        context.scene.O2MCD_props.mcpp_sync= context.preferences.addons[__package__].preferences.mcpp_sync
-        
-
 def update(self, context):  # 更新処理
     if not sync_version in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(sync_version)
@@ -67,11 +62,11 @@ def check_mcpp():
     if mcpp:mcpp= mcpp[0]
     return mcpp
 def sync_version(self,context):
-    if check_mcpp() and context.scene.O2MCD_props.mcpp_sync and not bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager == bpy.context.scene.O2MCD_props.mc_version:
+    if check_mcpp() and bpy.context.preferences.addons[__package__].preferences.mcpp_sync and not bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager == bpy.context.scene.O2MCD_props.mc_version:
         if bpy.context.scene.O2MCD_props.mc_version in [e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items]:
             bpy.context.scene.O2MCD_props.mc_version=bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager
 def update_version(self,context):
-    if check_mcpp() and context.scene.O2MCD_props.mcpp_sync:
+    if check_mcpp() and bpy.context.preferences.addons[__package__].preferences.mcpp_sync:
         bpy.context.preferences.addons[check_mcpp()].preferences.mc_version_manager=near_version(bpy.context.scene.O2MCD_props.mc_version,[e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items])
 
 def panel_output(self,context):
@@ -80,9 +75,6 @@ def panel_output(self,context):
         row=layout.row(align=True)
         row.alignment = "RIGHT"
         row.prop(context.scene.O2MCD_props,"mc_version")
-        addons = bpy.context.preferences.addons
-        mcpp=[i for i in addons.keys() if match("MC_Particle_pro_[0-9]_[0-9]_[0-9]_[0-9]",i)]
-        if mcpp:row.prop(context.scene.O2MCD_props,"mcpp_sync")
         col = layout.column()
         col.use_property_split = True
         col.use_property_decorate = False
@@ -358,7 +350,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
 
 def version_items(self,context):
     items=['1.19','1.20','1.20.5']
-    if check_mcpp() and context.scene.O2MCD_props.mcpp_sync:
+    if check_mcpp() and context.preferences.addons[__package__].preferences.mcpp_sync:
         items+=[e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items if not e.name in items]
     items.sort()
     items=(((i,i,"") for i in items))
@@ -372,7 +364,6 @@ class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
     output: bpy.props.EnumProperty(name="Output",description=bpy.app.translations.pgettext("Output files to the specified path"), items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
     enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False)
     obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=object_list.select_object)
-    mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
     toggle_list : bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Object List"),description=bpy.app.translations.pgettext("List of objects for which the Display property is set."),default=False)
     toggle_rc_pack: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Parent Referrer"),description=bpy.app.translations.pgettext("Add a resource pack to search for files specified as parent when importing a json model"),default=False)
     pre_obj: bpy.props.PointerProperty(name="pre_obj",type=bpy.types.Object)

@@ -327,8 +327,9 @@ class OBJECTTOMCDISPLAY_OT_CopyProp(bpy.types.Operator):
                         node_tree=bpy.data.node_groups[modi.node_group.name]
                         new_modi.node_group=node_tree
                     else:
-                        new_modi=[m.node_group.name for m in o.modifiers if m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and m.node_group.name == modi.node_group.name][0]
-                        node_tree=new_modi.node_group
+                        modi_name=[(m.name,m.node_group.name) for m in o.modifiers if m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and m.node_group.name == modi.node_group.name][0]
+                        new_modi=o.modifiers[modi_name[0]]
+                        node_tree=bpy.data.node_groups[modi_name[1]]
                     for m in range(len(list(filter(lambda x: x.type=='MENU_SWITCH', [n for n in node_tree.nodes])))):
                         new_modi["Socket_"+str(m+2)]=modi["Socket_"+str(m+2)]
                 for active_action in active_fcurve:

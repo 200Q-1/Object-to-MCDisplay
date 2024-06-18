@@ -49,7 +49,6 @@ O2MCD_translation_dict = {
         ("*", "Open a resource pack.\nFolders, zips and jars are supported."): "リソースパックを開きます。\nフォルダ、zip、jarに対応しています",
         ("*", "Import json file as object."): "json ファイルをオブジェクトとしてインポートします",
         ("*", "Parent Referrer"): "ペアレントの参照元",
-        
         ("*", "You can set default values that are applied when you open a new project."): "新規プロジェクトを開いた際に適応される、デフォルトの値を設定することができます。",
         ("*", "Synchronise version settings with MCPP"): "MCPPとバージョン設定を同期します",
         ("*", "single frame path"): "シングルフレームのパス",
@@ -329,7 +328,6 @@ classes = (
 def load(self, context):
     output.update(None, bpy.context)
     JarSet(None, bpy.context)
-    output.set_default(None, bpy.context)
 
 
 def register():

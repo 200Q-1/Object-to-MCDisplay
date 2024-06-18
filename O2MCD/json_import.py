@@ -67,32 +67,32 @@ def get_pack(directory,file):
         return data
     elif os.path.splitext(file[-1])[1] == '.png':
         if os.path.isfile(directory+os.sep.join(file)):
-            file=os.sep.join(file)
-            data= bpy.data.images.load(directory+file)
+            fi=os.sep.join(file)
+            data= bpy.data.images.load(directory+fi)
             data.name="/".join(file[file.index("textures")+1:])
-            is_anim= os.path.isfile(directory+file+".mcmeta")
+            is_anim= os.path.isfile(directory+fi+".mcmeta")
         else:
             for p in bpy.context.scene.O2MCD_rc_packs[1:]:
                 if p.type == 'FOLDER':
-                    file=os.sep.join(file)
-                    if os.path.isfile(p.path+file):
-                        data= bpy.data.images.load(p.path+file)
+                    fi=os.sep.join(file)
+                    if os.path.isfile(p.path+fi):
+                        data= bpy.data.images.load(p.path+fi)
                         data.name="/".join(file[file.index("textures")+1:])
-                        is_anim= os.path.isfile(p.path+file+".mcmeta")
+                        is_anim= os.path.isfile(p.path+fi+".mcmeta")
                         break
                 else:
-                    with zipfile.ZipFile(p.path) as zip:
-                        try:
-                            with tempfile.TemporaryDirectory() as temp:
-                                zip.extract("/".join(file),temp)
-                                data= bpy.data.images.load(os.path.join(temp,*file))
-                                data.pack()
-                                data.name="/".join(file[file.index("textures")+1:])
-                                is_anim= "/".join(file)+".mcmeta" in zip.namelist()
-                                break
-                        except:
-                            data=None
-                            is_anim= False
+                    try:
+                        with zipfile.ZipFile(p.path) as zip:
+                                with tempfile.TemporaryDirectory() as temp:
+                                    zip.extract("/".join(file),temp)
+                                    data= bpy.data.images.load(os.path.join(temp,*file))
+                                    data.pack()
+                                    data.name="/".join(file[file.index("textures")+1:])
+                                    is_anim= "/".join(file)+".mcmeta" in zip.namelist()
+                                    break
+                    except:
+                        data=None
+                        is_anim= False
         return data,is_anim
     
 def variants(self):
@@ -230,7 +230,7 @@ def parents(self,directory,file):
 
 def create_model(self,context,directory,name,types,new):
     # オブジェクト作成
-    if name in bpy.data.meshes:
+    if "/".join([types,name]) in bpy.data.meshes:
         new_mesh=bpy.data.meshes["/".join([types,name])]
         make_mesh=False
     else:
@@ -483,24 +483,25 @@ def create_model(self,context,directory,name,types,new):
         for ind,p in enumerate(new_object.data.polygons):
             vecuv=[]
             if uvs[ind] == "SET":
-                vecuv=[new_object.data.vertices[i].co for i in p.vertices]
+                vuv=[new_object.data.vertices[i].co for i in p.vertices]
                 if normal[ind] == "east":
-                    vecuv=[mathutils.Vector((1-v[1]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
+                    vuv=[(1-v[1]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
                 elif normal[ind] == "south":
-                    vecuv=[mathutils.Vector((1-v[0]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
+                    vuv=[(1-v[0]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
                 elif normal[ind] == "west":
-                    vecuv=[mathutils.Vector((v[1]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
+                    vuv=[(v[1]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
                 elif normal[ind] == "north":
-                    vecuv=[mathutils.Vector((v[0]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
+                    vuv=[(v[0]+0.5,((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
                 elif normal[ind] == "down":
-                    vecuv=[mathutils.Vector((1-v[0]+0.5,((v[1]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
+                    vuv=[(1-v[0]+0.5,((v[1]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
                 elif normal[ind] == "up":
-                    vecuv=[mathutils.Vector((1-v[0]+0.5,((1-v[1]+0.5)+ratio[ind])/ratio[ind])) for v in vecuv]
+                    vuv=[(1-v[0]+0.5,((1-v[1]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
+                for uvx,uvy in vuv:
+                    vecuv.append(mathutils.Vector((uvx,uvy)))
             else:
                 for u in uvs[ind]:
-                    u[1]=(1-u[1])/ratio[ind]
+                    u[1]=(abs((1-u[1])/ratio[ind])+1)
                     vecuv.append(u)
-
             if uv_rot[ind] == 90:
                 vecuv=[vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
             elif uv_rot[ind] == 180:
@@ -527,12 +528,14 @@ def create_model(self,context,directory,name,types,new):
                         if k == "OR" or k == "AND":
                             for orv in v:
                                 for ok,ov in orv.items():
+                                    ov=str(ov)
                                     if "|" in ov:
                                         for s in ov.split("|"):
                                             if not [ok,str(s)] in value_list: value_list.append([ok,str(s)])
                                     else:
                                         if not [ok,str(ov)] in value_list:value_list.append([ok,str(ov)])
                         else:
+                            v=str(v)
                             if "|" in v:
                                 for s in v.split("|"):
                                     if not [k,str(s)] in value_list: value_list.append([k,str(s)])
@@ -634,8 +637,6 @@ def create_model(self,context,directory,name,types,new):
                             comp.location = (-200, (len(value_list)*len(v))*80-(e+(len(v))*i)*160)
                             node_tree.links.new(node_tree.nodes[k].outputs[0],comp.inputs["A"])
                     for s in sep_inv: node_tree.links.new(s, geo_to_ins.inputs['Geometry'])
-                    
-                    
                     model_data=[]
                     for da in datas["multipart"]:
                         if type(da["apply"]) is list:
@@ -647,14 +648,17 @@ def create_model(self,context,directory,name,types,new):
                                     for o in v:
                                         d=[]
                                         for kk,vv in o.items():
+                                            vv=str(vv)
                                             d.append(kk+"="+vv)
                                         model_data.append((d,da["apply"]))
                                     continue
                                 elif k== "AND":
                                     for o in v:
+                                        vv=str(vv)
                                         for kk,vv in o.items():
                                             d.append(kk+"="+vv)
                                 else:
+                                    v=str(v)
                                     d.append(k+"="+v)
                         else:
                             d=name
@@ -676,67 +680,73 @@ def create_model(self,context,directory,name,types,new):
                         comp_pre=None
                         for kin,w in enumerate(k) :
                             if not type(k) is str:
-                                if kin+1 == len(k):
-                                    if len(k) == 1:
+                                if kin == len(k)-1:
+                                    
+                                    if len(k) == 1:     #k一つだけ
                                         if "|" in w :
                                             cor_pre=None
                                             for win,l in enumerate(w.split("=")[-1].split("|")):
-                                                if win+1 == len(w.split("|")):
+                                                if win+1 == len(w.split("|")):      #w最後
                                                     node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
                                                 else:
                                                     cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
                                                     cor.operation='OR'
                                                     node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
-                                                    if cor_pre:
+                                                    if cor_pre:                     #w中間
                                                         node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
-                                                    else:
+                                                    else:                           #w最初
                                                         node_tree.links.new(cor.outputs[0],sep_node.inputs["active"])
                                                     cor_pre=cor
-                                            comp=cor_pre
-                                        else:
+                                        else:                                       #w一つだけ
                                             node_tree.links.new(node_tree.nodes[w].outputs[0],sep_node.inputs["active"])
-                                    else:
+                                            
+                                            
+                                    else:               #k最後
                                         if "|" in w :
                                             cor_pre=None
                                             for win,l in enumerate(w.split("=")[-1].split("|")):
-                                                if win+1 == len(w.split("|")):
+                                                if win+1 == len(w.split("|")):      #w最後
                                                     node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
                                                 else:
                                                     cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
                                                     cor.operation='OR'
                                                     node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
-                                                    if cor_pre:
+                                                    if cor_pre:                     #w中間
                                                         node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
-                                                    else:
+                                                    else:                           #w最初
                                                         node_tree.links.new(cor.outputs[0],comp_pre.inputs[1])
                                                     cor_pre=cor
-                                            comp=cor_pre
-                                        else:
+                                        else:                                       #w一つだけ
                                             node_tree.links.new(node_tree.nodes[w].outputs[0],comp_pre.inputs[1])
-                                else:
+                                            
+                                            
+                                else:                  #k中間
                                     comp=node_tree.nodes.new(type="FunctionNodeBooleanMath")
                                     if "|" in w :
-                                            cor_pre=None
-                                            for win,l in enumerate(w.split("=")[-1].split("|")):
-                                                if win+1 == len(w.split("|")):
-                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
-                                                else:
-                                                    cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
-                                                    cor.operation='OR'
-                                                    node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
-                                                    if cor_pre:
-                                                        node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
-                                                    else:
-                                                        node_tree.links.new(cor.outputs[0],sep_node.inputs["active"])
-                                                    cor_pre=cor
-                                            comp=cor_pre
-                                    else:
+                                        cor_pre=None
+                                        for win,l in enumerate(w.split("=")[-1].split("|")):
+                                            if win+1 == len(w.split("|")):          #w最後
+                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor_pre.inputs[1])
+                                                pre=comp
+                                            else:                                   #w中間
+                                                cor=node_tree.nodes.new(type="FunctionNodeBooleanMath")
+                                                cor.operation='OR'
+                                                node_tree.links.new(node_tree.nodes[w.split("=")[0]+"="+l].outputs[0],cor.inputs[0])
+                                                if cor_pre:                         #w中間
+                                                    node_tree.links.new(cor.outputs[0],cor_pre.inputs[1])
+                                                else:                               #w最初
+                                                    node_tree.links.new(cor.outputs[0],comp.inputs[0])
+                                                cor_pre=cor
+                                    else:                                           #w一つだけ
+                                        comp.label="one"
                                         node_tree.links.new(node_tree.nodes[w].outputs[0],comp.inputs[0])
-                                    if comp_pre:
+                                        pre=comp
+                                        
+                                    if comp_pre:        #k中間
                                         node_tree.links.new(comp.outputs[0],comp_pre.inputs[1])
-                                    else:
+                                    else:               #k最初
                                         node_tree.links.new(comp.outputs[0],sep_node.inputs["active"])
-                            comp_pre=comp
+                                    comp_pre=pre
                     
                         
                         
@@ -774,11 +784,12 @@ def create_model(self,context,directory,name,types,new):
                     node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
                     node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
     else:
-        modi=new_object.modifiers.new("O2MCD", "NODES")
-        node_tree=bpy.data.node_groups["/".join([types,name])]
-        modi.node_group=node_tree
-        for m in range(len(list(filter(lambda x: x.type=='MENU_SWITCH', [n for n in node_tree.nodes])))):
-            modi["Socket_"+str(m+2)]=0
+        if "/".join([types,name]) in bpy.data.node_groups: 
+            modi=new_object.modifiers.new("O2MCD", "NODES")
+            node_tree=bpy.data.node_groups["/".join([types,name])]
+            modi.node_group=node_tree
+            for m in range(len(list(filter(lambda x: x.type=='MENU_SWITCH', [n for n in node_tree.nodes])))):
+                modi["Socket_"+str(m+2)]=0
     if types == "item":
         new_object.O2MCD_props.disp_type="item_display"
     elif types == "block":    

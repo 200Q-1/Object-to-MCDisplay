@@ -171,24 +171,14 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
             if match("loc|pos|scale|r_rot|l_rot|rot|matrix",var):
                 result = get_matrix(context,obj,var)
             elif var == "prop":     # ブロックのプロパティを取得
-                prop=""
                 if obj.O2MCD_props.disp_type == "item_display" or obj.O2MCD_props.disp_type == "block_display":
-                    modi= list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and match(f"{m.node_group.name}(?:\.[0-9]+)?",obj.data.name), obj.modifiers))[0]
-                    for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
-                        if val[1:]== n.name:
-                            if n.name == "CustomModelData":
-                                if context.scene.O2MCD_props.mc_version == "1.19" or context.scene.O2MCD_props.mc_version == "1.20":
-                                    prop=n.name+":"+str(obj.modifiers[modi.name][f"Socket_{i+2}"])
-                                else:
-                                    prop="components:{\"minecraft:custom_model_data\":"+str(obj.modifiers[modi.name][f"Socket_{i+2}"])+"}"
-                            else:
-                                prop=n.name+":"+"\""+str(obj.modifiers[modi.name][f"Socket_{i+2}"])+"\""
+                    modi= list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and match(f"{m.node_group.name}(?:\.[0-9]+)?",obj.data.name), obj.modifiers))
+                    if modi:modi=modi[0]
             elif var == "tag" or var == "tags":     # タグをリスト化
                 tags = ",".join([t.tag for t in obj.O2MCD_props.tag_list])
-                if tags and not tags == f and match(f"/{funk_list}", tags):  # 引数の中の関数を変換
+                if tags and not tags == f and match(f".*/{funk_list}.*", tags):  # 引数の中の関数を変換
                     tags = comvert_function(context, funk_list, tags, num)
-                tags=tags.split(",")
-                    
+                if tags:tags=tags.split(",")
             if elm == "" or elm == val:             # 置き換え
                 if match("loc|pos|scale|r_rot|l_rot|rot|matrix",var): com = com.replace(f, ",".join(list(map(lambda x : x+"f",result))), 1)
                 elif var == "pos": com = com.replace(f, "^"+result[0] +" ^"+result[1]+" ^"+result[2], 1)
@@ -198,6 +188,22 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                         if var == "tags": com = com.replace(f, ",".join(["\""+i+"\"" for i in tags]), 1)
                         if var == "tag": com = com.replace(f, ",".join(["tag="+i for i in tags]), 1)
                     else: com = com.replace(f, "", 1)
+                elif var == "prop": 
+                    # node=[n for n in bpy.context.active_object.modifiers[0].node_group.nodes if n.type=='MENU_SWITCH']
+                    # for n in node:
+                    #     print([i.name for i in n.inputs[1:]])
+                    prop=[]
+                    if modi:
+                        for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
+                            if n.name == "CustomModelData":
+                                if context.scene.O2MCD_props.mc_version == "1.19" or context.scene.O2MCD_props.mc_version == "1.20":
+                                    prop.append(n.name+":"+[inp.name for inp in n.inputs[1:]][obj.modifiers[modi.name][f"Socket_{i+2}"]])
+                                else:
+                                    prop.append("\"minecraft:custom_model_data\":"+[inp.name for inp in n.inputs[1:]][obj.modifiers[modi.name][f"Socket_{i+2}"]])
+                            else:
+                                prop.append(n.name+":"+"\""+[inp.name for inp in n.inputs[1:]][obj.modifiers[modi.name][f"Socket_{i+2}"]]+"\"")
+                        com=com.replace(f, ",".join(prop), 1)
+                    else:com=com.replace(f, "", 1)
             else:
                 if match("loc|pos|scale|r_rot|l_rot|rot|matrix",var) : com = sub(f"/{var}\[.*?(,.*?)?\]",str(result[int(elm)]),com, 1)
                 elif var == "tag" or var == "tags":
@@ -205,10 +211,19 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                         if var == "tags": com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)],com, 1)
                         if var == "tag": com = sub("/tag\[.*?(,.*?)?\]",tags[int(elm)],com, 1)
                     else: com = com.replace(f, "", 1)
-            if var == "prop":
-                if prop: com = com.replace(f, prop, 1)
-                else: com = com.replace(f, "", 1)
-            elif var == "name": com = com.replace(f, obj.name, 1)
+                elif var == "prop":
+                    prop=""
+                    for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
+                        if val[1:]== n.name:
+                            if n.name == "CustomModelData":
+                                if context.scene.O2MCD_props.mc_version == "1.19" or context.scene.O2MCD_props.mc_version == "1.20":
+                                    prop=n.name+":"+[inp.name for inp in n.inputs[1:]][obj.modifiers[modi.name][f"Socket_{i+2}"]]
+                                else:
+                                    prop="\"minecraft:custom_model_data\":"+[inp.name for inp in n.inputs[1:]][obj.modifiers[modi.name][f"Socket_{i+2}"]]
+                            else:
+                                prop=n.name+":"+"\""+[inp.name for inp in n.inputs[1:]][obj.modifiers[modi.name][f"Socket_{i+2}"]]+"\""
+                    com=com.replace(f, prop, 1)
+            if var == "name": com = com.replace(f, obj.name, 1)
             elif var == "id": com = com.replace(f, obj.O2MCD_props.disp_id, 1)
             elif var == "type": com = com.replace(f, obj.O2MCD_props.disp_type, 1)
             elif var == "num": com = com.replace(f, str(num), 1)
@@ -218,7 +233,6 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                 com= com.replace(f,"",1)
             else:
                 com = com.replace(f,str(eval(sub('V?(.+)', "\\1", val))), 1)   # mathを処理
-            
     return com
 
 

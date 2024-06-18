@@ -139,7 +139,7 @@ class OBJECTTOMCDISPLAY_UL_ObjectList(bpy.types.UIList):
         row.prop(item.obj, "name", text="", emboss=False)
         row2=layout.row()
         row2.alignment="RIGHT"
-        row2.prop(item.obj.O2MCD_props,"enable",text="")
+        row2.prop(item.obj.O2MCD_props, "enable", text="",toggle=True, emboss=False,icon='HIDE_OFF' if item.obj.O2MCD_props.enable else "HIDE_ON")
         
 class  O2MCD_ObjectList(bpy.types.PropertyGroup):
     obj: bpy.props.PointerProperty(name="Object",type=bpy.types.Object)
