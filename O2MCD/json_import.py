@@ -243,6 +243,7 @@ def create_model(self,context,directory,name,types,new):
         new_object= context.view_layer.objects.active
         new_object.data=new_mesh
     if make_mesh:
+        mat_list=[]
         datas=[]
         file=name+".json"
         directory=directory.split(os.sep)
@@ -332,8 +333,11 @@ def create_model(self,context,directory,name,types,new):
                 if not value[0] == "#":
                     if  not value in bpy.data.materials:
                         material= bpy.data.materials.new(value)
+                        if name == "redstone_wire":
+                            mat_list.append(material)
                         material.use_nodes = True
                         material.blend_method='CLIP'
+                        material.shadow_method='CLIP'
                         material.show_transparent_back=False
                         material.use_backface_culling= True
                         node_tree= material.node_tree
@@ -541,15 +545,19 @@ def create_model(self,context,directory,name,types,new):
                                     if not [k,str(s)] in value_list: value_list.append([k,str(s)])
                             else:
                                 if not [k,str(v)] in value_list: value_list.append([k,str(v)])
+                                
+            if name == "redstone_wire":
+                for i in range(16):
+                    if not ["power",str(i)] in value_list:
+                        value_list.append(["power",str(i)])
+
             for v in value_list:
                 if v[0] in vari:
                     if not v[1] in vari[v[0]]:  vari[v[0]].append(v[1])
-                elif v[0] == "":
-                    pass
-                else:
+                elif v[0] != "":
                     vari[v[0]]=[v[1]]
-                if v[1]== "true" and not "false" in vari[v[0]]:  vari[v[0]].append("false")
-                if v[1]== "false" and not "true" in vari[v[0]]:  vari[v[0]].append("true")
+                # if v[1]== "true" and not "false" in vari[v[0]]:  vari[v[0]].append("false")
+                # if v[1]== "false" and not "true" in vari[v[0]]:  vari[v[0]].append("true")
             value_list = sorted(vari.items(), key=lambda x:x[0])
         elif types == "item":
             value_list=[(i["name"],i["CMD"]) for i in datalist]
@@ -573,26 +581,37 @@ def create_model(self,context,directory,name,types,new):
             geo_to_ins.location =(800, 0)
         
             if types== "block":
+                tostr=""
                 for i,(k,v) in enumerate(value_list):
                     node_tree.interface.new_socket(k, in_out="INPUT", socket_type="NodeSocketMenu")
                     menu= node_tree.nodes.new(type="GeometryNodeMenuSwitch")
-                    menu.data_type="STRING"
-                    if len(v) < 2:
-                        menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
+                    if name == "redstone_wire" and k == "power":
+                        menu.data_type="INT"
+                        v=[int(vi) for vi in v]
+                    else:
+                        menu.data_type="STRING"
+                        if len(v) < 2:
+                            menu.enum_definition.enum_items.remove(menu.enum_definition.enum_items.get("B"))
                         
                     for e,l in enumerate(v):
                         if e <= 1:
-                            menu.enum_definition.enum_items[e].name=l
+                            menu.enum_definition.enum_items[e].name=str(l)
                         else:
-                            menu.enum_definition.enum_items.new(l)
+                            menu.enum_definition.enum_items.new(str(l))
                         menu.inputs[e+1].default_value=l
                     node_tree.links.new(geo_in.outputs[k], menu.inputs[0])
                     menu.location = (-400, len(vari)*80-i*160)
                     menu.name=k
                     menu.label=k
-                    stjo_inv.insert(0,menu.outputs[0])
+                    stjo_inv.append(menu.outputs[0])
                     modi["Socket_"+str(i+2)]=0
                         
+                if name == "redstone_wire":
+                    tostr=node_tree.nodes.new(type="FunctionNodeValueToString")
+                    node_tree.links.new(node_tree.nodes["power"].outputs[0], tostr.inputs[0])
+                    node_tree.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketInt")
+                    node_tree.links.new(node_tree.nodes["power"].outputs[0], geo_out.inputs[1])
+                    modi["Socket_7_attribute_name"]="power"
                     
                 if btype=="variants":
                     if not "variants" in bpy.data.node_groups:
@@ -626,7 +645,6 @@ def create_model(self,context,directory,name,types,new):
                         sep=multipart(self)
                     else:
                         sep=bpy.data.node_groups["multipart"]
-                    
                     for i,(k,v) in enumerate(value_list):
                         for e,l in enumerate(v):
                             comp=node_tree.nodes.new(type="FunctionNodeCompare")
@@ -635,7 +653,13 @@ def create_model(self,context,directory,name,types,new):
                             comp.label=k+"="+l
                             comp.inputs["B"].default_value=l
                             comp.location = (-200, (len(value_list)*len(v))*80-(e+(len(v))*i)*160)
+                            
                             node_tree.links.new(node_tree.nodes[k].outputs[0],comp.inputs["A"])
+                            if name == "redstone_wire" and k == "power":
+                                node_tree.links.new(tostr.outputs[0],comp.inputs["A"])
+                            else:
+                                node_tree.links.new(node_tree.nodes[k].outputs[0],comp.inputs["A"])
+                                                        
                     for s in sep_inv: node_tree.links.new(s, geo_to_ins.inputs['Geometry'])
                     model_data=[]
                     for da in datas["multipart"]:
@@ -747,7 +771,6 @@ def create_model(self,context,directory,name,types,new):
                                     else:               #k最初
                                         node_tree.links.new(comp.outputs[0],sep_node.inputs["active"])
                                     comp_pre=pre
-                    
                         
                         
             elif types== "item":
@@ -783,6 +806,37 @@ def create_model(self,context,directory,name,types,new):
                     node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
                     node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
                     node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
+        for ml in mat_list:
+            if name == "redstone_wire":
+                if ml.name == "block/redstone_dust_dot" or ml.name == "block/redstone_dust_line0" or ml.name == "block/redstone_dust_line1":
+                    node_tree= ml.node_tree
+                    atr=node_tree.nodes.new("ShaderNodeAttribute")
+                    atr.attribute_name="power"
+                    add=node_tree.nodes.new("ShaderNodeMath")
+                    add.operation='ADD'
+                    add.inputs[1].default_value=1
+                    div=node_tree.nodes.new("ShaderNodeMath")
+                    div.operation='DIVIDE'
+                    div.inputs[1].default_value=16
+                    tex=node_tree.nodes[2]
+                    mult=node_tree.nodes.new("ShaderNodeMix")
+                    mult.inputs[0].default_value=1
+                    mult.blend_type='MULTIPLY'
+                    mult.data_type='RGBA'
+                    mult.inputs[7].default_value=(1,0,0,1)
+                    hsv=node_tree.nodes.new("ShaderNodeHueSaturation")
+                    bsdf=node_tree.nodes[0]
+                elif ml.name == "block/redstone_dust_overlay":
+                    ml.blend_method='BLEND'
+                
+                if ml.name == "block/redstone_dust_dot" or ml.name == "block/redstone_dust_line0" or ml.name == "block/redstone_dust_line1" or ml.name == "block/redstone_dust_overlay":
+                    node_tree.links.new(atr.outputs['Fac'], add.inputs[0])
+                    node_tree.links.new(add.outputs[0], div.inputs[0])
+                    node_tree.links.new(div.outputs[0], hsv.inputs['Value'])
+                    
+                    node_tree.links.new(tex.outputs[0], mult.inputs['A'])
+                    node_tree.links.new(mult.outputs['Result'], hsv.inputs['Color'])
+                    node_tree.links.new(hsv.outputs[0], bsdf.inputs[0])
     else:
         if "/".join([types,name]) in bpy.data.node_groups: 
             modi=new_object.modifiers.new("O2MCD", "NODES")
