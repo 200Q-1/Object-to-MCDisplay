@@ -290,6 +290,8 @@ def create_model(self,context,directory,name,types,new):
                     if not "/".join(va[va.index("models")+1:])[:-5] in [n["name"] for n in datalist] :
                         data=parents(self,directory,va)
                         datalist.append(data)
+        colors="(black|blue|brown|cyan|gray|green|light_blue|light_gray|lime|magenta|orange|pink|purple|red|white|yellow)"
+        materials=[]
         vertices = []
         edges = []
         faces=[]
@@ -332,8 +334,12 @@ def create_model(self,context,directory,name,types,new):
                 texfile=texfile+(value+".png").split("/")
                 if not value[0] == "#":
                     if  not value in bpy.data.materials:
-                        material= bpy.data.materials.new(value)
-                        if name == "redstone_wire":
+                        if re.fullmatch(f"{colors}_banner",name) and value == "entity/banner/base":
+                            material=bpy.data.materials.new(name)
+                        else:
+                            material= bpy.data.materials.new(value)
+                        materials.append(material)
+                        if name == "redstone_wire" or re.fullmatch(f"{colors}_banner",name):
                             mat_list.append(material)
                         material.use_nodes = True
                         material.blend_method='CLIP'
@@ -428,6 +434,8 @@ def create_model(self,context,directory,name,types,new):
                                         raise
                                     m=textures[m][1:]
                                     pretex=m
+                                if re.fullmatch(f"{colors}_banner",name) and textures[m] == "entity/banner/base":
+                                    textures[m]=name
                             texture.append(textures[m].split(":")[-1])
                         except:
                             self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture path is not set.\nFILE:%s") % (file[-1]))
@@ -556,8 +564,8 @@ def create_model(self,context,directory,name,types,new):
                     if not v[1] in vari[v[0]]:  vari[v[0]].append(v[1])
                 elif v[0] != "":
                     vari[v[0]]=[v[1]]
-                # if v[1]== "true" and not "false" in vari[v[0]]:  vari[v[0]].append("false")
-                # if v[1]== "false" and not "true" in vari[v[0]]:  vari[v[0]].append("true")
+                if v[1]== "true" and not "false" in vari[v[0]]:  vari[v[0]].append("false")
+                if v[1]== "false" and not "true" in vari[v[0]]:  vari[v[0]].append("true")
             value_list = sorted(vari.items(), key=lambda x:x[0])
         elif types == "item":
             value_list=[(i["name"],i["CMD"]) for i in datalist]
@@ -806,8 +814,8 @@ def create_model(self,context,directory,name,types,new):
                     node_tree.links.new(geo_in.outputs['Geometry'], sep_node.inputs['Geometry'])
                     node_tree.links.new(sep_node.outputs['Geometry'], geo_to_ins.inputs['Geometry'])
                     node_tree.links.new(menu.outputs[0], sep_node.inputs['Menu'])
-        for ml in mat_list:
-            if name == "redstone_wire":
+        if name == "redstone_wire":
+            for ml in mat_list:
                 if ml.name == "block/redstone_dust_dot" or ml.name == "block/redstone_dust_line0" or ml.name == "block/redstone_dust_line1":
                     node_tree= ml.node_tree
                     atr=node_tree.nodes.new("ShaderNodeAttribute")
@@ -837,6 +845,56 @@ def create_model(self,context,directory,name,types,new):
                     node_tree.links.new(tex.outputs[0], mult.inputs['A'])
                     node_tree.links.new(mult.outputs['Result'], hsv.inputs['Color'])
                     node_tree.links.new(hsv.outputs[0], bsdf.inputs[0])
+        elif re.fullmatch(f"{colors}_banner",name):
+            for ml in mat_list:
+                if re.fullmatch(f"{colors}_banner",ml.name):
+                    node_tree= ml.node_tree
+                    tex=node_tree.nodes[2]
+                    mult=node_tree.nodes.new("ShaderNodeMix")
+                    mult.inputs[0].default_value=1
+                    mult.blend_type='MULTIPLY'
+                    mult.data_type='RGBA'
+                    
+                    node_tree.links.new(tex.outputs[0], mult.inputs['A'])
+                    node_tree.links.new(mult.outputs['Result'], bsdf.inputs[0])
+                    if name == "white_banner":
+                        col=[255, 255, 255]
+                    elif name == "orange_banner":
+                        col=[216, 127, 51]
+                    elif name == "magenta_banner":
+                        col=[178, 76, 216]
+                    elif name == "light_blue_banner":
+                        col=[102, 153, 216]
+                    elif name == "yellow_banner":
+                        col=[229, 229, 51]
+                    elif name == "lime_banner":
+                        col=[127, 204, 25]
+                    elif name == "pink_banner":
+                        col=[242, 127, 165]
+                    elif name == "gray_banner":
+                        col=[76, 76, 76]
+                    elif name == "light_gray_banner":
+                        col=[153, 153, 153]
+                    elif name == "cyan_banner":
+                        col=[76, 127, 153]
+                    elif name == "purple_banner":
+                        col=[127, 63, 178]
+                    elif name == "blue_banner":
+                        col=[51, 76, 178]
+                    elif name == "brown_banner":
+                        col=[102, 76, 51]
+                    elif name == "green_banner":
+                        col=[102, 127, 51]
+                    elif name == "red_banner":
+                        col=[153, 51, 51]
+                    elif name == "black_banner":
+                        col=[25, 25, 25]
+                    col=[b/255 for b in col]
+                    col[0] = col[0]/12.92 if col[0] <=0.04045 else math.pow((col[0]+0.055)/1.055,2.4)
+                    col[1] = col[1]/12.92 if col[1] <=0.04045 else math.pow((col[1]+0.055)/1.055,2.4)
+                    col[2] = col[2]/12.92 if col[2] <=0.04045 else math.pow((col[2]+0.055)/1.055,2.4)
+                    col.append(1)
+                    mult.inputs[7].default_value=([*col])
     else:
         if "/".join([types,name]) in bpy.data.node_groups: 
             modi=new_object.modifiers.new("O2MCD", "NODES")
@@ -851,6 +909,8 @@ def create_model(self,context,directory,name,types,new):
     new_object.O2MCD_props.disp_id=name
     new_object.O2MCD_props.mesh_list.add().mesh = new_mesh
     context.view_layer.objects.active= new_object
+    bpy.ops.object.select_all(action='DESELECT')
+    context.view_layer.objects.active.select_set(True)
 
 
 

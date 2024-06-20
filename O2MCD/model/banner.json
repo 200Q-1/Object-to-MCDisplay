@@ -1,7 +1,8 @@
 {
 	"credit": "Made with Blockbench",
 	"textures": {
-		"1": "entity/banner_base"
+		"1": "entity/banner_base",
+		"2": "entity/banner/base"
 	},
 	"elements": [
 		{
@@ -22,12 +23,12 @@
 			"to": [14.24, 29.25, 7.375],
 			"rotation": {"angle": 0, "axis": "y", "origin": [-8.115, 2.675, 6.175]},
 			"faces": {
-				"north": {"uv": [0.25, 0.25, 5.25, 10.25], "texture": "#1"},
-				"east": {"uv": [0, 0.25, 0.25, 10.25], "texture": "#1"},
-				"south": {"uv": [5.5, 0.25, 10.5, 10.25], "texture": "#1"},
-				"west": {"uv": [5.25, 0.25, 5.5, 10.25], "texture": "#1"},
-				"up": {"uv": [0.25, 0, 5.25, 0.25], "texture": "#1"},
-				"down": {"uv": [5.25, 0, 10.25, 0.25], "texture": "#1"}
+				"north": {"uv": [0.25, 0.25, 5.25, 10.25], "texture": "#2"},
+				"east": {"uv": [0, 0.25, 0.25, 10.25], "texture": "#2"},
+				"south": {"uv": [5.5, 0.25, 10.5, 10.25], "texture": "#2"},
+				"west": {"uv": [5.25, 0.25, 5.5, 10.25], "texture": "#2"},
+				"up": {"uv": [0.25, 0, 5.25, 0.25], "texture": "#2"},
+				"down": {"uv": [5.25, 0, 10.25, 0.25], "texture": "#2"}
 			}
 		},
 		{
@@ -43,6 +44,5 @@
 				"down": {"uv": [5.5, 10.5, 10.5, 11], "texture": "#1"}
 			}
 		}
-	],
-	"display": {}
+	]
 }
