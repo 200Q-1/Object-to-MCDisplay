@@ -7,11 +7,11 @@ from re import *
 bl_info = {
     "name": "Object to MCDisplay",
     "author": "200Q",
-    "version": (0, 2, 3),
-    "blender": (3, 4, 1),
+    "version": (0, 3, 0),
+    "blender": (4, 0, 0),
     "location": "Output Properties",
     "support": "COMMUNITY",
-    "description": "オブジェクトのトランスフォームをMinecraftのDisplayエンティティのtransformationを設定するコマンドに変換します。",
+    "description": "Calculate the transformation of the Display entity in Minecraft on Blender.",
     "warning": "",
     "doc_url": "https://github.com/200Q-1/Object-to-MCDisplay",
     "tracker_url": "",
@@ -22,9 +22,8 @@ O2MCD_translation_dict = {
     "ja_JP": {
         ("*", "Update"): "更新",
         ("*", "Auto Update"): "自動更新",
-        ("*", "Get information about the object and generate commands in the Output according to the Input"): "オブジェクトの情報を取得してInputに応じたコマンドをOutputに生成します",
-        ("*", "Ensure that an update is performed every time there is a change in the scene or a frame is moved"): "シーンに変更があるか、フレームを移動するたびに更新をするようにします",
-        ("*", "Object Number"): "番号",
+        ("*", "Generate command in O2MCD_output"): "O2MCD_outputにコマンドを生成します",
+        ("*", "Generate a command every time there is a change in the scene or you move a frame"): "シーンに変更があるか、フレームを移動するたびにコマンドを生成します",
         ("*", "Generate file in specified path"): "指定したパスにファイルを生成",
         ("*", "Rearrange the order of objects"): "オブジェクトの順番を入れ替える",
         ("*", "Reverse"): "反転",
@@ -44,11 +43,11 @@ O2MCD_translation_dict = {
         ("*", "There are no elements. It could be a block entity.\nFILE: %s"): "elementsがありません。ブロックエンティティの可能性があります。\nFILE:%s",
         ("*", "Texture not found.\nFILE:%s\nTEXTUR:%s"): "テクスチャが見つかりません。\nFILE:%s\nTEXTUR:%s",
         ("*", "Texture path is not set.\nFILE:%s"): "テクスチャのパスが設定されていません。\nFILE:%s",
-        ("*", "move resource pack"): "リソースパックを移動します",
+        ("*", "move resource pack"): "リソースパックを移動",
         ("Operator", "open resource pack"): "リソースパックを開く",
         ("*", "Open a resource pack.\nFolders, zips and jars are supported."): "リソースパックを開きます。\nフォルダ、zip、jarに対応しています",
-        ("*", "Import json file as object."): "json ファイルをオブジェクトとしてインポートします",
-        ("*", "Parent Referrer"): "ペアレントの参照元",
+        ("*", "Import json file as object."): "json ファイルをオブジェクトとしてインポート",
+        ("*", "Resource Pack"): "リソースパック",
         ("*", "You can set default values that are applied when you open a new project."): "新規プロジェクトを開いた際に適応される、デフォルトの値を設定することができます。",
         ("*", "Synchronise version settings with MCPP"): "MCPPとバージョン設定を同期します",
         ("*", "single frame path"): "シングルフレームのパス",
@@ -56,27 +55,50 @@ O2MCD_translation_dict = {
         ("*", "Output files to the specified path"): "指定したパスにファイルを書き出します",
         ("*", "Object List"): "オブジェクトリスト",
         ("*", "Add property"): "プロパティを追加します",
-        ("*", "Value assigned to /tag(s)"): "/tag(s) に代入される値",
-        ("*", "Value assigned to /model"): "/model に代入される値",
-        ("*", "Value assigned to /item"): "/item に代入される値",
-        ("*", "Value assigned to /prop"): "/prop に代入される値",
-        ("*", "Value assigned to /extra"): "/extra に代入される値",
-        ("*", "Value assigned to /type"): "/type に代入される値",
-        ("*", "Value assigned to /id"): "/id に代入される値",
         ("*", "Minecraft version"): "Minecraftのバージョン",
         ("*", "number of decimal places to round"): "丸める少数の桁数",
         ("*", "Enable O2MCD"): "O2MCDを有効化",
-        ("*", "Synchronised with MCPP"): "MCPPと同期",
-        ("*", "List of objects for which the Display property is set."): "Displayプロパティが設定されているオブジェクトのリストです",
+        ("*", "Synchronisation of Minecraft versions with MCPP"): "マインクラフトバージョンをMCPPと同期",
+        ("*", "List of objects for which the Display property is set."): "Displayプロパティが設定されているオブジェクトのリスト",
         ("*", "Add a resource pack to search for files specified as parent when importing a json model"): "jsonモデルをインポートする際にparentに指定されているファイルを検索するリソースパックを追加します",
         ("*", "Add Command"): "コマンドを追加",
         ("*", "Remove Command"): "コマンドを削除",
-        ("*", "Add the command to be entered when the Input is generated"): "Inputを生成した際に入力されるコマンドを追加します",
-        ("*", "Enable O2MCD"): "O2MCDを有効化",
-        ("*", "Enable O2MCD"): "O2MCDを有効化",
-        ("*", "Enable O2MCD"): "O2MCDを有効化",
-        ("*", "Enable O2MCD"): "O2MCDを有効化",
-        ("*", "Enable O2MCD"): "O2MCDを有効化",
+        ("*", "Add the command to be entered when the Input is generated"): "Inputを生成した際に入力されるコマンドを追加",
+        # ("*", "Set ID"): "IDを設定",
+        ("*", "Example:"):"例：",
+        ("*", "16 float values in transformation"): "transformationの16個のfloat値",
+        ("*", "Value of %s in transformation"):"transformationの%sの値",
+        ("*", "Relative %s of entities"):"エンティティの相対%s",
+        ("*", "Item ID"):"アイテムID",
+        ("*", "entity type"):"エンティティタイプ",
+        ("*", "Properties of the block (custom model data)"):"ブロックのProperties(カスタムモデルデータ)",
+        ("*", "Object tags"):"オブジェクトのタグ",
+        ("*", "Object name"):"オブジェクトの名前",
+        ("*", "Object index"):"オブジェクトのインデックス",
+        ("*", "formula"):"計算式",
+        ("*", "input"):"入力",
+        ("*", "Add tags"):"タグを追加",
+        ("*", "Remove tags"):"タグを削除",
+        ("*", "Mesh list"):"メッシュリスト",
+        ("*", "Move the mesh up or down"):"メッシュを上下に移動",
+        ("*", "Add mesh"):"メッシュを追加",
+        ("*", "Remove mesh"):"メッシュを削除",
+        ("*", "Set item ID and add to object list"):"アイテムIDを設定してオブジェクトリストに追加",
+        ("*", "Set ID and to object list"):"IDを設定してオブジェクトリストに追加",
+        ("*", "Copy mesh list to selected object"):"メッシュリストを選択オブジェクトにコピー",
+        ("*", "Copy command list to selected object"):"コマンドリストを選択オブジェクトにコピー",
+        ("*", "Copy tag list to selected object"):"タグリストを選択オブジェクトにコピー",
+        ("*", "Save user preferences"):"ユーザープリファレンスを保存",
+        ("*", "Command list"):"コマンドリスト",
+        ("*", "Move the command up or down"):"コマンドを上下に移動",
+        ("*", "Add commands"):"コマンドを追加",
+        ("*", "Remove commands"):"コマンドを削除",
+        ("*", "Move the object up or down"):"オブジェクトを上下に移動",
+        ("*", "Move the template up or down"):"メッシュを上下に移動",
+        ("*", "Add template"):"テンプレートを追加",
+        ("*", "Remove template"):"テンプレートを削除",
+        ("*", "Specify the .jar file from the add-on settings"):"アドオン設定から.jarファイルを指定してください。",
+        ("*", ".jar file"):".jarファイル",
     }
 }
 if "bpy" in locals():
@@ -118,7 +140,7 @@ def check_path(self,context):
         self.name= name
 
 def jar_setting(self,context):
-    jar=context.preferences.addons[__package__].preferences.jar_path
+    jar=self.jar_path
     try:
         with zipfile.ZipFile(jar) as zip:
             js=json.load(zip.open('assets/minecraft/lang/en_us.json','r'))
@@ -136,9 +158,12 @@ def jar_setting(self,context):
         bpy.context.preferences.addons[__package__].preferences.block_list.add().name=i
     for i in item_id:
         bpy.context.preferences.addons[__package__].preferences.item_list.add().name=i
-    if not context.scene.O2MCD_rc_packs:
-        context.scene.O2MCD_rc_packs.add()
-        context.scene.O2MCD_rc_packs.add().path=self.filepath
+    if not bpy.context.scene.O2MCD_rc_packs:
+        bpy.context.scene.O2MCD_rc_packs.add()
+        bpy.context.scene.O2MCD_rc_packs.add().path=jar
+    else:
+        bpy.context.scene.O2MCD_rc_packs[len(context.scene.O2MCD_rc_packs)-1].path=jar
+        
 
 class O2MCD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -151,42 +176,28 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     tmp_cmd: bpy.props.CollectionProperty(name="temp_cmd",type=O2MCD_TempCmd)
     tmp_index: bpy.props.IntProperty(name="index",default=0)
     cmd_func: bpy.props.StringProperty(name="Func",description="", subtype='FILE_PATH', default="matrix,loc,scale,l_rot,r_rot,pos,rot,id,type,prop,tags?,name,num,frame,math")
-    
-    mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Synchronised with MCPP"),description=bpy.app.translations.pgettext("Synchronise version settings with MCPP"),default=False)
+    mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext_iface("Synchronisation of Minecraft versions with MCPP"),description=bpy.app.translations.pgettext_tip("Synchronise version settings with MCPP"),default=False)
     
     def draw(self, context):
         layout = self.layout
         br = layout.row(align=True)
-        if not self.jar_path or self.jar_path[-4:] != ".jar":
+        if not self.jar_path or not self.jar_path.endswith(".jar"):
             br.alert=True
-        br.prop(self, "jar_path",text=".jarファイル")
+        br.prop(self, "jar_path",text=bpy.app.translations.pgettext_iface(".jar file"))
         if output.check_mcpp():
             row=layout.row()
-            if not self.jar_path or self.jar_path[-4:] != ".jar":
+            if not self.jar_path or not self.jar_path.endswith(".jar"):
                 row.active = False
             row.alignment = "RIGHT"
-            row.label(text=bpy.app.translations.pgettext("Synchronised with MCPP"))
+            row.label(text="Synchronisation of Minecraft versions with MCPP")
             row.prop(self,"mcpp_sync",text="")
         col= layout.column()
-        if not self.jar_path or self.jar_path[-4:] != ".jar":
+        if not self.jar_path or self.jar_path.endswith(".jar"):
             col.active = False
         layout.separator()
         
 
-class OBJECTTOMCDISPLAY_UL_DefaultResourcePacks(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
-        row = layout.row()
-        if index == 0:
-                row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd.bl_idname)
-        else:
-            row = row.row()
-            row.alignment="LEFT"
-            row.label(text=item.name)
-            row = layout.row()
-            row.alignment="RIGHT"
-            row.label(text=item.path)
-            if index != len(context.scene.O2MCD_rc_packs)-1:
-                row.operator(OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove.bl_idname,text="",icon='X').index=index
+
 class OBJECTTOMCDISPLAY_UL_TemplateList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
         row = layout.row(align=True)
@@ -221,16 +232,14 @@ class OBJECTTOMCDISPLAY_OT_TempAction(bpy.types.Operator): #移動
     @classmethod 
     def description(self,context, prop):
         match prop.action:
-            case 'UP':
-                des="選択中のテンプレートを上に移動します"
-            case 'DOWN':
-                des="選択中のテンプレートを下に移動します"
+            case 'UP' | 'DOWN':
+                des=bpy.app.translations.pgettext_tip("Move the template up or down")
             case 'ADD':
-                des=""
+                des=bpy.app.translations.pgettext_tip("Add template")
             case 'REMOVE':
-                des="選択中のテンプレートを削除します"
+                des=bpy.app.translations.pgettext_tip("Remove template")
             case 'SAVE':
-                des="ユーザープリファレンスを保存します"
+                des=bpy.app.translations.pgettext_tip("Save user preferences")
             case _:
                 des=""
         return des
@@ -255,26 +264,7 @@ class OBJECTTOMCDISPLAY_OT_TempAction(bpy.types.Operator): #移動
         if self.action == 'SAVE':
             bpy.ops.wm.save_userpref()
         return {"FINISHED"}
-class OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd(bpy.types.Operator): #追加
-    bl_idname = "o2mcd.df_resource_pack_add"
-    bl_label = bpy.app.translations.pgettext("open resource pack")
-    bl_description =  bpy.app.translations.pgettext("Open a resource pack.\nFolders, zips and jars are supported.")
-    bl_options = {'REGISTER', 'UNDO'}
     
-    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
-    filename : bpy.props.StringProperty()
-    directory : bpy.props.StringProperty(subtype="FILE_PATH")
-    filter_glob: bpy.props.StringProperty(default="*.zip;*.jar",options={"HIDDEN"})
-    def invoke(self, context, event):
-        wm = context.window_manager
-        wm.fileselect_add(self)
-        return {'RUNNING_MODAL'}
-    
-    def execute(self, context):
-        rc_pack=context.scene.O2MCD_rc_packs.add()
-        rc_pack.path = self.filepath
-        context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
-        return {'FINISHED'}
     
 def JarSet(self, context):
     if not context.scene.O2MCD_rc_packs:
@@ -282,44 +272,16 @@ def JarSet(self, context):
         context.scene.O2MCD_rc_packs.add().path = context.preferences.addons[__package__].preferences.jar_path
         context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
     return {'FINISHED'}
-class OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove(bpy.types.Operator): #削除
-    bl_idname = "o2mcd.df_resource_pack_remove"
-    bl_label = "Remove"
-    bl_description = bpy.app.translations.pgettext("Remove resource packs")
-    index : bpy.props.IntProperty(default=0)
-    def execute(self, context):
-        context.scene.O2MCD_rc_packs.remove(self.index)
-        return {'FINISHED'}
-    
-class OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove(bpy.types.Operator): #移動
-    bl_idname = "o2mcd.df_resource_pack_move"
-    bl_label = "Move"
-    bl_description = bpy.app.translations.pgettext("move resource pack")
-    action: bpy.props.EnumProperty(items=(('UP', "Up", ""),('DOWN', "Down", "")))
 
-    def invoke(self, context, event):
-        list=context.scene.O2MCD_rc_packs
-        index=context.preferences.addons[__package__].preferences.index
-        if self.action == 'DOWN' :
-            list.move(index, index+1)
-            context.preferences.addons[__package__].preferences.index += 1
-        elif self.action == 'UP' :
-            list.move(index, index-1)
-            context.preferences.addons[__package__].preferences.index -= 1
-        return {"FINISHED"}
     
 
 classes = (
     O2MCD_BlockList,
     O2MCD_ItemList,
-    OBJECTTOMCDISPLAY_UL_DefaultResourcePacks,
     O2MCD_TempCmd,
     OBJECTTOMCDISPLAY_UL_TemplateList,
     OBJECTTOMCDISPLAY_OT_Temp,
     OBJECTTOMCDISPLAY_OT_TempAction,
-    OBJECTTOMCDISPLAY_OT_DefaultResourcePackAdd,
-    OBJECTTOMCDISPLAY_OT_DefaultResourcePackRemove,
-    OBJECTTOMCDISPLAY_OT_DefaultResourcePackMove,
     O2MCD_Preferences,
 )
 
@@ -343,13 +305,21 @@ def register():
 
 def unregister():
     bpy.app.translations.unregister(__name__)
-    for cls in classes:
-        bpy.utils.unregister_class(cls)
+    if command.command_generate in bpy.app.handlers.frame_change_post:
+        bpy.app.handlers.frame_change_post.remove(command.command_generate)
+    if command.command_generate in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
+    if object_list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(object_list.chenge_panel)
     output.unregister()
     command.unregister()
     object.unregister()
     object_list.unregister()
     json_import.unregister()
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
+    if load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(load)
 
 if __name__ == "__main__":
     register()

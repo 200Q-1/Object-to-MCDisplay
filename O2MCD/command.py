@@ -82,11 +82,12 @@ def get_matrix(context,obj,typ):
                 pscale = pscale
             else:
                 pscale = obj.parent.matrix_world
+            pscale=pscale.to_scale()
             if not round(pscale[0], rou) == round(pscale[1], rou) == round(pscale[2], rou):
                 obj.scale = (1, 1, 1)
                 scale = pscale
         if typ == "scale":
-            scale= scale.to_scale()
+            scale = scale.to_scale()
             result = (str(round(scale[0], rou)), str(round(scale[2], rou)), str(round(scale[1], rou)))
         else:
             scale=mathutils.Matrix.LocRotScale((0,0,0), mathutils.Euler((0, 0, 0), 'XYZ'), scale.to_scale())
@@ -102,7 +103,8 @@ def get_matrix(context,obj,typ):
             else:
                 l_rot = obj.parent.matrix_world
         else:
-            l_rot = obj_mat.to_euler()
+            l_rot = obj_mat
+        l_rot=l_rot.to_euler()
         l_rot_y = mathutils.Matrix.Rotation(l_rot[2],4,'Y')
         if obj.O2MCD_props.disp_type == 'item_display' and context.scene.O2MCD_props.mc_version != "1.19" and typ !="rot":
             inv=mathutils.Matrix.Rotation(radians(180),4,"Y")
@@ -122,16 +124,13 @@ def get_matrix(context,obj,typ):
             result = [str(round(degrees(l_rot[1]), rou)), str(round(degrees(l_rot[2]), rou)),str(round(degrees(l_rot[0]), rou))]
 
     # 位置
-    if typ == "loc" or typ == "matrix":
+    if typ == "loc" or typ == "pos" or typ == "matrix":
         loc = mathutils.Matrix.Rotation(radians(-90),4,'X') @ obj_mat
         if obj.O2MCD_props.disp_type=="block_display" and typ != "pos":
             loc = loc @ mathutils.Matrix.Translation(mathutils.Vector((0.5, -0.5, -0.5)))
-        if typ == "loc":
+        if typ == "loc" or typ == "pos":
             loc=loc.translation
             result = (str(round(-loc[0], rou)), str(round(loc[1], rou)), str(round(-loc[2], rou)))
-        elif typ == "pos":
-            loc=loc.translation
-            result = (str(round(loc[0], rou)), str(round(loc[1], rou)), str(round(loc[2], rou)))
         else:
             loc=loc.translation
             loc = mathutils.Matrix.Translation(mathutils.Vector((-loc[0], loc[1], -loc[2])))
@@ -144,10 +143,11 @@ def get_matrix(context,obj,typ):
 def comvert_function(context, funk_list, com, num):    # 関数変換
     object_list= context.scene.O2MCD_object_list                    #オブジェクトリスト
     current_frame = context.scene.frame_current                     # 現在のフレーム
-    func = findall(f'(/{funk_list}(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)', com)              # 入力から関数のリストを作成
+    func = findall(f'(/{funk_list}(?:\[[^\[\]]*?(?:(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?)', com)              # 入力から関数のリストを作成
     for f in func:                                                  # 関数を1つずつ処理
-        var = sub(f'/({funk_list})(?:\[[^\[\]]*?(?:/{funk_list}(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?', "\\1", f)          # 関数名
-        val = sub('/.+?\[(.+)\]', "V\\1", f)                        # 引数
+        var = sub(f'/({funk_list})(?:\[[^\[\]]*?(?:(?:\[[^\[\]]*?\])?[^\[\]]*?)*\])?', "\\1", f)          # 関数名
+        # val = sub('/.+?\[(.+)\]', "V\\1", f)                        # 引数
+        val= sub(f'/{funk_list}\[[^\[\]]*?((?:(?:\[[^\[\]]*?\])?[^\[\]]*?)*)\]',"V\\1", f)
         if val and not val == f and match(f".*/{funk_list}.*", val):  # 引数の中の関数を変換
             val = comvert_function(context, funk_list, val, num)
         elm = sub('V?([0-9]*?)(,.*)?', "\\1", val)                  # 要素番号
@@ -180,18 +180,18 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                     tags = comvert_function(context, funk_list, tags, num)
                 if tags:tags=tags.split(",")
             if elm == "" or elm == val:             # 置き換え
-                if match("loc|pos|scale|r_rot|l_rot|rot|matrix",var): com = com.replace(f, ",".join(list(map(lambda x : x+"f",result))), 1)
-                elif var == "pos": com = com.replace(f, "^"+result[0] +" ^"+result[1]+" ^"+result[2], 1)
-                elif var == "rot": com = com.replace(f, "~"+str(result[0])+" ~"+str(result[2]), 1)
+                if match("loc|scale|r_rot|l_rot|rot|matrix",var):
+                    com = com.replace(f, ",".join(list(map(lambda x : x+"f",result))), 1)
+                elif var == "pos":
+                    com = com.replace(f, "^"+result[0] +" ^"+result[1]+" ^"+result[2], 1)
+                elif var == "rot":
+                    com = com.replace(f, "~"+str(result[0])+" ~"+str(result[2]), 1)
                 elif var == "tag" or var == "tags":
                     if tags:
                         if var == "tags": com = com.replace(f, ",".join(["\""+i+"\"" for i in tags]), 1)
                         if var == "tag": com = com.replace(f, ",".join(["tag="+i for i in tags]), 1)
                     else: com = com.replace(f, "", 1)
                 elif var == "prop": 
-                    # node=[n for n in bpy.context.active_object.modifiers[0].node_group.nodes if n.type=='MENU_SWITCH']
-                    # for n in node:
-                    #     print([i.name for i in n.inputs[1:]])
                     prop=[]
                     if modi:
                         for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
@@ -205,7 +205,8 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
                         com=com.replace(f, ",".join(prop), 1)
                     else:com=com.replace(f, "", 1)
             else:
-                if match("loc|pos|scale|r_rot|l_rot|rot|matrix",var) : com = sub(f"/{var}\[.*?(,.*?)?\]",str(result[int(elm)]),com, 1)
+                if match("loc|pos|scale|r_rot|l_rot|rot|matrix",var) :
+                    com = sub(f"/{var}\[.*?(,.*?)?\]",str(result[int(elm)]),com, 1)
                 elif var == "tag" or var == "tags":
                     if tags:
                         if var == "tags": com = sub("/tags\[.*?(,.*?)?\]",tags[int(elm)],com, 1)
@@ -253,8 +254,6 @@ def command_generate(self, context):    # コマンド生成
         if not o.hide_viewport and o.O2MCD_props.enable:
             input=[]
             input=[c for cl in o.O2MCD_props.command_list if cl.enable for c in cl.command.split("\n")]
-            # for c in o.O2MCD_props.command_list:
-            #     if c.enable: input+=[*c.command.split("\n")]
             input = [s for s in input if not match('^#(?! +|#+)', s)]       # エスケープ
             if input:
                 if [i for i in  input if match(f".*/({funk_list}).*", i)]:
@@ -281,9 +280,20 @@ class OBJECTTOMCDISPLAY_OT_CommandListAction(bpy.types.Operator): #移動
     bl_description = ""
     action: bpy.props.EnumProperty(items=(('UP', "up", ""),('DOWN', "down", ""),('ADD',"add",""),('REMOVE',"remove","")))
 
+    @classmethod 
+    def description(self,context, prop):
+        match prop.action:
+            case "UP" | "DOWN":
+                des=bpy.app.translations.pgettext_tip("Move the command up or down")
+            case "ADD":
+                des=bpy.app.translations.pgettext_tip("Add commands")
+            case "REMOVE":
+                des=bpy.app.translations.pgettext_tip("Remove commands")
+        return des
+    
     def execute(self, context):
-        cmd_list=context.view_layer.objects.active.O2MCD_props.command_list
-        cmd_index=context.view_layer.objects.active.O2MCD_props.command_index
+        cmd_list = context.view_layer.objects.active.O2MCD_props.command_list
+        cmd_index = context.view_layer.objects.active.O2MCD_props.command_index
         if self.action == 'DOWN' and context.active_object.O2MCD_props.command_index < len(context.active_object.O2MCD_props.command_list)-1:
             cmd_list.move(cmd_index, cmd_index+1)
             context.object.O2MCD_props.command_index += 1
@@ -301,6 +311,9 @@ class OBJECTTOMCDISPLAY_OT_CommandListAction(bpy.types.Operator): #移動
             context.view_layer.objects.active.O2MCD_props.command_index=len(cmd_list)-1
         elif self.action == 'REMOVE':
             cmd_list.remove(cmd_index)
+            if cmd_index >= 1:
+                context.view_layer.objects.active.O2MCD_props.command_index -= 1
+            context.view_layer.objects.active.O2MCD_props.pre_cmd = -1
         return {"FINISHED"}
     
     
@@ -313,5 +326,5 @@ def register():
         bpy.utils.register_class(cls)
 
 def unregister():
-    if command_generate in bpy.app.handlers.frame_change_post :bpy.app.handlers.frame_change_post.remove(command_generate)
-    if command_generate in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(command_generate)
+    for cls in classes:
+        bpy.utils.unregister_class(cls)

@@ -6,7 +6,6 @@ from re import *
 from math import *
 from . import command
 from . import object_list
-from . import json_import
 import numpy as np
 # 関数
 
@@ -96,29 +95,20 @@ def panel_output(self,context):
         else:
             box.prop(context.scene.O2MCD_props, "curr_path")
         box.operator("o2mcd.export")
-        
         row = layout.row(align=True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Parent Referrer"))
+        row.prop(context.scene.O2MCD_props, "toggle_rc_pack", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_rc_pack else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext_iface("Resource Pack"))
         col = layout.column()
         if context.scene.O2MCD_props.toggle_rc_pack:
             row= col.row()
             row.template_list("OBJECTTOMCDISPLAY_UL_ResourcePacks", "", context.scene, "O2MCD_rc_packs", context.scene, "O2MCD_rc_index", rows=2,sort_lock=True)
-            col = row.column()
-            row = col.row()
-            if context.scene.O2MCD_rc_index <= 1 :
-                row.enabled= False
-            if context.scene.O2MCD_rc_index <= 1 or context.scene.O2MCD_rc_index == len(context.scene.O2MCD_rc_packs)-1:
-                row.enabled= False
-            row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_UP', text="").action = 'UP'
-            row = col.row()
-            if context.scene.O2MCD_rc_index >= len(context.scene.O2MCD_rc_packs)-2 or context.scene.O2MCD_rc_index == 0:
-                row.enabled= False
-            row.operator(json_import.OBJECTTOMCDISPLAY_OT_ResourcePackMove.bl_idname, icon='TRIA_DOWN', text="").action = 'DOWN'
+            col = row.column(align = True)
+            col.operator("o2mcd.resource_pack_move", icon='TRIA_UP', text="").action = 'UP'
+            col.operator("o2mcd.resource_pack_move", icon='TRIA_DOWN', text="").action = 'DOWN'
         
         row = layout.row(align = True)
         row.alignment = "LEFT"
-        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext("Object List"))
+        row.prop(context.scene.O2MCD_props, "toggle_list", icon="DISCLOSURE_TRI_DOWN" if context.scene.O2MCD_props.toggle_list else "DISCLOSURE_TRI_RIGHT", emboss=False,text=bpy.app.translations.pgettext_iface("Object List"))
         row = layout.row()
         if context.scene.O2MCD_props.toggle_list:
             row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
@@ -129,7 +119,7 @@ def panel_output(self,context):
             col.menu("OBJECTTOMCDISPLAY_MT_Sort", icon='SORTALPHA')
             col.operator("o2mcd.list_reverse", icon='ARROW_LEFTRIGHT', text="")
     else:
-        layout.label(text="アドオン設定から.jarファイルを指定してください。")
+        layout.label(text="Specify the .jar file from the add-on settings")
 class OBJECTTOMCDISPLAY_PT_MainPanel(bpy.types.Panel):  # 出力パネル
     bl_label = "O2MCD"
     bl_space_type = "PROPERTIES"
@@ -159,7 +149,7 @@ class OBJECTTOMCDISPLAY_PT_TextOutputPanel(bpy.types.Panel):  # テキストエ�
         
         col=layout.column(align=True)
         col.separator()
-        col.label(text=bpy.app.translations.pgettext("Object List"))
+        col.label(text="Object List")
         row= col.row()
         row.template_list("OBJECTTOMCDISPLAY_UL_ObjectList", "", context.scene, "O2MCD_object_list", context.scene.O2MCD_props, "obj_index", rows=4,sort_lock=True)
         col = row.column(align = True)
@@ -172,7 +162,7 @@ class OBJECTTOMCDISPLAY_PT_TextOutputPanel(bpy.types.Panel):  # テキストエ�
         col=layout.column(align=True)
         col.separator()
         if context.active_object:
-            col.label(text="コマンドリスト")
+            col.label(text="Command list")
             row= col.row()
             row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
             col = row.column(align=True)
@@ -210,39 +200,70 @@ class OBJECTTOMCDISPLAY_OT_FuncButton(bpy.types.Operator):
     def description(self,context, prop):
         match prop.action:
             case "MATRIX":
-                des='''
-                0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f
-                '''
+                des="".join([bpy.app.translations.pgettext_tip("16 float values in transformation"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f"])
             case "LOC":
-                des="0.0f,0.0f,0.0f"
+                des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("translation"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "0.0f,0.0f,0.0f"])
             case "SCALE":
-                des="0.0f,0.0f,0.0f"
+                des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("scale"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "0.0f,0.0f,0.0f"])
             case "L_ROT":
-                des="0.0f,0.0f,0.0f"
+                des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("left_rotation "),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "0.0f,0.0f,0.0f"])
             case "R_ROT":
-                des="0.0f,0.0f,0.0f"
+                des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("right_rotation"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "0.0f,0.0f,0.0f"])
             case "POS":
-                des="^0.0 ^0.0 ^0.0"
+                des="".join([bpy.app.translations.pgettext_tip("Relative %s of entities") % ("coordinates"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "^0.0 ^0.0 ^0.0"])
             case "ROT":
-                des="^0.0 ^0.0"
+                des="".join([bpy.app.translations.pgettext_tip("Relative %s of entities")% ("rotation"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "^0.0 ^0.0"])
             case "ID":
-                des="apple"
+                des="".join([bpy.app.translations.pgettext_tip("Item ID"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "apple"])
             case "TYPE":
-                des="item_display"
+                des="".join([bpy.app.translations.pgettext_tip("entity type"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "item_display"])
             case "PROP":
-                des=""
+                des="".join([bpy.app.translations.pgettext_tip("Properties of the block (custom model data)"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "facing:\"east\",half:\"bottom\",open:\"false\""," | ",
+                             "\"minecraft:custom_model_data\":0" if context.scene.O2MCD_props.mc_version == "1.20.5" else "CustomModelData:0"])
             case "TAG":
-                des="tag=A,tag=B"
+                des="".join([bpy.app.translations.pgettext_tip("Object tags"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "tag=A,tag=B"])
             case "TAGS":
-                des="\"A\",\"B\""
+                des="".join([bpy.app.translations.pgettext_tip("Object tags"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "\"A\",\"B\""])
             case "NAME":
-                des="Cube.001"
+                des="".join([bpy.app.translations.pgettext_tip("Object name"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "Cube.001"])
             case "NUM":
-                des="0"
+                des="".join([bpy.app.translations.pgettext_tip("Object index"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "0"])
             case "FRAME":
-                des="0"
+                des="".join([bpy.app.translations.pgettext_tip("Current Frame"),
+                             " \n",bpy.app.translations.pgettext_tip("Example:"),
+                             "0"])
             case "MATH":
-                des=""
+                des="".join([bpy.app.translations.pgettext_tip("formula"),
+                             " \n",bpy.app.translations.pgettext_tip("input"),bpy.app.translations.pgettext_tip("Example:"),
+                             "/math[1+1] | /math[round(pi,2)] | /math[bpy.data.objects[0][\"prop\"]]"])
             case _:
                 des=""
         return des
@@ -259,7 +280,6 @@ class OBJECTTOMCDISPLAY_PT_TextTempPanel(bpy.types.Panel):  # テキストエデ
     bl_region_type = 'UI'
     bl_category = "O2MCD"
     bl_context = "text_edit"
-    
     
     def draw(self, context):
         layout = self.layout
@@ -279,7 +299,7 @@ class OBJECTTOMCDISPLAY_PT_TextTempPanel(bpy.types.Panel):  # テキストエデ
         row= layout.row()
         row.template_list("OBJECTTOMCDISPLAY_UL_TemplateList", "", context.preferences.addons[__package__].preferences, "tmp_cmd", context.preferences.addons[__package__].preferences, "tmp_index", rows=4)
         col = row.column(align=True)
-        col.prop(context.window_manager,"O2MCD_func_toggle",text="",icon='SETTINGS',toggle=True)
+        col.prop(context.window_manager,"O2MCD_func_toggle",text="",icon='PREFERENCES',toggle=True)
         if context.window_manager.O2MCD_func_toggle:
             col.separator()
             col.operator("o2mcd.temp_action", icon='TRIA_UP', text="").action = 'UP'
@@ -290,8 +310,8 @@ class OBJECTTOMCDISPLAY_PT_TextTempPanel(bpy.types.Panel):  # テキストエデ
             col.operator("o2mcd.temp_action", icon='FILE_TICK', text="").action = 'SAVE'
 class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
     bl_idname = "o2mcd.reload"
-    bl_label = bpy.app.translations.pgettext("Update")
-    bl_description = bpy.app.translations.pgettext("Get information about the object and generate commands in the Output according to the Input")
+    bl_label = bpy.app.translations.pgettext_iface("Update")
+    bl_description = bpy.app.translations.pgettext_tip("Generate command in O2MCD_output")
 
     def execute(self, context):
         command.command_generate(self, context)
@@ -301,7 +321,7 @@ class OBJECTTOMCDISPLAY_OT_Reload(bpy.types.Operator):  # 更新ボタン
 class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
     bl_idname = "o2mcd.export"
     bl_label = "Export"
-    bl_description = bpy.app.translations.pgettext("Generate file in specified path")
+    bl_description = bpy.app.translations.pgettext_tip("Generate file in specified path")
     def execute(self, context):
         text_name = "O2MCD_output"
         frame_end = context.scene.frame_end
@@ -327,7 +347,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
                     try:
                         with open(output_file, "w", encoding="utf-8") as f:
                             f.write(text.as_string())
-                    except:self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
+                    except:self.report({'ERROR'},bpy.app.translations.pgettext_tip("File path not found"))
             context.scene.frame_set(current_frame)
                 
         else:
@@ -345,7 +365,7 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
                 try:
                     with open(output_file, "w", encoding="utf-8") as f:
                         f.write(text.as_string())
-                except:self.report({'ERROR'},bpy.app.translations.pgettext("File path not found"))
+                except:self.report({'ERROR'},bpy.app.translations.pgettext_tip("File path not found"))
         return {'FINISHED'}
 
 def version_items(self,context):
@@ -353,19 +373,19 @@ def version_items(self,context):
     if check_mcpp() and context.preferences.addons[__package__].preferences.mcpp_sync:
         items+=[e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items if not e.name in items]
     items.sort()
+    items.reverse()
     items=(((i,i,"") for i in items))
     return items
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
-    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext("Minecraft version"), items=version_items,update=update_version)
-    rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext("number of decimal places to round"), default=3, max=16, min=1)
-    curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("single frame path"), subtype='FILE_PATH', default="")
-    anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext("animation path"), subtype='FILE_PATH', default="")
-    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Auto Update"),description=bpy.app.translations.pgettext("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False, update=update_auto_reload)
-    output: bpy.props.EnumProperty(name="Output",description=bpy.app.translations.pgettext("Output files to the specified path"), items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
-    enable: bpy.props.BoolProperty(name="Enable",description=bpy.app.translations.pgettext("Enable O2MCD"), default=False)
+    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext_tip("Minecraft version"), items=version_items,update=update_version)
+    rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext_tip("number of decimal places to round"), default=3, max=16, min=1)
+    curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext_tip("single frame path"), subtype='FILE_PATH', default="")
+    anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext_tip("animation path"), subtype='FILE_PATH', default="")
+    auto_reload: bpy.props.BoolProperty(name=bpy.app.translations.pgettext_tip("Auto Update"),description=bpy.app.translations.pgettext_tip("Ensure that an update is performed every time there is a change in the scene or a frame is moved"), default=False, update=update_auto_reload)
+    output: bpy.props.EnumProperty(name="Output",description=bpy.app.translations.pgettext_tip("Output files to the specified path"), items=[('CURRENT', "Current Frame", ""), ('ANIMATION', "Animation", "")], default='CURRENT')
     obj_index:bpy.props.IntProperty(name="obj_index", default=0,update=object_list.select_object)
-    toggle_list : bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Object List"),description=bpy.app.translations.pgettext("List of objects for which the Display property is set."),default=False)
-    toggle_rc_pack: bpy.props.BoolProperty(name=bpy.app.translations.pgettext("Parent Referrer"),description=bpy.app.translations.pgettext("Add a resource pack to search for files specified as parent when importing a json model"),default=False)
+    toggle_list : bpy.props.BoolProperty(name=bpy.app.translations.pgettext_iface("Object List"),description=bpy.app.translations.pgettext_tip("List of objects for which the Display property is set."),default=False)
+    toggle_rc_pack: bpy.props.BoolProperty(name=bpy.app.translations.pgettext_iface("Resource Pack"),description=bpy.app.translations.pgettext_tip("Add a resource pack to search for files specified as parent when importing a json model"),default=False)
     pre_obj: bpy.props.PointerProperty(name="pre_obj",type=bpy.types.Object)
 classes = (
     OBJECTTOMCDISPLAY_PT_MainPanel,
@@ -389,4 +409,6 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
-    if object_list.chenge_panel in bpy.app.handlers.depsgraph_update_post :bpy.app.handlers.depsgraph_update_post.remove(object_list.chenge_panel)
+    del bpy.types.Scene.O2MCD_props
+    del bpy.types.WindowManager.O2MCD_temp_name
+    del bpy.types.WindowManager.O2MCD_temp_cmd

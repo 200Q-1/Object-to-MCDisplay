@@ -10,112 +10,117 @@ from . import object_list
     
     
 def mesh_update(self, context):
-    for o in bpy.context.scene.O2MCD_object_list :
+    for o in bpy.context.scene.O2MCD_object_list:
         obj=o.obj
-        if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes]:
-            obj.data=bpy.data.meshes[obj.O2MCD_props.mesh_enum.lower()]
-            obj.O2MCD_props.disp_id=sub('\.[0-9]+', "",obj.data.name.split("/")[-1])
-            for modi in list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) , obj.modifiers)):
-                if match(f"{modi.node_group.name}(?:\.[0-9]+)?",obj.data.name):
-                    modi.show_viewport=True
-                else:
-                    modi.show_viewport=False
+        if obj.type == 'MESH':
+            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes]:
+                obj.data=bpy.data.meshes[obj.O2MCD_props.mesh_enum.lower()]
+                obj.O2MCD_props.disp_id=sub('\.[0-9]+', "",obj.data.name.split("/")[-1])
+                for modi in list(filter(lambda m: m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name), obj.modifiers)):
+                    if match(f"{modi.node_group.name}(?:\.[0-9]+)?",obj.data.name):
+                        modi.show_viewport=True
+                    else:
+                        modi.show_viewport=False
 
 def panel_object(self,context):
     layout = self.layout
-    if context.preferences.addons[__package__].preferences.jar_path and context.active_object:
-        if context.active_object and context.active_object.O2MCD_props.disp_id == "":
-            layout.menu("OBJECTTOMCDISPLAY_MT_SetId")
-        else:
-            col=layout.column()
-            col.label(text="TYPE: "+context.active_object.O2MCD_props.disp_type)
-            col.label(text="ID: "+context.active_object.O2MCD_props.disp_id)
-            box=col.box()
-            row=box.row()
-            row.alignment = "CENTER"
-            row.label(text="Index")
-            row.operator("o2mcd.list_move", icon='TRIA_LEFT', text="").action = 'UP'
-            row.label(text=str(context.object.O2MCD_props.number))
-            row.operator("o2mcd.list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
-            
-            col=layout.column(align=True)
-            col.separator()
-            row=col.row()
-            row2=row.row()
-            row2.alignment = "LEFT"
-            row2.label(text="メッシュリスト")
-            row2.operator("o2mcd.copy_prop",icon='COPYDOWN').action='MESH'
-            row3=row.row()
-            row3.alignment = "RIGHT"
-            row3.prop(context.window_manager,"O2MCD_mesh_toggle",text="",icon='SETTINGS',toggle=True)
-            if not context.window_manager.O2MCD_mesh_toggle:
-                row=col.row()
-                row.use_property_split = True
-                row.prop(context.active_object.O2MCD_props,"mesh_enum",icon='MESH_DATA',text="")
+    if context.preferences.addons[__package__].preferences.jar_path:
+        if context.active_object:
+            if context.active_object and context.active_object.O2MCD_props.disp_id == "":
+                if context.active_object.type == "MESH":
+                    layout.menu("OBJECTTOMCDISPLAY_MT_SetId")
+                else:
+                    layout.operator("o2mcd.add_empty", text=bpy.app.translations.pgettext_iface("Set ID"))
             else:
+                col=layout.column()
+                col.label(text="TYPE: "+context.active_object.O2MCD_props.disp_type)
+                col.label(text="ID: "+context.active_object.O2MCD_props.disp_id)
+                box=col.box()
+                row=box.row()
+                row.alignment = "CENTER"
+                row.label(text="Index")
+                row.operator("o2mcd.list_move", icon='TRIA_LEFT', text="").action = 'UP'
+                row.label(text=str(context.object.O2MCD_props.number))
+                row.operator("o2mcd.list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
+                if context.active_object.O2MCD_props.disp_type != "empty":
+                        col=layout.column(align=True)
+                        col.separator()
+                        row=col.row()
+                        row2=row.row()
+                        row2.alignment = "LEFT"
+                        row2.label(text="Mesh list")
+                        row2.operator("o2mcd.copy_prop",icon='PASTEDOWN').action='MESH'
+                        row3=row.row()
+                        row3.alignment = "RIGHT"
+                        row3.prop(context.window_manager,"O2MCD_mesh_toggle",text="",icon='PREFERENCES',toggle=True)
+                        if not context.window_manager.O2MCD_mesh_toggle:
+                            row=col.row()
+                            row.use_property_split = True
+                            row.prop(context.active_object.O2MCD_props,"mesh_enum",icon='MESH_DATA',text="")
+                        else:
+                            row=col.row()
+                            row.template_list("OBJECTTOMCDISPLAY_UL_MeshList", "", context.active_object.O2MCD_props, "mesh_list", context.active_object.O2MCD_props, "mesh_index", rows=2)
+                            
+                            col2 = row.column(align=True)
+                            col2.operator("o2mcd.mesh_list_action", icon='TRIA_UP', text="").action = 'UP'
+                            col2.operator("o2mcd.mesh_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+                        
+                        sp= col.split(align=True,factor=0.7)
+                        if context.active_object.O2MCD_props.disp_type=="item_display":
+                            sp.prop_search(context.preferences.addons[__package__].preferences, "item_id",context.preferences.addons[__package__].preferences, "item_list",text="")
+                            sp2= sp.split(align=True,factor=1)
+                            sp2.enabled=True if context.preferences.addons[__package__].preferences.item_id else False
+                            sp2.operator("o2mcd.mesh_list_action", icon='ADD', text="Add").action = 'ADD'
+                        elif context.active_object.O2MCD_props.disp_type=="block_display":
+                            sp.prop_search(context.preferences.addons[__package__].preferences, "block_id",context.preferences.addons[__package__].preferences, "block_list",text="")
+                            row= sp.row()
+                            row.enabled=True if context.preferences.addons[__package__].preferences.block_id else False
+                            row.operator("o2mcd.mesh_list_action", icon='ADD', text="Add").action = 'ADD'
+                        
+                        col=layout.column(align=True)
+                        col.use_property_split = True
+                        col.separator()
+                        box=col.box()
+                        box.label(text="Properties")
+                        try:
+                            modi= list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and match(f"{m.node_group.name}(?:\.[0-9]+)?",context.active_object.data.name), context.active_object.modifiers))[0]
+                            for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
+                                box.prop(context.active_object.modifiers[modi.name],f"[\"Socket_{i+2}\"]",text=n.name)
+                        except:pass
+                col=layout.column(align=True)
+                col.separator()
                 row=col.row()
-                row.template_list("OBJECTTOMCDISPLAY_UL_MeshList", "", context.active_object.O2MCD_props, "mesh_list", context.active_object.O2MCD_props, "mesh_index", rows=2)
+                row2=row.row()
+                row2.alignment = "LEFT"
+                row2.label(text="Command list")
+                row2.operator("o2mcd.copy_prop",icon='PASTEDOWN').action='COMMAND'
+                row= col.row()
+                row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
+                col = row.column(align=True)
+                col.operator("o2mcd.command_list_action", icon='ADD', text="").action = 'ADD'
+                col.operator("o2mcd.command_list_action", icon='REMOVE', text="").action = 'REMOVE'
+                col.separator()
+                col.operator("o2mcd.command_list_action", icon='TRIA_UP', text="").action = 'UP'
+                col.operator("o2mcd.command_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
                 
-                col2 = row.column(align=True)
-                col2.operator("o2mcd.mesh_list_action", icon='TRIA_UP', text="").action = 'UP'
-                col2.operator("o2mcd.mesh_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
-            
-            sp= col.split(align=True,factor=0.7)
-            if context.active_object.O2MCD_props.disp_type=="item_display":
-                sp.prop_search(context.preferences.addons[__package__].preferences, "item_id",context.preferences.addons[__package__].preferences, "item_list",text="")
-                sp2= sp.split(align=True,factor=1)
-                sp2.enabled=True if context.preferences.addons[__package__].preferences.item_id else False
-                sp2.operator("o2mcd.mesh_list_action", icon='ADD', text="追加").action = 'ADD'
-            elif context.active_object.O2MCD_props.disp_type=="block_display":
-                sp.prop_search(context.preferences.addons[__package__].preferences, "block_id",context.preferences.addons[__package__].preferences, "block_list",text="")
-                row= sp.row()
-                row.enabled=True if context.preferences.addons[__package__].preferences.block_id else False
-                row.operator("o2mcd.mesh_list_action", icon='ADD', text="追加").action = 'ADD'
-            
-            col=layout.column(align=True)
-            col.use_property_split = True
-            col.separator()
-            box=col.box()
-            box.label(text="プロパティ")
-            try:
-                modi= list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and match(f"{m.node_group.name}(?:\.[0-9]+)?",context.active_object.data.name), context.active_object.modifiers))[0]
-                for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
-                    box.prop(context.active_object.modifiers[modi.name],f"[\"Socket_{i+2}\"]",text=n.name)
-            except:pass
-            col=layout.column(align=True)
-            col.separator()
-            row=col.row()
-            row2=row.row()
-            row2.alignment = "LEFT"
-            row2.label(text="コマンドリスト")
-            row2.operator("o2mcd.copy_prop",icon='COPYDOWN').action='COMMAND'
-            row= col.row()
-            row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
-            col = row.column(align=True)
-            col.operator("o2mcd.command_list_action", icon='ADD', text="").action = 'ADD'
-            col.operator("o2mcd.command_list_action", icon='REMOVE', text="").action = 'REMOVE'
-            col.separator()
-            col.operator("o2mcd.command_list_action", icon='TRIA_UP', text="").action = 'UP'
-            col.operator("o2mcd.command_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
-            
-            box=layout.box()
-            row = box.row(align = True)
-            row2=row.row()
-            row2.alignment = "LEFT"
-            row2.label(text="タグ")
-            row2.operator("o2mcd.copy_prop",icon='COPYDOWN').action='TAG'
-            row3=row.row()
-            row3.alignment = "RIGHT"
-            row3.operator("o2mcd.tag_action", icon='ADD', text="", emboss=False).action='ADD'
-            col = box.column(align = True)
-            for i,item in enumerate(context.active_object.O2MCD_props.tag_list):
-                row = col.row(align = True)
-                row.prop(item,"tag",text="")
-                ac=row.operator("o2mcd.tag_action", icon='PANEL_CLOSE', text="", emboss=False)
-                ac.action='REMOVE'
-                ac.index=i
+                box=layout.box()
+                row = box.row(align = True)
+                row2=row.row()
+                row2.alignment = "LEFT"
+                row2.label(text="Tags")
+                row2.operator("o2mcd.copy_prop",icon='PASTEDOWN').action='TAG'
+                row3=row.row()
+                row3.alignment = "RIGHT"
+                row3.operator("o2mcd.tag_action", icon='ADD', text="", emboss=False).action='ADD'
+                col = box.column(align = True)
+                for i,item in enumerate(context.active_object.O2MCD_props.tag_list):
+                    row = col.row(align = True)
+                    row.prop(item,"tag",text="")
+                    ac=row.operator("o2mcd.tag_action", icon='PANEL_CLOSE', text="", emboss=False)
+                    ac.action='REMOVE'
+                    ac.index=i
     else:
-        layout.label(text="アドオン設定から.jarファイルを指定してください。")
+        layout.label(text="Specify the .jar file from the add-on settings")
 class OBJECTTOMCDISPLAY_PT_ObjectProperties(bpy.types.Panel):  # プロパティパネル
     bl_label = "O2MCD"
     bl_space_type = 'VIEW_3D'
@@ -158,16 +163,16 @@ class  O2MCD_TagList(bpy.types.PropertyGroup):
 
 
 class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
-    number: bpy.props.IntProperty(name=bpy.app.translations.pgettext("Object Number"), default=-1, min=-1)
+    number: bpy.props.IntProperty(name=bpy.app.translations.pgettext_iface("Object Number"), default=-1, min=-1)
     enable : bpy.props.BoolProperty(name="enable", default=True)
     command_index: bpy.props.IntProperty(name="cmd_index", default=-1)
     pre_cmd: bpy.props.IntProperty(name="",default=-1)
     disp_id: bpy.props.StringProperty(name="id",description="",default="")
     disp_type: bpy.props.StringProperty(name="type",description="",default="")
-    mesh_enum: bpy.props.EnumProperty(items=mesh_items)
+    mesh_enum: bpy.props.EnumProperty(items=mesh_items,update=mesh_update)
     mesh_list: bpy.props.CollectionProperty(name="mesh",type=O2MCD_MeshList)
     command_list : bpy.props.CollectionProperty(type=O2MCD_CommandList)
-    mesh_index:bpy.props.IntProperty(name="mesh_index", default=0,update=mesh_update)
+    mesh_index:bpy.props.IntProperty(name="mesh_index", default=0)
     tag_list : bpy.props.CollectionProperty(type=O2MCD_TagList)
 
 
@@ -185,13 +190,22 @@ class OBJECTTOMCDISPLAY_UL_CommandList(bpy.types.UIList):
         sp.prop(item, "name", text="", emboss=False)
         sp.prop(item, "command", text="", emboss=True)
         
-class OBJECTTOMCDISPLAY_OT_TagAction(bpy.types.Operator):  # コマンド追加
+class OBJECTTOMCDISPLAY_OT_TagAction(bpy.types.Operator):
     bl_idname = "o2mcd.tag_action"
     bl_label = ""
     bl_description = ""
     action: bpy.props.EnumProperty(items=(('ADD',"add",""),('REMOVE',"remove","")))
     index: bpy.props.IntProperty(name="Index")
-    
+
+    @classmethod 
+    def description(self, context, prop):
+        match prop.action:
+            case 'ADD':
+                des = bpy.app.translations.pgettext_tip("Add tags")
+            case 'REMOVE':
+                des = bpy.app.translations.pgettext_tip("Remove tags")
+        return des
+
     def execute(self, context):
         match self.action:
             case 'ADD':
@@ -214,9 +228,20 @@ class OBJECTTOMCDISPLAY_UL_MeshList(bpy.types.UIList):
 class OBJECTTOMCDISPLAY_OT_MeshListAction(bpy.types.Operator): #移動
     bl_idname = "o2mcd.mesh_list_action"
     bl_label = ""
-    bl_description = ""
     action: bpy.props.EnumProperty(items=(('UP', "up", ""),('DOWN', "down", ""),('ADD',"add",""),('REMOVE',"remove","")))
     index : bpy.props.IntProperty(default=0)
+    
+    @classmethod 
+    def description(self, context, prop):
+        match prop.action:
+            case 'UP' | 'DOWN':
+                des = bpy.app.translations.pgettext_tip("Move the mesh up or down")
+            case 'ADD':
+                des = bpy.app.translations.pgettext_tip("Add mesh")
+            case 'REMOVE':
+                des = bpy.app.translations.pgettext_tip("Remove mesh")
+        return des
+    
     def invoke(self, context, event):
         mesh_list=context.view_layer.objects.active.O2MCD_props.mesh_list
         mesh_index=context.view_layer.objects.active.O2MCD_props.mesh_index
@@ -252,23 +277,32 @@ class OBJECTTOMCDISPLAY_OT_MeshListAction(bpy.types.Operator): #移動
         return {"FINISHED"}
             
 class OBJECTTOMCDISPLAY_MT_SetId(bpy.types.Menu):
-    bl_label = "SetID"
-    bl_description = bpy.app.translations.pgettext("Sorting Objects")
+    bl_label = bpy.app.translations.pgettext_iface("Set ID")
+    bl_description = bpy.app.translations.pgettext_tip("Set ID and to object list")
     def draw(self, context):
         layout = self.layout
-        layout.operator("o2mcd.set_item", text="Item")
-        layout.operator("o2mcd.set_block", text="block")
-class OBJECTTOMCDISPLAY_OT_SetItem(bpy.types.Operator):  # アイテム検索
-    bl_idname = "o2mcd.set_item"
+        i=layout.operator("o2mcd.set_id", text="Item")
+        i.action='ITEM'
+        i.new=False
+        b=layout.operator("o2mcd.set_id", text="Block")
+        b.action='BLOCK'
+        b.new=False
+class OBJECTTOMCDISPLAY_OT_SetId(bpy.types.Operator):
+    bl_idname = "o2mcd.set_id"
     bl_label = ""
-    bl_description= ""
+    bl_description = bpy.app.translations.pgettext_tip("Set item ID and add to object list")
     bl_property = "enum"
     enum: bpy.props.EnumProperty(name="Objects", description="", items=json_import.enum_item)
+    action: bpy.props.EnumProperty(name="action",items=(('BLOCK',"block",""),('ITEM',"item","")))
+    new: bpy.props.BoolProperty(name="new")
 
     def execute(self, context):
-        directory=context.preferences.addons[__package__].preferences.jar_path+os.sep+os.sep.join(["assets","minecraft","models","item"])+os.sep
-        json_import.create_model(self,context,directory,self.enum,"item",False)
-        mesh_update(self,context)
+        if self.action == 'ITEM':
+            path=["assets", "minecraft", "models", "item"]
+        elif self.action == 'BLOCK':
+            path=["assets","minecraft","blockstates"]
+        directory = os.sep.join([context.preferences.addons[__package__].preferences.jar_path]+path)+os.sep
+        json_import.create_model(self, context, directory, self.enum, self.action.lower(), self.new)
         if not context.view_layer.objects.active.O2MCD_props.command_list:
             bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
@@ -277,30 +311,47 @@ class OBJECTTOMCDISPLAY_OT_SetItem(bpy.types.Operator):  # アイテム検索
         context.window_manager.invoke_search_popup(self)
         return {'FINISHED'}
     
-class OBJECTTOMCDISPLAY_OT_SetBlock(bpy.types.Operator):  # ブロック検索
-    bl_idname = "o2mcd.set_block"
+
+class OBJECTTOMCDISPLAY_OT_AddEmpty(bpy.types.Operator):
+    bl_idname = "o2mcd.add_empty"
     bl_label = ""
-    bl_description= ""
-    bl_property = "enum"
-    enum: bpy.props.EnumProperty(name="Objects", description="", items=json_import.enum_block)
-
+    bl_description = bpy.app.translations.pgettext_tip("Set ID and to object list")
+    new: bpy.props.BoolProperty(name="new")
+    
     def execute(self, context):
-        directory=context.preferences.addons[__package__].preferences.jar_path+os.sep+os.sep.join(["assets","minecraft","blockstates"])+os.sep
-        json_import.create_model(self,context,directory,self.enum,"block",False)
-        mesh_update(self,context)
+        if self.new:
+            empty = bpy.data.objects.new("empty", None)
+            bpy.context.collection.objects.link(empty)
+            empty.empty_display_size = 0.5
+            empty.empty_display_type = 'CUBE'
+            context.view_layer.objects.active = empty
+        else:
+            empty=context.view_layer.objects.active
+        empty.O2MCD_props.disp_type = "empty"
+        empty.O2MCD_props.disp_id = "empty"
+        bpy.ops.object.select_all(action='DESELECT')
+        empty.select_set(True)
         if not context.view_layer.objects.active.O2MCD_props.command_list:
             bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
 
-    def invoke(self, context, event):
-        context.window_manager.invoke_search_popup(self)
-        return {'FINISHED'}
-    
+
 class OBJECTTOMCDISPLAY_OT_CopyProp(bpy.types.Operator):
     bl_idname = "o2mcd.copy_prop"
     bl_label = ""
-    bl_description= ""
     action: bpy.props.EnumProperty(items=(('MESH',"mesh",""),('COMMAND',"command",""),('TAG',"tag","")))
+    
+    @classmethod 
+    def description(self,context, prop):
+        match prop.action:
+            case "MESH":
+                des=bpy.app.translations.pgettext_tip("Copy mesh list to selected object")
+            case "COMMAND":
+                des=bpy.app.translations.pgettext_tip("Copy command list to selected object")
+            case "TAG":
+                des=bpy.app.translations.pgettext_tip("Copy tag list to selected object")
+        return des
+    
     def execute(self, context):
         if self.action=='MESH':
             am=[m.mesh for m in context.active_object.O2MCD_props.mesh_list]
@@ -407,8 +458,8 @@ classes = (
     O2MCD_BlockList,
     OBJECTTOMCDISPLAY_OT_TagAction,
     OBJECTTOMCDISPLAY_MT_SetId,
-    OBJECTTOMCDISPLAY_OT_SetItem,
-    OBJECTTOMCDISPLAY_OT_SetBlock,
+    OBJECTTOMCDISPLAY_OT_SetId,
+    OBJECTTOMCDISPLAY_OT_AddEmpty,
     OBJECTTOMCDISPLAY_OT_MeshListAction,
     OBJECTTOMCDISPLAY_OT_CopyProp
 )
@@ -426,3 +477,7 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
+    del bpy.types.Object.O2MCD_props
+    del bpy.types.Scene.O2MCD_item_list
+    del bpy.types.Scene.O2MCD_block_list
+    del bpy.types.WindowManager.O2MCD_mesh_toggle
