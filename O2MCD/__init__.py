@@ -4,19 +4,6 @@ import zipfile
 import json
 import re
 from re import *
-bl_info = {
-    "name": "Object to MCDisplay",
-    "author": "200Q",
-    "version": (0, 3, 0),
-    "blender": (4, 1, 0),
-    "location": "Output Properties",
-    "support": "COMMUNITY",
-    "description": "Calculate the transformation of the Display entity in Minecraft on Blender.",
-    "warning": "",
-    "doc_url": "https://github.com/200Q-1/Object-to-MCDisplay",
-    "tracker_url": "",
-    "category": "Object"
-}
 
 O2MCD_translation_dict = {
     "ja_JP": {
@@ -140,38 +127,30 @@ def jar_setting(self,context):
         with zipfile.ZipFile(jar) as zip:
             js=json.load(zip.open('assets/minecraft/lang/en_us.json','r'))
             block_id=[i.replace('block.minecraft.','') for i in js.keys() if re.match('block\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
-            item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
-            bni=[f.split("/")[-1] for f in zip.namelist() if f.startswith("assets/minecraft/models/item/") and not f.endswith('/')]
+            item_id=[i.split("/")[-1][:-5] for i in zip.namelist() if i.startswith("assets/minecraft/items/")]
+            if not item_id:
+                item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
+                bni=[f.split("/")[-1] for f in zip.namelist() if f.startswith("assets/minecraft/models/item/") and not f.endswith('/')]
+                item_id=[b for b in block_id if b+".json" in bni]+item_id
     except:self.report({'ERROR_INVALID_INPUT'},"jarファイルの読み込みに失敗しました。")
-    item_id=[b for b in block_id if b+".json" in bni]+item_id
     item_id.sort()
-    ex=['white_banner','orange_banner','magenta_banner','light_blue_banner','yellow_banner','lime_banner','pink_banner','gray_banner','light_gray_banner','cyan_banner','purple_banner','blue_banner','brown_banner','green_banner','red_banner','black_banner','moving_piston','decorated_pot','end_portal','ender_chest','moving_piston','water','lava',"skeleton_skull","wither_skeleton_skull","creeper_head","player_head","zombie_head",'acacia_hanging_sign', 'acacia_sign', 'bamboo_hanging_sign', 'bamboo_sign', 'birch_hanging_sign', 'birch_sign', 'cherry_hanging_sign', 'cherry_sign', 'crimson_hanging_sign', 'crimson_sign', 'dark_oak_hanging_sign', 'dark_oak_sign', 'jungle_hanging_sign', 'jungle_sign', 'mangrove_hanging_sign', 'mangrove_sign', 'oak_hanging_sign', 'oak_sign', 'spruce_hanging_sign', 'spruce_sign', 'warped_hanging_sign', 'warped_sign']
+    # print()
+    #未対応     hanging_sign, acacia_sign
+    ex=['moving_piston','end_portal','water','lava']
     block_id=list(filter(lambda b: not b in ex, block_id))
-    bpy.context.preferences.addons[__package__].preferences.block_list.clear()
-    bpy.context.preferences.addons[__package__].preferences.item_list.clear()
+    addon_prefs = bpy.context.preferences.addons[__package__]
+    addon_prefs.preferences.block_list.clear()
+    addon_prefs.preferences.item_list.clear()
     for i in block_id:
-        bpy.context.preferences.addons[__package__].preferences.block_list.add().name=i
+        addon_prefs.preferences.block_list.add().name=i
     for i in item_id:
-        bpy.context.preferences.addons[__package__].preferences.item_list.add().name=i
+        addon_prefs.preferences.item_list.add().name=i
     if not bpy.context.scene.O2MCD_rc_packs:
         bpy.context.scene.O2MCD_rc_packs.add()
         bpy.context.scene.O2MCD_rc_packs.add().path=jar
     else:
         bpy.context.scene.O2MCD_rc_packs[len(context.scene.O2MCD_rc_packs)-1].path=jar
         
-#  メッシュ更新
-def mesh_update(self,context):
-    for o in bpy.context.scene.O2MCD_object_list:
-        obj=o.obj
-        if obj.type == 'MESH':
-            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes]:
-                obj.data=bpy.data.meshes[obj.O2MCD_props.mesh_enum.lower()]
-                obj.O2MCD_props.disp_id=sub('\.[0-9]+', "",obj.data.name.split("/")[-1])
-                for modi in list(filter(lambda m: m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name), obj.modifiers)):
-                    if match(f"{modi.node_group.name}(?:\.[0-9]+)?",obj.data.name):
-                        modi.show_viewport=True
-                    else:
-                        modi.show_viewport=False
 
 class O2MCD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__

@@ -6,8 +6,9 @@ from re import *
 from math import *
 from . import command
 from . import object_list
+from . import object
 import numpy as np
-import O2MCD
+
 # 関数
 
 def update(self, context):  # 更新処理
@@ -16,10 +17,10 @@ def update(self, context):  # 更新処理
     if not object_list.chenge_panel in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(object_list.chenge_panel)
         
-    if not O2MCD.mesh_update in bpy.app.handlers.depsgraph_update_post:
-        bpy.app.handlers.depsgraph_update_post.append(O2MCD.mesh_update)
-    if not O2MCD.mesh_update in bpy.app.handlers.frame_change_post:
-            bpy.app.handlers.frame_change_post.append(O2MCD.mesh_update)
+    if not mesh_update in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.append(mesh_update)
+    if not mesh_update in bpy.app.handlers.frame_change_post:
+            bpy.app.handlers.frame_change_post.append(mesh_update)
         
     if "O2MCD_input" not in bpy.data.texts:  # Inputが無ければ作成
         input=bpy.data.texts.new("O2MCD_input")
@@ -40,6 +41,24 @@ def update_auto_reload(self,context):
         if command.command_generate in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.remove(command.command_generate)
             
+#  メッシュ更新
+def mesh_update(self,context):
+    for o in bpy.context.scene.O2MCD_object_list:
+        obj=o.obj
+        if obj.type == 'MESH':
+            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes]:
+                obj.data=bpy.data.meshes[obj.O2MCD_props.mesh_enum.lower()]
+                obj.O2MCD_props.disp_id=sub('\.[0-9]+', "",obj.data.name.split("/")[-1])
+                for modi in list(filter(lambda m: m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name), obj.modifiers)):
+                    if match(f"{modi.node_group.name}(?:\.[0-9]+)?",obj.data.name):
+                        modi.show_viewport=True
+                    else:
+                        modi.show_viewport=False
+        version = bpy.context.scene.O2MCD_props.mc_version
+        version_list = [v[0] for v in version_items(None,bpy.context)]
+        if version in version_list[:version_list.index("1.21.4")+1] and obj.O2MCD_props.disp_type == "item_display":
+            object.change_model(self,bpy.context,obj)
+                        
 def near_version(prop,prop_list):
     enum_ver=[]
     cur_ver= np.zeros(3)
@@ -375,15 +394,15 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
         return {'FINISHED'}
 
 def version_items(self,context):
-    items=['1.19','1.20','1.20.5']
+    items=['1.19','1.20','1.20.5','1.21.4']
     if check_mcpp() and context.preferences.addons[__package__].preferences.mcpp_sync:
         items+=[e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items if not e.name in items]
     items.sort()
     items.reverse()
-    items=(((i,i,"") for i in items))
+    items=tuple([(i,i,"") for i in items])
     return items
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
-    mc_version: bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext_tip("Minecraft version"), items=version_items,update=update_version)
+    mc_version : bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext_tip("Minecraft version"), items=version_items,update=update_version)
     rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext_tip("number of decimal places to round"), default=3, max=16, min=1)
     curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext_tip("single frame path"), subtype='FILE_PATH', default="")
     anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext_tip("animation path"), subtype='FILE_PATH', default="")

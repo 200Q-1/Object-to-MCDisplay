@@ -1,0 +1,13 @@
+schema_version = "1.0.0"
+id = "o2mcd"
+version = "0.3.0"
+name = "Object to MCDisplay"
+tagline = "Calculate the transformation of the Display entity in Minecraft on Blender."
+maintainer = "200Q <x.com/200Q_>"
+type = "add-on"
+blender_version_min = "4.2.0"
+website = "https://github.com/200Q-1/Object-to-MCDisplay"
+platforms = ["windows-x64"]
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2023 200Q"]
+tags = ["Object", "Add Mesh", "Text Editor", "Geometry Nodes","Import-Export", "Material"]

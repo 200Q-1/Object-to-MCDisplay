@@ -4,7 +4,6 @@ import bpy
 import random
 from . import command
 from re import *
-from . import object
 
 def chenge_panel(self, context):  # オブジェクトリストとオブジェクト番号を更新
     scene=bpy.context.scene
@@ -33,7 +32,7 @@ def chenge_panel(self, context):  # オブジェクトリストとオブジェ�
             area.tag_redraw()
 
 def select_object(self, context):
-    if context.view_layer.objects.active and not context.view_layer.objects.active == context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj:
+    if context.view_layer.objects.active and context.scene.O2MCD_props.obj_index >= 0 and not context.view_layer.objects.active == context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj:
         command.cmd_set(bpy.context,bpy.context.scene.O2MCD_object_list[bpy.context.scene.O2MCD_props.obj_index].obj if bpy.context.scene.O2MCD_object_list else None)
         context.view_layer.objects.active=context.scene.O2MCD_object_list[context.scene.O2MCD_props.obj_index].obj
         bpy.ops.object.select_all(action='DESELECT')
@@ -53,12 +52,13 @@ class OBJECTTOMCDISPLAY_OT_ListMove(bpy.types.Operator): #移動
                 des=bpy.app.translations.pgettext_tip("Rearrange the order of objects")
         return des
     def execute(self, context):
-        if self.action == 'DOWN'and context.scene.O2MCD_props.obj_index < len(context.scene.O2MCD_object_list)-1:
-            context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index+1)
-            context.scene.O2MCD_props.obj_index += 1
-        elif self.action == 'UP' and context.scene.O2MCD_props.obj_index > 0:
-            context.scene.O2MCD_object_list.move(context.scene.O2MCD_props.obj_index, context.scene.O2MCD_props.obj_index-1)
-            context.scene.O2MCD_props.obj_index -= 1
+        index = context.scene.O2MCD_props.obj_index
+        if self.action == 'DOWN' and index < len(context.scene.O2MCD_object_list)-1:
+            context.scene.O2MCD_object_list.move(index, index+1)
+            index += 1
+        elif self.action == 'UP' and index > 0:
+            context.scene.O2MCD_object_list.move(index, index-1)
+            index -= 1
         elif self.action == 'REVERSE':
             object_list = [i.obj.name for i in context.scene.O2MCD_object_list]
             object_list=object_list[::-1]

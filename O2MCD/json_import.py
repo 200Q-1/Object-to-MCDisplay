@@ -8,8 +8,8 @@ import mathutils
 import json
 import tempfile
 import zipfile
-from . import object
 from math import *
+from . import output
 
 def menu_fn(self, context):
     if context.preferences.addons[__package__].preferences.jar_path:
@@ -45,7 +45,9 @@ def check_path(self, context):   # ファイルかフォルダ化を判定
             self.type = "FOLDER"
 
 
-def get_pack(directory, file):
+def get_pack(self,context,path):
+    directory = path["dir"]
+    file = path["file"]
     data = {}
     is_anim = False
     if os.path.splitext(file[-1])[1] == '.json':
@@ -157,14 +159,18 @@ def multipart(self):
     return node_tree
 
 
-def parents(self, directory, file):
-    blc = ["banner", "chest", "ender_chest", "conduit", "decorated_pot", "shulker_box"]
+def parents(self, context, path):
+    directory = path["dir"]
+    file = path["file"]
+    blc = ["banner", "chest", "ender_chest", "conduit", "decorated_pot", "shulker_box","skull"]
     colors = "(black|blue|brown|cyan|gray|green|light_blue|light_gray|lime|magenta|orange|pink|purple|red|white|yellow)"
     if file[-1][:-5] in blc and len(file) > 4 and file[3] == "block":
         directory = bpy.path.abspath(os.path.dirname(__file__))+os.sep
-        file = ["model", file[-1]]
-
-    data = get_pack(directory, file)
+        if file[-1][:-5]:
+            file = ["model", "player_head"]
+        else:
+            file = ["model", file[-1]]
+    data = get_pack(self, context, {"dir":directory,"file":file})
     if "blockstates" not in file:
         if re.fullmatch(f"{colors}_bed", file[-1][:-5]):
             data["parent"] = "block/bed"
@@ -173,24 +179,25 @@ def parents(self, directory, file):
             data["textures"]["0"] = f"entity/bed/{n}"
         elif re.fullmatch(f"{colors}_shulker_box", file[-1][:-5]):
             col = re.sub(f"{colors}.*", "\\1", file[-1][:-5])
+            data["textures"] = {}
             data["textures"]["0"] = f"entity/shulker/shulker_{col}"
             data["parent"] = "block/shulker_box"
         elif file[-1][:-5] == "ender_chest":
             data["textures"]["0"] = "entity/chest/ender"
-        if not data and not file[-1][:-5] == "air":
-            self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("%s was not found.") % (file[-1]))
         if re.fullmatch("bed", file[-1][:-5]) and "elements" not in data:
             data["parent"] = "builtin/entity"
+        if not data and not file[-1][:-5] == "air":
+            self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("%s was not found.") % (file[-1]))
 
         if "parent" in data:
             if data["parent"].split(":")[-1] == "builtin/entity":
                 parent = {"builtin/entity": "True"}
             else:
-                if data["parent"].split(":")[-1] == "item/generated":
+                if data["parent"].split(":")[-1] == "builtin/generated":
                     directory = bpy.path.abspath(os.path.dirname(__file__))+os.sep
                     parent_file = ["model", "generated.json"]
                 elif data["parent"].split(":")[-1] == "model/chest":
-                    parent_file = ["chest.json"]
+                    parent_file = ["model","chest.json"]
                 else:
                     parent_file = data["parent"].split(":")[-1]+".json"
                     parent_file = file[:file.index("models")+1]+parent_file.split("/")
@@ -198,7 +205,7 @@ def parents(self, directory, file):
                         parent_file[1] = data["parent"].split(":")[0]
                     else:
                         parent_file[1] = "minecraft"
-                parent = parents(self, directory, parent_file)
+                parent = parents(self,context,{"dir":directory,"file":parent_file})
             del data["parent"]
 
             if "builtin/entity" in parent:
@@ -211,7 +218,7 @@ def parents(self, directory, file):
                     parent_file = ["model", "player_head.json"]
                 else:
                     parent_file = ["model", file[-1]]
-                parent = parents(self, directory, parent_file)
+                parent = parents(self,context,{"dir":directory,"file":parent_file})
             if re.fullmatch("skeleton_skull|wither_skeleton_skull|creeper_head|zombie_head", file[-1][:-5]):
                 t = file[-1][:-5].split("_")[0]
                 parent["textures"]["0"] = f"entity/{t}/{t}"
@@ -235,304 +242,453 @@ def parents(self, directory, file):
         data["name"] = file[-1][:-5]
     return data
 
+def check_data(name, path, result, link=None, sub=None):
+    if name in path:
+        data = path[name]
+        create = False
+    else:
+        if sub:
+            data = path.new(name,sub)
+        else:
+            data = path.new(name)
+        create = True
+        if link != None:
+            link.link(data)
+    if result:
+        return data, create
+    else:
+        return data
+
+def get_items(self,context,data):
+    models = []
+    if data["model"]["type"] == "minecraft:special":
+        name = ""
+        if "texture" in data["model"]["model"]:
+            name = data["model"]["model"]["type"].split(":")[-1]
+        if "color" in data["model"]["model"]:
+            name = ".".join([data["model"]["model"]["type"].split(":")[-1],data["model"]["model"]["color"]])
+        elif data["model"]["base"]:
+            name = data["model"]["base"].split(":")[-1]
+        match data["model"]["model"]["type"] :
+            case "minecraft:bed" | "minecraft:shulker_box" | "minecraft:chest":
+                texture = data["model"]["model"]["texture"].split(":")
+                if len(texture) == 1:
+                    texture.insert(0, 'minecraft')
+                match data["model"]["model"]["type"]:
+                    case "minecraft:bed":
+                        texture = "".join([texture[0],":","entity/bed/",texture[-1]])
+                    case "minecraft:shulker_box":
+                        texture = "".join([texture[0],":","entity/shulker/",texture[-1]])
+                    case "minecraft:chest":
+                        texture = "".join([texture[0],":","entity/chest/",texture[-1]])
+                models.append({"special":True,"name":name,"model":data["model"]["model"]["type"].split(":")[-1],"texture":texture})
+                
+            case "minecraft:banner" | "minecraft:conduit" | "minecraft:decorated_pot" | "minecraft:trident":
+                models.append({"special":True,"name":name,"model":data["model"]["model"]["type"].split(":")[-1]})
+                
+            case "minecraft:head":
+                ki = data["model"]["model"]["kind"]
+                ty = data["model"]["model"]["type"].split(":")[-1]
+                models.append({"special":True,"name":name,"model":f"{ki}_{ty}"})
+    else:
+        match data["model"]["type"]:
+            case "minecraft:model":
+                models.append({"special":False,"model":data["model"]["model"]})
+            case "minecraft:composite":
+                for m in data["model"]["models"]:
+                    models += get_items(self,context,{"model":m})
+            case "minecraft:condition":
+                if data["model"]["property"] == "minecraft:broken" or data["model"]["property"] == "minecraft:has_component" or data["model"]["property"] == "minecraft:custom_model_data" or data["model"]["property"] == "minecraft:using_item":
+                    if "on_false" in data["model"]:
+                        models += get_items(self,context,{"model":data["model"]["on_false"]})
+                    if "on_true" in data["model"] and data["model"]["property"] != "minecraft:using_item":
+                        models += get_items(self,context,{"model":data["model"]["on_true"]})
+            case "minecraft:select":
+                if "fallback" in data["model"]:
+                    models += get_items(self,context,{"model":data["model"]["fallback"]})
+                for m in data["model"]["cases"]:
+                    models += get_items(self,context,m)
+            case "minecraft:range_dispatch":
+                if "fallback" in data["model"]:
+                    models += get_items(self,context,{"model":data["model"]["fallback"]})
+                for m in data["model"]["entries"]:
+                    models += get_items(self,context,m)
+    return models
 
 def create_model(self, context, directory, name, types, new):
+    version = context.scene.O2MCD_props.mc_version
+    version_list = [v[0] for v in output.version_items(None,context)]
     # オブジェクト作成
-    if "/".join([types, name]) in bpy.data.meshes:
-        new_mesh = bpy.data.meshes["/".join([types, name])]
-        make_mesh = False
-    else:
-        new_mesh = bpy.data.meshes.new("/".join([types, name]))
-        make_mesh = True
+    if version in version_list[:version_list.index("1.21.4")+1]:
+        new_collection = check_data("O2MCD_models", bpy.data.collections, True, context.scene.collection.children)
+        if new_collection[1]:
+            new_collection[0].hide_viewport = True
+        new_collection = new_collection[0]
+    mesh_name = "/".join([types, name])
+    new_mesh,make_mesh = check_data(mesh_name, bpy.data.meshes,True)
     if new:
-        new_object = bpy.data.objects.new(name, new_mesh)
+        new_object = bpy.data.objects.new(mesh_name, new_mesh)
         bpy.context.collection.objects.link(new_object)
     else:
         new_object = context.view_layer.objects.active
         new_object.data = new_mesh
+        
     if make_mesh:
         mat_list = []
         datas = []
-        file = name+".json"
-        directory = directory.split(os.sep)
-        folder = directory[:-1][directory.index("assets"):directory.index("assets")+2]
-        file = folder+directory[directory.index("assets")+2:-1]+[file]
-        directory = os.sep.join(directory[:directory.index("assets")])+os.sep
-        datas = parents(self, directory, file)
+        file = []
+        if types == 'item':
+            if version in version_list[:version_list.index("1.21.4")+1]:
+                file = ["assets", "minecraft", "items",name+".json"]
+            else:
+                file = ["assets", "minecraft", "models", "item",name+".json"]
+        elif types == 'block':
+            file = ["assets","minecraft","blockstates",name+".json"]
+        
         datalist = []
         values = None
-        if types == "item":
-            datas["CMD"] = "0"
-            datalist.append(datas)
-            if "overrides" in datas: 
-                for ov in datas["overrides"]:
-                    if len(ov["predicate"]) == 1 and "custom_model_data" in ov["predicate"]:
-                        model = ov["model"].split(":")
-                        of = file[:file.index("models")+1]+(model[-1]+".json").split("/")
-                        if len(model) == 2:
-                            of[1] = model[0]
-                        p = parents(self, directory, of)
-                        p["CMD"] = str(ov["predicate"]["custom_model_data"])
-                        datalist.append(p)
-        elif types == "block":
-            if "variants" in datas:
-                btype = "variants"
-                values = []
-                for v in datas["variants"].values():
-                    if type(v) is list:
-                        v = v[0]
-                    values.append(v)
-            else:
-                btype = "multipart"
-                values = [i for i in datas["multipart"]]
-                values = [dict(**i["apply"][0] if type(i["apply"]) is list else i["apply"], **dict(when=i["when"])) if len(i) > 1 else i["apply"] for i in values]
-            for v in values:
-                for ii, vv in v.items():
-                    if ii == "model":
-                        model = vv.split(":")
-                        va = file[:file.index("blockstates")+1]+(model[-1]+".json").split("/")
-                        va[va.index("blockstates")] = "models"
-                        if len(model) == 2:
-                            va[1] = model[0]
-                    if not "/".join(va[va.index("models")+1:])[:-5] in [n["name"] for n in datalist]:
-                        data = parents(self, directory, va)
-                        datalist.append(data)
+        if types == "item" and version in version_list[:version_list.index("1.21.4")+1]:
+            item_model = get_pack(self, context, {"dir":directory,"file":file})
+            datas = get_items(self,context,item_model)
+            datas.reverse()
+            for dt in datas:
+                if dt["special"]:
+                    directory = bpy.path.abspath(os.path.dirname(__file__))+os.sep
+                    file = ["model",dt["model"].split(":")[-1].split("/")[-1]+".json"]
+                else:
+                    domain = dt["model"].split(":")
+                    if len(domain) == 2:
+                        domain = domain[0]
+                    else:
+                        domain = "minecraft"
+                    ph = dt["model"].split(":")[-1].split("/")
+                    ph[-1] += ".json"
+                    file = ["assets",domain,"models",*ph]
+                d=parents(self,context,{"dir":directory,"file":file})
+                if "texture" in dt:
+                    d["textures"] = {"0":dt["texture"]}
+                if "name" in dt:
+                    d["name"] = dt["name"]
+                # d["CMD"] = "0"
+                if "texture" in dt and dt["special"]:
+                    d["name"] ="".join([d["name"].split("/")[-1],".",dt["texture"].split("/")[-1]])
+                datalist.append(d)
+        else:
+            datas = parents(self,context,{"dir":directory,"file":file})
+            if types == "item":
+                datas["CMD"] = "0"
+                datalist.append(datas)
+                if "overrides" in datas: 
+                    for ov in datas["overrides"]:
+                        if len(ov["predicate"]) == 1 and "custom_model_data" in ov["predicate"]:
+                            model = ov["model"].split(":")
+                            of = file[:file.index("models")+1]+(model[-1]+".json").split("/")
+                            if len(model) == 2:
+                                of[1] = model[0]
+                            
+                            p = parents(self,context,{"dir":directory,"file":of})
+                            p["CMD"] = str(ov["predicate"]["custom_model_data"])
+                            datalist.append(p)
+            elif types == "block":
+                if "variants" in datas:
+                    btype = "variants"
+                    values = []
+                    for v in datas["variants"].values():
+                        if type(v) is list:
+                            v = v[0]
+                        values.append(v)
+                else:
+                    btype = "multipart"
+                    values = [i for i in datas["multipart"]]
+                    values = [dict(**i["apply"][0] if type(i["apply"]) is list else i["apply"], **dict(when=i["when"])) if len(i) > 1 else i["apply"] for i in values]
+                for v in values:
+                    for ii, vv in v.items():
+                        if ii == "model":
+                            model = vv.split(":")
+                            va = file[:file.index("blockstates")+1]+(model[-1]+".json").split("/")
+                            va[va.index("blockstates")] = "models"
+                            if len(model) == 2:
+                                va[1] = model[0]
+                        if not "/".join(va[va.index("models")+1:])[:-5] in [n["name"] for n in datalist]:
+                            data = parents(self,context,{"dir":directory,"file":va})
+                            datalist.append(data)
+                            
         colors = "(black|blue|brown|cyan|gray|green|light_blue|light_gray|lime|magenta|orange|pink|purple|red|white|yellow)"
         materials = []
         vertices = []
         edges = []
         faces = []
         normal = []
-        uvs = []
         ratio = []
-        texture = []
         uv_rot = []
         megu = {}
+        axis = {"x": (-1, 0, 0), "y": "Z", "z": "Y"}
+        if not "models" in new_object.O2MCD_props:
+            new_object.O2MCD_props["models"] = {}
         for data in datalist:
-            try:
+            uvs = []
+            data["tex"] = []
+            data["add_mesh"] = True
+            if version in version_list[:version_list.index("1.21.4")+1]:
+                if "name" in data:
+                    n = data["name"].split("/")[-1]
+                else:
+                    n = name
+                data["mesh"],data["add_mesh"] = check_data(n, bpy.data.meshes, True)
+                data["object"] = check_data(n, bpy.data.objects,False,new_collection.objects,data["mesh"])
+                new_object.O2MCD_props["models"][n] = False
+
+            else:
+                data["mesh"] = new_mesh
+                data["object"] = new_object
+            if "elements" in data:
                 elements = data["elements"]
-            except:
-                if not name == "air":
-                    self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("\"elements\" not found.\nFILE: %s") % ({file[-1]}))
+            elif not name == "air":
+                self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("\"elements\" not found.\nFILE: %s") % ({file[-1]}))
                 continue
-            axis = {"x": (-1, 0, 0), "y": "Z", "z": "Y"}
-            dire = (
-                    "east",
-                    "south",
-                    "west",
-                    "north",
-                    "down",
-                    "up",
-            )
-            # マテリアル作成
-            if "textures" in data:
-                textures = data["textures"]
-                if "particle" in textures:
-                    del textures["particle"]
-            else:
-                textures = {}
-            for key, value in textures.items():
-                texfile = folder+["textures"]
-                if len(value.split(":")) == 2:
-                    texfile[1] = value.split(":")[0]
-                    value = value.split(":")[-1]
+            if data["add_mesh"]:
+                dire = (
+                        "east",
+                        "south",
+                        "west",
+                        "north",
+                        "down",
+                        "up",
+                )
+                # マテリアル作成
+                if "textures" in data:
+                    textures = data["textures"]
+                    if "particle" in textures:
+                        del textures["particle"]
                 else:
-                    texfile[1] = "minecraft"
-                texfile = texfile+(value+".png").split("/")
-                if not value[0] == "#":
-                    if value not in bpy.data.materials:
-                        if re.fullmatch(f"{colors}_banner", name) and value == "entity/banner/base":
-                            material = bpy.data.materials.new(name)
-                        else:
-                            material = bpy.data.materials.new(value)
-                        materials.append(material)
-                        if name == "redstone_wire" or re.fullmatch(f"{colors}_banner", name):
-                            mat_list.append(material)
-                        material.use_nodes = True
-                        material.blend_method = 'CLIP'
-                        material.shadow_method = 'CLIP'
-                        material.show_transparent_back = False
-                        material.use_backface_culling = True
-                        node_tree = material.node_tree
-                        bsdf = node_tree.nodes[0]
-                        bsdf.inputs[7].default_value = 0
-                        bsdf.inputs[2].default_value = 1
-                        tex_node = node_tree.nodes.new(type="ShaderNodeTexImage")
-                        tex_node.interpolation = "Closest"
-                        tex_node.location = (-420, 220)
-                        node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
-                        node_tree.links.new(tex_node.outputs[1], bsdf.inputs[4])
-                        if not texfile[-1] in bpy.data.images:
-                            image, anim = get_pack(directory, texfile)
-                            if not image:
-                                self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture not found.\nFILE:%s\nTEXTUR:%s") % (file[-1],texfile[-1]))
-                                image = None
-                        else:
-                            image = bpy.data.images[texfile[-1]]
-                        tex_node.image = image
+                    textures = {}
+                for key, value in textures.items():
+                    texfile = ["assets","minecraft","textures"]
+                    if len(value.split(":")) == 2:
+                        texfile[1] = value.split(":")[0]
+                        value = value.split(":")[-1]
                     else:
-                        material = bpy.data.materials[value]
-                    if material.name not in new_object.data.materials:
-                        new_object.data.materials.append(material)
-        
-            # 頂点作成
-            for e in elements:
-                ve = [0, 1, 2, 3, 4, 5, 6, 7]
-                f = len(vertices)
-                frm = ([(e["to"][0]/16-0.5)*-1, e["from"][2]/16-0.5, e["from"][1]/16-0.5])
-                to = ([(e["from"][0]/16-0.5)*-1, e["to"][2]/16-0.5, e["to"][1]/16-0.5])
-                
-                if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
-                    vertices.append((frm[0], frm[1], frm[2]))
-                else:
-                    ve = [v-1 if i >= 0 else v for i, v in enumerate(ve)]
-                if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[5] in e["faces"]:
-                    vertices.append((frm[0], frm[1], to[2]))
-                else:
-                    ve = [v-1 if i >= 1 else v for i, v in enumerate(ve)]
-                if dire[0] in e["faces"] or dire[1] in e["faces"] or dire[4] in e["faces"]:
-                    vertices.append((frm[0], to[1], frm[2]))
-                else:
-                    ve = [v-1 if i >= 2 else v for i, v in enumerate(ve)]
-                if dire[0] in e["faces"] or dire[1] in e["faces"] or dire[5] in e["faces"]:
-                    vertices.append((frm[0], to[1], to[2]))
-                else:
-                    ve = [v-1 if i >= 3 else v for i, v in enumerate(ve)]
-                if dire[2] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
-                    vertices.append((to[0], frm[1], frm[2]))
-                else:
-                    ve = [v-1 if i >= 4 else v for i, v in enumerate(ve)]
-                if dire[2] in e["faces"] or dire[3] in e["faces"] or dire[5] in e["faces"]:
-                    vertices.append((to[0], frm[1], to[2]))
-                else:
-                    ve = [v-1 if i >= 5 else v for i, v in enumerate(ve)]
-                if dire[2] in e["faces"] or dire[1] in e["faces"] or dire[4] in e["faces"]:
-                    vertices.append((to[0], to[1], frm[2]))
-                else:
-                    ve = [v-1 if i >= 6 else v for i, v in enumerate(ve)]
-                if dire[2] in e["faces"] or dire[1] in e["faces"] or dire[5] in e["faces"]:
-                    vertices.append((to[0], to[1], to[2]))
-                else:
-                    ve = [v-1 if i >= 7 else v for i, v in enumerate(ve)]
-                
-                dire_val = [
-                            (ve[0], ve[1], ve[3], ve[2]),
-                            (ve[2], ve[3], ve[7], ve[6]),
-                            (ve[6], ve[7], ve[5], ve[4]),
-                            (ve[4], ve[5], ve[1], ve[0]),
-                            (ve[2], ve[6], ve[4], ve[0]),
-                            (ve[5], ve[7], ve[3], ve[1]),
-                ]
-                if "rotation" in e:
-                    for i, v in enumerate(vertices[f:]):
-                        v = mathutils.Vector(v)
-                        origin = e["rotation"]["origin"]
-                        origin = mathutils.Matrix.Translation((-(origin[0]/16-0.5), origin[2]/16-0.5, origin[1]/16-0.5))
-                        r = mathutils.Matrix.Rotation(math.radians(e["rotation"]["angle"]), 4, axis[e["rotation"]["axis"]])
-                        vertices[f+i] = origin @ r @ mathutils.Matrix.inverted(origin) @ v
-                for key, value in zip(dire, dire_val):  # 面作成
-                    if key in e["faces"]:
-                        normal.append(key)
-                        faces.append((f+value[0], f+value[1], f+value[2], f+value[3]))
-                        m = e["faces"][key]["texture"][1:]
-                        try:
-                            pretex = ""
-                            for i in range(5):
-                                if textures[m][0] == "#":
-                                    if pretex == textures[m][1:]:
-                                        raise
-                                    m = textures[m][1:]
-                                    pretex = m
-                                if re.fullmatch(f"{colors}_banner", name) and textures[m] == "entity/banner/base":
-                                    textures[m] = name
-                            texture.append(textures[m].split(":")[-1])
-                        except:
-                            self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture path is not set.\nFILE:%s") % (file[-1]))
-                            texture.append(None)
-                        if "uv" in e["faces"][key]:
-                            uv = e["faces"][key]["uv"]
-                            xfrm = uv[0] / 16.0
-                            yfrm = uv[1] / 16.0
-                            xto = uv[2] / 16.0
-                            yto = uv[3] / 16.0
-                            if key == "up":
-                                uvs.append((mathutils.Vector((xfrm, yfrm)),
-                                            mathutils.Vector((xfrm, yto)),
-                                            mathutils.Vector((xto, yto)),
-                                            mathutils.Vector((xto, yfrm))
-                                            ))
-                            elif key == "down":
-                                uvs.append((mathutils.Vector((xto, yfrm)),
-                                            mathutils.Vector((xfrm, yfrm)),
-                                            mathutils.Vector((xfrm, yto)),
-                                            mathutils.Vector((xto, yto))
-                                            ))
+                        texfile[1] = "minecraft"
+                    texfile = texfile+(value+".png").split("/")
+                    if not value[0] == "#":
+                        if value not in bpy.data.materials:
+                            if re.fullmatch(f"{colors}_banner", name) and value == "entity/banner/base":
+                                material = bpy.data.materials.new(name)
                             else:
-                                uvs.append((mathutils.Vector((xto, yto)),
-                                            mathutils.Vector((xto, yfrm)),
-                                            mathutils.Vector((xfrm, yfrm)),
-                                            mathutils.Vector((xfrm, yto))
-                                            ))
+                                material = bpy.data.materials.new(value)
+                            materials.append(material)
+                            if name == "redstone_wire" or re.fullmatch(f"{colors}_banner", name):
+                                mat_list.append(material)
+                            material.use_nodes = True
+                            material.blend_method = 'CLIP'
+                            # material.surface_render_method = 'BLENDED'
+                            material.use_transparency_overlap = True
+                            # material.shadow_method = 'CLIP'
+                            material.show_transparent_back = False
+                            material.use_backface_culling = True
+                            node_tree = material.node_tree
+                            bsdf = node_tree.nodes[0]
+                            bsdf.inputs[7].default_value = 0
+                            bsdf.inputs[2].default_value = 1
+                            tex_node = node_tree.nodes.new(type="ShaderNodeTexImage")
+                            tex_node.interpolation = "Closest"
+                            tex_node.location = (-420, 220)
+                            node_tree.links.new(tex_node.outputs[0], bsdf.inputs[0])
+                            node_tree.links.new(tex_node.outputs[1], bsdf.inputs[4])
+                            if not texfile[-1] in bpy.data.images:
+                                image, anim = get_pack(self, context, {"dir":directory,"file":texfile})
+                                if not image:
+                                    self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture not found.\nFILE:%s\nTEXTUR:%s") % (file[-1],texfile[-1]))
+                                    image = None
+                            else:
+                                image = bpy.data.images[texfile[-1]]
+                            tex_node.image = image
                         else:
-                            uvs.append("SET")
-                        if "rotation" in e["faces"][key]:
-                            uv_rot.append(e["faces"][key]["rotation"])
-                        else:
-                            uv_rot.append(0)
-                if data["name"] in megu:
-                    megu[data["name"]] += len(vertices[f:])
+                            material = bpy.data.materials[value]
+                        if material.name not in data["object"].data.materials:
+                            data["object"].data.materials.append(material)
+            
+                # 頂点作成
+                for e in elements:
+                    ve = [0, 1, 2, 3, 4, 5, 6, 7]
+                    f = len(vertices)
+                    frm = ([(e["to"][0]/16-0.5)*-1, e["from"][2]/16-0.5, e["from"][1]/16-0.5])
+                    to = ([(e["from"][0]/16-0.5)*-1, e["to"][2]/16-0.5, e["to"][1]/16-0.5])
+                    
+                    if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
+                        vertices.append((frm[0], frm[1], frm[2]))
+                    else:
+                        ve = [v-1 if i >= 0 else v for i, v in enumerate(ve)]
+                    if dire[0] in e["faces"] or dire[3] in e["faces"] or dire[5] in e["faces"]:
+                        vertices.append((frm[0], frm[1], to[2]))
+                    else:
+                        ve = [v-1 if i >= 1 else v for i, v in enumerate(ve)]
+                    if dire[0] in e["faces"] or dire[1] in e["faces"] or dire[4] in e["faces"]:
+                        vertices.append((frm[0], to[1], frm[2]))
+                    else:
+                        ve = [v-1 if i >= 2 else v for i, v in enumerate(ve)]
+                    if dire[0] in e["faces"] or dire[1] in e["faces"] or dire[5] in e["faces"]:
+                        vertices.append((frm[0], to[1], to[2]))
+                    else:
+                        ve = [v-1 if i >= 3 else v for i, v in enumerate(ve)]
+                    if dire[2] in e["faces"] or dire[3] in e["faces"] or dire[4] in e["faces"]:
+                        vertices.append((to[0], frm[1], frm[2]))
+                    else:
+                        ve = [v-1 if i >= 4 else v for i, v in enumerate(ve)]
+                    if dire[2] in e["faces"] or dire[3] in e["faces"] or dire[5] in e["faces"]:
+                        vertices.append((to[0], frm[1], to[2]))
+                    else:
+                        ve = [v-1 if i >= 5 else v for i, v in enumerate(ve)]
+                    if dire[2] in e["faces"] or dire[1] in e["faces"] or dire[4] in e["faces"]:
+                        vertices.append((to[0], to[1], frm[2]))
+                    else:
+                        ve = [v-1 if i >= 6 else v for i, v in enumerate(ve)]
+                    if dire[2] in e["faces"] or dire[1] in e["faces"] or dire[5] in e["faces"]:
+                        vertices.append((to[0], to[1], to[2]))
+                    else:
+                        ve = [v-1 if i >= 7 else v for i, v in enumerate(ve)]
+                    
+                    dire_val = [
+                                (ve[0], ve[1], ve[3], ve[2]),
+                                (ve[2], ve[3], ve[7], ve[6]),
+                                (ve[6], ve[7], ve[5], ve[4]),
+                                (ve[4], ve[5], ve[1], ve[0]),
+                                (ve[2], ve[6], ve[4], ve[0]),
+                                (ve[5], ve[7], ve[3], ve[1]),
+                    ]
+                    if "rotation" in e:
+                        for i, v in enumerate(vertices[f:]):
+                            v = mathutils.Vector(v)
+                            origin = e["rotation"]["origin"]
+                            origin = mathutils.Matrix.Translation((-(origin[0]/16-0.5), origin[2]/16-0.5, origin[1]/16-0.5))
+                            r = mathutils.Matrix.Rotation(math.radians(e["rotation"]["angle"]), 4, axis[e["rotation"]["axis"]])
+                            vertices[f+i] = origin @ r @ mathutils.Matrix.inverted(origin) @ v
+                    for key, value in zip(dire, dire_val):  # 面作成
+                        if key in e["faces"]:
+                            normal.append(key)
+                            faces.append((f+value[0], f+value[1], f+value[2], f+value[3]))
+                            m = e["faces"][key]["texture"][1:]
+                            try:
+                                pretex = ""
+                                for i in range(5):
+                                    if textures[m][0] == "#":
+                                        if pretex == textures[m][1:]:
+                                            raise
+                                        m = textures[m][1:]
+                                        pretex = m
+                                    if re.fullmatch(f"{colors}_banner", name) and textures[m] == "entity/banner/base":
+                                        textures[m] = name
+                                # texture.append(textures[m].split(":")[-1])
+                                data["tex"].append(textures[m].split(":")[-1])
+                            except:
+                                self.report({'ERROR_INVALID_INPUT'}, bpy.app.translations.pgettext("Texture path is not set.\nFILE:%s") % (file[-1]))
+                                # texture.append(None)
+                                data["tex"].append(None)
+                            if "uv" in e["faces"][key]:
+                                uv = e["faces"][key]["uv"]
+                                xfrm = uv[0] / 16.0
+                                yfrm = uv[1] / 16.0
+                                xto = uv[2] / 16.0
+                                yto = uv[3] / 16.0
+                                if key == "up":
+                                    uvs.append((mathutils.Vector((xfrm, yfrm)),
+                                                mathutils.Vector((xfrm, yto)),
+                                                mathutils.Vector((xto, yto)),
+                                                mathutils.Vector((xto, yfrm))
+                                                ))
+                                elif key == "down":
+                                    uvs.append((mathutils.Vector((xto, yfrm)),
+                                                mathutils.Vector((xfrm, yfrm)),
+                                                mathutils.Vector((xfrm, yto)),
+                                                mathutils.Vector((xto, yto))
+                                                ))
+                                else:
+                                    uvs.append((mathutils.Vector((xto, yto)),
+                                                mathutils.Vector((xto, yfrm)),
+                                                mathutils.Vector((xfrm, yfrm)),
+                                                mathutils.Vector((xfrm, yto))
+                                                ))
+                            else:
+                                uvs.append("SET")
+                            if "rotation" in e["faces"][key]:
+                                uv_rot.append(e["faces"][key]["rotation"])
+                            else:
+                                uv_rot.append(0)
+                    data["uvs"] = uvs
+                    if data["name"] in megu:
+                        megu[data["name"]] += len(vertices[f:])
+                    else:
+                        megu[data["name"]] = len(vertices[f:])
+                    megut = tuple(megu.items())
+                if version in version_list[:version_list.index("1.21.4")+1]:
+                    data["mesh"].from_pydata(vertices, edges, faces)
+                    data["mesh"].update()
+                    vertices = []
+                    faces = []
+                    new_uv = data["mesh"].uv_layers.new(name='UVMap')
+                    data["new_uv"] = new_uv
+            if not version in version_list[:version_list.index("1.21.4")+1]:
+                data["mesh"].from_pydata(vertices, edges, faces)
+                data["mesh"].update()
+                new_uv = data["mesh"].uv_layers.new(name='UVMap')
+                pv = 0
+                for i, v in enumerate(megu):
+                    pv += megut[i][1]
+                    vertex_group = new_object.vertex_groups.new(name=megut[i][0])
+                    if i == 0:
+                        vertex_group.add([ind for ind in range(pv)], 1.0, 'REPLACE')
+                    else:
+                        vertex_group.add([ind for ind in range(pv-megut[i][1], pv)], 1.0, 'REPLACE')
+        for data in datalist:
+            if data["add_mesh"]:
+                ratio = []
+                if version in version_list[:version_list.index("1.21.4")+1]:
+                    obj = data["object"]
+                    new_uv = data["new_uv"]
+                    uvs = data["uvs"]
                 else:
-                    megu[data["name"]] = len(vertices[f:])
-                megut = tuple(megu.items())
-        new_mesh.from_pydata(vertices, edges, faces)
-        new_mesh.update()
-        pv = 0
-        for i, v in enumerate(megu):
-            pv += megut[i][1]
-            vertex_group = new_object.vertex_groups.new(name=megut[i][0])
-            if i == 0:
-                vertex_group.add([ind for ind in range(pv)], 1.0, 'REPLACE')
-            else:
-                vertex_group.add([ind for ind in range(pv-megut[i][1], pv)], 1.0, 'REPLACE')
-        for p, t in zip(new_object.data.polygons, texture):
-            if t and bpy.data.materials[t].node_tree.nodes[2].image:
-                p.material_index = new_object.data.materials.find(t)
-                width, height = bpy.data.materials[t].node_tree.nodes[2].image.size
-                ratio.append(height/width)
-            else:
-                ratio.append(1)
-        #  UV作成
-        new_uv = new_mesh.uv_layers.new(name='UVMap')
-        for ind, p in enumerate(new_object.data.polygons):
-            vecuv = []
-            if uvs[ind] == "SET":
-                vuv = [new_object.data.vertices[i].co for i in p.vertices]
-                if normal[ind] == "east":
-                    vuv = [(1-v[1]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
-                elif normal[ind] == "south":
-                    vuv = [(1-v[0]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
-                elif normal[ind] == "west":
-                    vuv = [(v[1]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
-                elif normal[ind] == "north":
-                    vuv = [(v[0]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
-                elif normal[ind] == "down":
-                    vuv = [(1-v[0]+0.5, ((v[1]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
-                elif normal[ind] == "up":
-                    vuv = [(1-v[0]+0.5, ((1-v[1]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
-                for uvx, uvy in vuv:
-                    vecuv.append(mathutils.Vector((uvx, uvy)))
-            else:
-                for u in uvs[ind]:
-                    u[1] = (abs((1-u[1])/ratio[ind])+1)
-                    vecuv.append(u)
-            if uv_rot[ind] == 90:
-                vecuv = [vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
-            elif uv_rot[ind] == 180:
-                vecuv = [vecuv[2], vecuv[3],vecuv[0],vecuv[1]]
-            elif uv_rot[ind] == 270:
-                vecuv = [vecuv[3], vecuv[0],vecuv[1],vecuv[2]]
-            for i, u in enumerate(new_uv.uv[ind*4:ind*4+4]):
-                u.vector = vecuv[i]
+                    obj = new_object
+                for p, t in zip(obj.data.polygons, data["tex"]):
+                    if t and bpy.data.materials[t].node_tree.nodes[2].image:
+                        p.material_index = obj.data.materials.find(t)
+                        width, height = bpy.data.materials[t].node_tree.nodes[2].image.size
+                        ratio.append(height/width)
+                    else:
+                        ratio.append(1)
+                data.pop("tex")
+                data.pop("uvs")
+                #  UV作成
+                for ind, p in enumerate(obj.data.polygons):
+                    vecuv = []
+                    if uvs[ind] == "SET":
+                        vuv = [obj.data.vertices[i].co for i in p.vertices]
+                        if normal[ind] == "east":
+                            vuv = [(1-v[1]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
+                        elif normal[ind] == "south":
+                            vuv = [(1-v[0]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
+                        elif normal[ind] == "west":
+                            vuv = [(v[1]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
+                        elif normal[ind] == "north":
+                            vuv = [(v[0]+0.5, ((v[2]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
+                        elif normal[ind] == "down":
+                            vuv = [(1-v[0]+0.5, ((v[1]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
+                        elif normal[ind] == "up":
+                            vuv = [(1-v[0]+0.5, ((1-v[1]+0.5)+ratio[ind])/ratio[ind]) for v in vuv]
+                        for uvx, uvy in vuv:
+                            vecuv.append(mathutils.Vector((uvx, uvy)))
+                    else:
+                        for u in uvs[ind]:
+                            u[1] = (abs((1-u[1])/ratio[ind])+1)
+                            vecuv.append(u)
+                    if uv_rot[ind] == 90:
+                        vecuv = [vecuv[1],vecuv[2],vecuv[3],vecuv[0]]
+                    elif uv_rot[ind] == 180:
+                        vecuv = [vecuv[2], vecuv[3],vecuv[0],vecuv[1]]
+                    elif uv_rot[ind] == 270:
+                        vecuv = [vecuv[3], vecuv[0],vecuv[1],vecuv[2]]
+                    for i, u in enumerate(new_uv.uv[ind*4:ind*4+4]):
+                        u.vector = vecuv[i]
+                    
         #  ノード生成
         if types == "block":
             vari = {}
@@ -581,9 +737,12 @@ def create_model(self, context, directory, name, types, new):
                     vari[v[0]].append("true")
             value_list = sorted(vari.items(), key=lambda x: x[0])
         elif types == "item":
-            value_list = [(i["name"], i["CMD"]) for i in datalist]
-            if len(value_list) == 1 and value_list[0][1] == "0":
-                value_list = []
+            if version in version_list[:version_list.index("1.21.4")+1]:
+                value_list = datalist
+            else:
+                value_list = [(i["name"], i["CMD"]) for i in datalist]
+                if len(value_list) == 1 and value_list[0][1] == "0":
+                    value_list = []
         if value_list:
             modi = new_object.modifiers.new("O2MCD", "NODES")
             node_tree = bpy.data.node_groups.new(name="/".join([types, name]), type='GeometryNodeTree')
@@ -600,8 +759,26 @@ def create_model(self, context, directory, name, types, new):
             geo_in.location = (-600, 0)
             geo_out.location = (1000, 0)
             geo_to_ins.location = (800, 0)
-        
-            if types == "block":
+
+            if version in version_list[:version_list.index("1.21.4")+1] and types == "item":
+                for i,data in enumerate(datalist):
+                    print(data)
+                    node_tree.interface.new_socket(data["object"].name, in_out="INPUT", socket_type="NodeSocketBool")
+                    obj_node = node_tree.nodes.new(type="GeometryNodeObjectInfo")
+                    obj_node.inputs[0].default_value = data["object"]
+                    obj_node_switch = node_tree.nodes.new(type="GeometryNodeSwitch")
+                    node_tree.links.new(geo_in.outputs[data["object"].name], obj_node_switch.inputs['Switch'])
+                    node_tree.links.new(obj_node_switch.outputs['Output'], geo_to_ins.inputs['Geometry'])
+                    node_tree.links.new(obj_node.outputs['Geometry'], obj_node_switch.inputs['True'])
+                    
+                    driver = new_object.driver_add(f"{modi.path_from_id()}[\"Socket_{i+2}\"]").driver
+                    driver.expression = "var"
+                    var = driver.variables.new()
+                    var.type = "SINGLE_PROP"
+                    var.targets[0].id = new_object
+                    n=data["name"].split("/")[-1]
+                    var.targets[0].data_path = f"O2MCD_props[\"models\"][\"{n}\"]"
+            elif types == "block":
                 tostr = ""
                 for i, (k, v) in enumerate(value_list):
                     node_tree.interface.new_socket(k, in_out="INPUT", socket_type="NodeSocketMenu")
@@ -895,7 +1072,7 @@ def create_model(self, context, directory, name, types, new):
                         case "red_banner":
                             col = [153, 51, 51]
                         case "black_banner":
-                            col = [255, 255, 255]
+                            col = [25, 25, 25]
                     col = [b/255 for b in col]
                     col[0] = col[0]/12.92 if col[0] <= 0.04045 else math.pow((col[0]+0.055)/1.055, 2.4)
                     col[1] = col[1]/12.92 if col[1] <= 0.04045 else math.pow((col[1]+0.055)/1.055, 2.4)
@@ -909,12 +1086,34 @@ def create_model(self, context, directory, name, types, new):
             modi.node_group = node_tree
             for m in range(len(list(filter(lambda x: x.type == 'MENU_SWITCH', [n for n in node_tree.nodes])))):
                 modi["Socket_"+str(m+2)] = 0
+        if version in version_list[:version_list.index("1.21.4")+1]:
+            if not "models" in new_object.O2MCD_props:
+                new_object.O2MCD_props["models"] = {}
+            obj_list = [context.scene.collection.children["O2MCD_models"].all_objects[o.name] for o in node_tree.interface.items_tree[2:]]
+            for i,data in enumerate(obj_list):
+                new_object.O2MCD_props["models"][data.name] = False
+                driver = new_object.driver_add(f"{modi.path_from_id()}[\"Socket_{i+2}\"]").driver
+                driver.expression = "var"
+                var = driver.variables.new()
+                var.type = "SINGLE_PROP"
+                var.targets[0].id = new_object
+                var.targets[0].data_path = f"O2MCD_props[\"models\"][\"{data.name}\"]"
+                        
+    new_object.O2MCD_props.disp_id = name
+    list_mesh = new_object.O2MCD_props.mesh_list.add()
+    list_mesh.mesh = new_mesh
+    list_mesh.name = new_mesh.name
+    list_mesh.id = name
+    list_mesh.item_data = f"{{id:\"{name}\",count:1,components:{{}}}}"
     if types == "item":
         new_object.O2MCD_props.disp_type = "item_display"
+        list_mesh["item_model"] = item_model
     elif types == "block":    
         new_object.O2MCD_props.disp_type = "block_display"
-    new_object.O2MCD_props.disp_id = name
-    new_object.O2MCD_props.mesh_list.add().mesh = new_mesh
+    with open(bpy.path.abspath(os.path.dirname(__file__))+os.sep+"durability_list.json", 'r') as f:
+        durability = json.load(f)
+    if name in durability:
+        list_mesh.max_durability = str(durability[name])
     context.view_layer.objects.active = new_object
     bpy.ops.object.select_all(action='DESELECT')
     context.view_layer.objects.active.select_set(True)
@@ -995,7 +1194,7 @@ class OBJECTTOMCDISPLAY_OT_ResourcePackMove(bpy.types.Operator): #移動
     def execute(self, context):
         list = context.scene.O2MCD_rc_packs
         index = bpy.context.scene.O2MCD_rc_index
-        if self.action == 'DOWN' and index < len(list)-1:
+        if self.action == 'DOWN' and index != 0 and index < len(list)-1:
             list.move(index, index+1)
             bpy.context.scene.O2MCD_rc_index += 1
         elif self.action == 'UP' and index > 1:

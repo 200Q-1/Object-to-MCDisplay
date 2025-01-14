@@ -4,12 +4,12 @@ import bpy
 import os
 from re import *
 from math import *
+import json
 from . import json_import
 from . import object_list
+from . import output
 # 関数
     
-def mesh_list_update(self,context):
-    context.view_layer.objects.active.O2MCD_props.mesh_enum=context.view_layer.objects.active.O2MCD_props.mesh_list[self].mesh.name.upper()
     
 def panel_object(self,context):
     layout = self.layout
@@ -24,6 +24,12 @@ def panel_object(self,context):
                 col=layout.column()
                 col.label(text="TYPE: "+context.active_object.O2MCD_props.disp_type)
                 col.label(text="ID: "+context.active_object.O2MCD_props.disp_id)
+                mesh_list=context.active_object.O2MCD_props.mesh_list
+                mesh_enum=context.active_object.O2MCD_props.mesh_enum
+                active_mesh = mesh_list[mesh_enum.lower()]
+                col.alert = active_mesh.durability_alert
+                col.prop(active_mesh,"max_durability")
+                col = layout.column()
                 box=col.box()
                 row=box.row()
                 row.alignment = "CENTER"
@@ -32,45 +38,47 @@ def panel_object(self,context):
                 row.label(text=str(context.object.O2MCD_props.number))
                 row.operator("o2mcd.list_move", icon='TRIA_RIGHT', text="").action = 'DOWN'
                 if context.active_object.O2MCD_props.disp_type != "empty":
-                        col=layout.column(align=True)
-                        col.separator()
+                    col=layout.column(align=True)
+                    col.separator()
+                    row=col.row()
+                    row2=row.row()
+                    row2.alignment = "LEFT"
+                    row2.label(text="Mesh list")
+                    row2.operator("o2mcd.copy_prop",icon='PASTEDOWN').action='MESH'
+                    row3=row.row()
+                    row3.alignment = "RIGHT"
+                    row3.prop(context.window_manager,"O2MCD_mesh_toggle",text="",icon='PREFERENCES',toggle=True)
+                    if not context.window_manager.O2MCD_mesh_toggle:
                         row=col.row()
-                        row2=row.row()
-                        row2.alignment = "LEFT"
-                        row2.label(text="Mesh list")
-                        row2.operator("o2mcd.copy_prop",icon='PASTEDOWN').action='MESH'
-                        row3=row.row()
-                        row3.alignment = "RIGHT"
-                        row3.prop(context.window_manager,"O2MCD_mesh_toggle",text="",icon='PREFERENCES',toggle=True)
-                        if not context.window_manager.O2MCD_mesh_toggle:
-                            row=col.row()
-                            row.use_property_split = True
-                            row.prop(context.active_object.O2MCD_props,"mesh_enum",icon='MESH_DATA',text="")
-                        else:
-                            row=col.row()
-                            row.template_list("OBJECTTOMCDISPLAY_UL_MeshList", "", context.active_object.O2MCD_props, "mesh_list", context.active_object.O2MCD_props, "mesh_index", rows=2)
-                            
-                            col2 = row.column(align=True)
-                            col2.operator("o2mcd.mesh_list_action", icon='TRIA_UP', text="").action = 'UP'
-                            col2.operator("o2mcd.mesh_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
-                        
-                        sp= col.split(align=True,factor=0.7)
-                        if context.active_object.O2MCD_props.disp_type=="item_display":
-                            sp.prop_search(context.preferences.addons[__package__].preferences, "item_id",context.preferences.addons[__package__].preferences, "item_list",text="")
-                            sp2= sp.split(align=True,factor=1)
-                            sp2.enabled=True if context.preferences.addons[__package__].preferences.item_id else False
-                            sp2.operator("o2mcd.mesh_list_action", icon='ADD', text="Add").action = 'ADD'
-                        elif context.active_object.O2MCD_props.disp_type=="block_display":
-                            sp.prop_search(context.preferences.addons[__package__].preferences, "block_id",context.preferences.addons[__package__].preferences, "block_list",text="")
-                            row= sp.row()
-                            row.enabled=True if context.preferences.addons[__package__].preferences.block_id else False
-                            row.operator("o2mcd.mesh_list_action", icon='ADD', text="Add").action = 'ADD'
-                        
-                        col=layout.column(align=True)
-                        col.use_property_split = True
-                        col.separator()
-                        box=col.box()
-                        box.label(text="Properties")
+                        row.use_property_split = True
+                        row.prop(context.active_object.O2MCD_props,"mesh_enum",icon='MESH_DATA',text="")
+                    else:
+                        row=col.row()
+                        row.template_list("OBJECTTOMCDISPLAY_UL_MeshList", "", context.active_object.O2MCD_props, "mesh_list", context.active_object.O2MCD_props, "mesh_index", rows=2)
+                        col2 = row.column(align=True)
+                        col2.operator("o2mcd.mesh_list_action", icon='TRIA_UP', text="").action = 'UP'
+                        col2.operator("o2mcd.mesh_list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+                    
+                    sp= col.split(align=True,factor=0.7)
+                    if context.active_object.O2MCD_props.disp_type=="item_display":
+                        sp.prop_search(context.preferences.addons[__package__].preferences, "item_id",context.preferences.addons[__package__].preferences, "item_list",text="")
+                        sp2= sp.split(align=True,factor=1)
+                        sp2.enabled=True if context.preferences.addons[__package__].preferences.item_id else False
+                        sp2.operator("o2mcd.mesh_list_action", icon='ADD', text="Add").action = 'ADD'
+                    elif context.active_object.O2MCD_props.disp_type=="block_display":
+                        sp.prop_search(context.preferences.addons[__package__].preferences, "block_id",context.preferences.addons[__package__].preferences, "block_list",text="")
+                        row= sp.row()
+                        row.enabled=True if context.preferences.addons[__package__].preferences.block_id else False
+                        row.operator("o2mcd.mesh_list_action", icon='ADD', text="Add").action = 'ADD'
+                    
+                    col=layout.column(align=True)
+                    col.use_property_split = True
+                    col.separator()
+                    box=col.box()
+                    box.label(text="Properties")
+                    version = context.scene.O2MCD_props.mc_version
+                    version_list = [v[0] for v in output.version_items(None,context)]
+                    if not version in version_list[:version_list.index("1.21.4")+1]:
                         try:
                             modi= list(filter(lambda m : m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name) and match(f"{m.node_group.name}(?:\.[0-9]+)?",context.active_object.data.name), context.active_object.modifiers))[0]
                             for i,n in enumerate(list(filter(lambda n : n.type=='MENU_SWITCH',modi.node_group.nodes))):
@@ -79,10 +87,10 @@ def panel_object(self,context):
                 col=layout.column(align=True)
                 col.separator()
                 row=col.row()
-                row2=row.row()
-                row2.alignment = "LEFT"
-                row2.label(text="Command list")
-                row2.operator("o2mcd.copy_prop",icon='PASTEDOWN').action='COMMAND'
+                row=row.row()
+                row.alignment = "LEFT"
+                row.label(text="Command list")
+                row.operator("o2mcd.copy_prop",icon='PASTEDOWN').action='COMMAND'
                 row= col.row()
                 row.template_list("OBJECTTOMCDISPLAY_UL_CommandList", "", context.active_object.O2MCD_props, "command_list", context.active_object.O2MCD_props, "command_index", rows=2,sort_lock=True)
                 col = row.column(align=True)
@@ -110,6 +118,7 @@ def panel_object(self,context):
                     ac.index=i
     else:
         layout.label(text="Specify the .jar file from the add-on settings")
+        
 class OBJECTTOMCDISPLAY_PT_ObjectProperties(bpy.types.Panel):  # プロパティパネル
     bl_label = "O2MCD"
     bl_space_type = 'VIEW_3D'
@@ -136,9 +145,159 @@ def mesh_items(self,context):
         items=((i.mesh.name.upper(),i.mesh.name,"") for i in context.active_object.O2MCD_props.mesh_list)
     return items
 
+def comp_model(self,context,data):
+    components = {}
+    item_data = {}
+    models = []
+    try:
+        item_data = sub(r'(?<!")\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*:\s*)',r'"\1"',self.item_data)
+        item_data = sub(r'((?:[0-9]+\.)?[0-9]+)[a-z]\b',"\\1",item_data)
+        item_data = json.loads(item_data)
+        if "components" in item_data:
+            components = item_data["components"]
+        if "item_model" in components and components["item_model"] in [i.name for i in context.preferences.addons[__package__].preferences.item_list]:
+            self["id"] = components["item_model"]
+        elif components["id"] in [i.name for i in context.preferences.addons[__package__].preferences.item_list]:
+            self["id"] = components["id"]
+        else:
+            raise
+        self.data_alert = True
+    except:
+        self.data_alert = False
+    match data["type"]:
+        case "minecraft:model":
+            models.append(data["model"].split("/")[-1])
+            # if "tints" in data:
+            #     for t in data["tints"]:
+            #         match t["type"]:
+            #             case "minecraft:constant":
+                            
+        case "minecraft:special":
+            name = ""
+            if "texture" in data["model"]:
+                name =".".join([data["model"]["type"].split(":")[-1],data["model"]["texture"].split(":")[-1]])
+            elif "color" in data["model"]:
+                name = ".".join([data["model"]["type"].split(":")[-1],data["model"]["color"]])
+            elif data["base"]:
+                name = data["base"].split("/")[-1]
+            models.append(name)
+        case "minecraft:composite":
+            for c in data["models"]:
+                models += comp_model(self,context,c)
+        case "minecraft:condition":
+            match data["property"]:
+                case "minecraft:using_item":
+                    models += comp_model(self,context,data["on_false"])
+                case "minecraft:has_component":
+                    if data["component"] in list(components.keys()) and "on_true" in data :
+                        models += comp_model(self,context,data["on_true"])
+                    elif "on_false" in data:
+                        models += comp_model(self,context,data["on_false"])
+                case "minecraft:custom_model_data":
+                    index = 0
+                    if data["index"]:
+                        index = data["index"]
+                    if ("minecraft:custom_model_data" in components and "flags" in components["minecraft:custom_model_data"] and
+                        type(components["minecraft:custom_model_data"]["flags"]) == list and len(components["minecraft:custom_model_data"]["flags"])-1 >= index and
+                        components["minecraft:custom_model_data"]["flags"][index] == True):
+                        models += comp_model(self,context,data["on_true"])
+                    else:
+                        models += comp_model(self,context,data["on_false"])
+                case "minecraft:broken":
+                    if "damage" in components and int(self.max_durability) - components["damage"] <= 1:
+                        models += comp_model(self,context,data["on_true"])
+                    else:
+                        models += comp_model(self,context,data["on_false"])
+        case "minecraft:select":
+            when = None
+            match data["property"]:
+                case "minecraft:charge_type":
+                    if "minecraft:charged_projectiles" in components and components["minecraft:charged_projectiles"]:
+                        ids = [i["id"] for i in components["minecraft:charged_projectiles"]]
+                        if "minecraft:firework_rocket" in ids:
+                            when = "rocket"
+                        else:
+                            when = "arrow"
+                case "minecraft:block_state":
+                    if "minecraft:block_state" in components and data["block_state_property"] in components["minecraft:block_state"]:
+                        when = components["minecraft:block_state"][data["block_state_property"]]
+                case "minecraft:trim_material":
+                    if "minecraft:trim" in components and "material" in data["minecraft:trim"]:
+                        when = components["minecraft:trim"]["material"]
+                # case "minecraft:display_context":
+                # case "minecraft:local_time":
+                # case "minecraft:context_entity_type":
+                # case "minecraft:context_dimension":
+                case "minecraft:custom_model_data":
+                    if ("minecraft:custom_model_data" in components and "strings" in components["minecraft:custom_model_data"] and
+                        type(components["minecraft:custom_model_data"]["strings"]) == list and 
+                        len(components["minecraft:custom_model_data"]["strings"])-1 >= index):
+                        when = components["minecraft:custom_model_data"]["strings"][index]
+            if when:
+                for m in data["cases"]:
+                    if m["when"] == when:
+                        models += comp_model(self,context,m["model"])
+            if not models:
+                models += comp_model(self,context,data["fallback"])
+        case "minecraft:range_dispatch":
+            threshold = None
+            match data["property"]:
+                case "minecraft:custom_model_data":
+                    if ("minecraft:custom_model_data" in components and "floats" in components["minecraft:custom_model_data"] and
+                        type(components["minecraft:custom_model_data"]["floats"]) == list and 
+                        len(components["minecraft:custom_model_data"]["floats"])-1 >= index):
+                        threshold = components["minecraft:custom_model_data"]["floats"][index]
+                case "minecraft:count":
+                    if "count" in item_data:
+                        threshold = item_data["count"]
+                    if data["normalize"] == True:
+                        threshold /= 64
+                case "minecraft:damage":
+                    if "minecraft:damage" in components:
+                        threshold = components["minecraft:damage"]
+                    if data["normalize"] == True:
+                        threshold /= int(self.max_durability)
+            if threshold:
+                for m in data["entries"]:
+                    if m["threshold"] == threshold*data["scale"]:
+                        models += comp_model(self,context,m["model"])
+            if not models:
+                models += comp_model(self,context,data["fallback"])
+    return models
+
+def item_data_update(self,context):
+    data = self["item_model"]["model"]
+    self["models_list"] = comp_model(self,context,data)
+    
+def change_model(self,context,obj):
+    comp = obj.O2MCD_props.mesh_list[obj.O2MCD_props.mesh_index]
+    if comp.data_alert == False:
+        models = comp["models_list"]
+        for m in obj.O2MCD_props["models"]:
+            if m in models:
+                obj.O2MCD_props["models"][m] = True
+            else:
+                obj.O2MCD_props["models"][m] = False
+
+def max_durability_updata(self,context):
+    try:
+        if self.max_durability:
+            int(self.max_durability)
+        self.durability_alert = False
+    except:
+        self.durability_alert = True
+    
+
 # メッシュリスト
 class  O2MCD_MeshList(bpy.types.PropertyGroup):
+    name : bpy.props.StringProperty(name="name", default="")
+    id : bpy.props.StringProperty(name="id", default="")
     mesh: bpy.props.PointerProperty(name="Mesh",type=bpy.types.Mesh)
+    item_data : bpy.props.StringProperty(name="itemNBT",description="",default="",update=item_data_update)
+    data_alert : bpy.props.BoolProperty(default=False)
+    max_durability: bpy.props.StringProperty(name="max_durability", default="",update=max_durability_updata)
+    durability_alert : bpy.props.BoolProperty(name="Enable",description="", default=False)
+    
 # コマンドリスト
 def cmd_list_update(self,context):
     if context.active_object and  context.active_object.O2MCD_props.command_list and self == context.active_object.O2MCD_props.command_list[context.active_object.O2MCD_props.command_index]:
@@ -149,19 +308,20 @@ class  O2MCD_CommandList(bpy.types.PropertyGroup):
     enable: bpy.props.BoolProperty(name="Enable",description="", default=True)
 class  O2MCD_TagList(bpy.types.PropertyGroup): 
     tag: bpy.props.StringProperty(name="tag",description="",default="")
+    
 
-
-class O2MCD_Obj_Props(bpy.types.PropertyGroup):  # オブジェクトのプロパティ
+# オブジェクトのプロパティ
+class O2MCD_Obj_Props(bpy.types.PropertyGroup):
     number: bpy.props.IntProperty(name=bpy.app.translations.pgettext_iface("Object Number"), default=-1, min=-1)
     enable : bpy.props.BoolProperty(name="enable", default=True)
-    command_index: bpy.props.IntProperty(name="cmd_index", default=-1)
+    command_index: bpy.props.IntProperty(name="cmmd_index", default=-1)
     pre_cmd: bpy.props.IntProperty(name="",default=-1)
     disp_id: bpy.props.StringProperty(name="id",description="",default="")
     disp_type: bpy.props.StringProperty(name="type",description="",default="")
     mesh_enum: bpy.props.EnumProperty(items=mesh_items)
     mesh_list: bpy.props.CollectionProperty(name="mesh",type=O2MCD_MeshList)
     command_list : bpy.props.CollectionProperty(type=O2MCD_CommandList)
-    mesh_index:bpy.props.IntProperty(name="mesh_index", default=0,update=mesh_list_update)
+    mesh_index:bpy.props.IntProperty(name="mesh_index", default=0)
     tag_list : bpy.props.CollectionProperty(type=O2MCD_TagList)
 
 
@@ -169,7 +329,6 @@ class  O2MCD_ItemList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
 class  O2MCD_BlockList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
-
 
 class OBJECTTOMCDISPLAY_UL_CommandList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
@@ -205,8 +364,9 @@ class OBJECTTOMCDISPLAY_OT_TagAction(bpy.types.Operator):
     
 class OBJECTTOMCDISPLAY_UL_MeshList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,active_propname, index):
-        row = layout.row()
-        row.label(text=item.mesh.name,icon='MESH_DATA')
+        row = layout.row(align=True)
+        row.ui_units_x = 1
+        row.prop(item,"item_data",text="")
         op = row.operator("o2mcd.mesh_list_action", icon='X', text="")
         op.action = 'REMOVE'
         op.index = index
@@ -214,6 +374,24 @@ class OBJECTTOMCDISPLAY_UL_MeshList(bpy.types.UIList):
         bpy.ops.wm.call_menu(name="OBJECTTOMCDISPLAY_MT_SetId")
         return {'FINISHED'}
     
+    def execute(self, context):
+        mesh_list=context.view_layer.objects.active.O2MCD_props.mesh_list
+        mesh_index=context.view_layer.objects.active.O2MCD_props.mesh_index
+        if self.action == 'DOWN' and mesh_index < len(mesh_list)-1:
+            mesh_list.move(mesh_index, mesh_index+1)
+            context.object.O2MCD_props.mesh_index += 1
+        elif self.action == 'UP' and mesh_index > 0:
+            mesh_list.move(mesh_index, mesh_index-1)
+            context.object.O2MCD_props.mesh_index -= 1
+        elif self.action == 'ADD':
+            context.active_object.O2MCD_props.item_data_list.add()
+        elif self.action == 'REMOVE':
+            context.active_object.O2MCD_props.item_data_list.remove(context.active_object.O2MCD_props.item_data_index)
+            if context.active_object.O2MCD_props.item_data_index >= 1:
+                context.active_object.O2MCD_props.item_data_index -= 1
+            
+        return {"FINISHED"}
+
 class OBJECTTOMCDISPLAY_OT_MeshListAction(bpy.types.Operator):
     bl_idname = "o2mcd.mesh_list_action"
     bl_label = ""
@@ -285,12 +463,11 @@ class OBJECTTOMCDISPLAY_OT_SetId(bpy.types.Operator):
     new: bpy.props.BoolProperty(name="new")
 
     def execute(self, context):
-        if self.action == 'ITEM':
-            path=["assets", "minecraft", "models", "item"]
-        elif self.action == 'BLOCK':
-            path=["assets","minecraft","blockstates"]
-        directory = os.sep.join([context.preferences.addons[__package__].preferences.jar_path]+path)+os.sep
-        json_import.create_model(self, context, directory, self.enum, self.action.lower(), self.new)
+        directory = context.preferences.addons[__package__].preferences.jar_path
+        name = self.enum
+        types = self.action.lower()
+        new = self.new
+        json_import.create_model(self, context, directory, name, types, new)
         if not context.view_layer.objects.active.O2MCD_props.command_list:
             bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
