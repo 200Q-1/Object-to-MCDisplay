@@ -197,6 +197,7 @@ def comvert_function(context, funk_list, com, num):    # 関数変換
             elif var == "id": com = com.replace(f, obj.O2MCD_props.disp_id, 1)
             elif var == "type": com = com.replace(f, obj.O2MCD_props.disp_type, 1)
             elif var == "num": com = com.replace(f, str(num), 1)
+            elif var == "item_data": com = com.replace(f, obj.O2MCD_props.data_list[obj.O2MCD_props.mesh_index].data, 1)
         elif var == "frame": com = com.replace(f, str(current_frame), 1)
         if var == "math" :
             if elm == "" or elm == val:

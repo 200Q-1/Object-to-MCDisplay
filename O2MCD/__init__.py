@@ -2,9 +2,24 @@
 import os
 import zipfile
 import json
-import re
 from re import *
-
+if 'bpy' in locals():
+    from importlib import reload
+    import sys
+    for k, v in list(sys.modules.items()):
+        if k.startswith(__name__):
+            reload(v)
+else:
+    from . import (
+        object, 
+        output, 
+        command, 
+        object_list,
+        json_import,
+        pixel_to_cube
+        )
+import bpy
+from bpy.app.handlers import persistent
 O2MCD_translation_dict = {
     "ja_JP": {
         ("*", "Update"): "更新",
@@ -83,21 +98,6 @@ O2MCD_translation_dict = {
         ("*", ".jar file"):".jarファイル",
     }
 }
-if "bpy" in locals():
-    import imp
-    imp.reload(object)
-    imp.reload(output)
-    imp.reload(command)
-    imp.reload(object_list)
-    imp.reload(json_import)
-else:
-    from . import object
-    from . import output
-    from . import command
-    from . import object_list
-    from . import json_import
-import bpy
-from bpy.app.handlers import persistent
     
 class  O2MCD_BlockList(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="")
@@ -126,10 +126,11 @@ def jar_setting(self,context):
     try:
         with zipfile.ZipFile(jar) as zip:
             js=json.load(zip.open('assets/minecraft/lang/en_us.json','r'))
-            block_id=[i.replace('block.minecraft.','') for i in js.keys() if re.match('block\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
+            block_state=[i.split("/")[-1][:-5] for i in zip.namelist() if i.startswith("assets/minecraft/blockstates/")]
+            block_id=[i.replace('block.minecraft.','') for i in js.keys() if match('block\.minecraft\..+(?!\.)',i) and len(i.split("."))==3 and i.replace('block.minecraft.','') in block_state]
             item_id=[i.split("/")[-1][:-5] for i in zip.namelist() if i.startswith("assets/minecraft/items/")]
             if not item_id:
-                item_id=[i.replace('item.minecraft.','') for i in js.keys() if re.match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
+                item_id=[i.replace('item.minecraft.','') for i in js.keys() if match('item\.minecraft\..+(?!\.)',i) and len(i.split("."))==3]
                 bni=[f.split("/")[-1] for f in zip.namelist() if f.startswith("assets/minecraft/models/item/") and not f.endswith('/')]
                 item_id=[b for b in block_id if b+".json" in bni]+item_id
     except:self.report({'ERROR_INVALID_INPUT'},"jarファイルの読み込みに失敗しました。")
@@ -150,7 +151,6 @@ def jar_setting(self,context):
         bpy.context.scene.O2MCD_rc_packs.add().path=jar
     else:
         bpy.context.scene.O2MCD_rc_packs[len(context.scene.O2MCD_rc_packs)-1].path=jar
-        
 
 class O2MCD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -162,7 +162,7 @@ class O2MCD_Preferences(bpy.types.AddonPreferences):
     item_list : bpy.props.CollectionProperty(name="item_list",type=O2MCD_ItemList)
     tmp_cmd: bpy.props.CollectionProperty(name="temp_cmd",type=O2MCD_TempCmd)
     tmp_index: bpy.props.IntProperty(name="index",default=0)
-    cmd_func: bpy.props.StringProperty(name="Func",description="", subtype='FILE_PATH', default="matrix,loc,scale,l_rot,r_rot,pos,rot,id,type,prop,tags?,name,num,frame,math")
+    cmd_func: bpy.props.StringProperty(name="Func",description="", subtype='FILE_PATH', default="matrix,loc,scale,l_rot,r_rot,pos,rot,id,type,prop,item_data,tags?,name,num,frame,math")
     mcpp_sync: bpy.props.BoolProperty(name=bpy.app.translations.pgettext_iface("Synchronisation of Minecraft versions with MCPP"),description=bpy.app.translations.pgettext_tip("Synchronise version settings with MCPP"),default=False)
     
     def draw(self, context):
@@ -258,6 +258,7 @@ def JarSet(self, context):
         context.scene.O2MCD_rc_packs.add()
         context.scene.O2MCD_rc_packs.add().path = context.preferences.addons[__package__].preferences.jar_path
         context.scene.O2MCD_rc_packs.move(len(context.scene.O2MCD_rc_packs)-1,1)
+    context.scene.O2MCD_props["model_ids"]=[":".join(["minecraft",i.name]) for i in context.preferences.addons[__package__].preferences.item_list]
     return {'FINISHED'}
 
 
@@ -289,6 +290,7 @@ def register():
     object.register()
     object_list.register()
     json_import.register()
+    pixel_to_cube.register()
 
 def unregister():
     bpy.app.translations.unregister(__name__)
@@ -303,6 +305,7 @@ def unregister():
     object.unregister()
     object_list.unregister()
     json_import.unregister()
+    pixel_to_cube.unregister()
     for cls in classes:
         bpy.utils.unregister_class(cls)
     if load in bpy.app.handlers.load_post:

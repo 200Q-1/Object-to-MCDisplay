@@ -43,20 +43,21 @@ def update_auto_reload(self,context):
             
 #  メッシュ更新
 def mesh_update(self,context):
+    version = bpy.context.scene.O2MCD_props.mc_version
+    version_list = [v[0] for v in version_items(None,bpy.context)]
     for o in bpy.context.scene.O2MCD_object_list:
         obj=o.obj
         if obj.type == 'MESH':
-            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes]:
+            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes] and not version in version_list[version_list.index("1.21.4"):]:
                 obj.data=bpy.data.meshes[obj.O2MCD_props.mesh_enum.lower()]
                 obj.O2MCD_props.disp_id=sub('\.[0-9]+', "",obj.data.name.split("/")[-1])
+            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes] or version in version_list[version_list.index("1.21.4"):]:
                 for modi in list(filter(lambda m: m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name), obj.modifiers)):
                     if match(f"{modi.node_group.name}(?:\.[0-9]+)?",obj.data.name):
                         modi.show_viewport=True
                     else:
                         modi.show_viewport=False
-        version = bpy.context.scene.O2MCD_props.mc_version
-        version_list = [v[0] for v in version_items(None,bpy.context)]
-        if version in version_list[:version_list.index("1.21.4")+1] and obj.O2MCD_props.disp_type == "item_display":
+        if version in version_list[version_list.index("1.21.4"):] and obj.O2MCD_props.disp_type == "item_display":
             object.change_model(self,bpy.context,obj)
                         
 def near_version(prop,prop_list):
@@ -226,69 +227,69 @@ class OBJECTTOMCDISPLAY_OT_FuncButton(bpy.types.Operator):
         match prop.action:
             case "MATRIX":
                 des="".join([bpy.app.translations.pgettext_tip("16 float values in transformation"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f"])
             case "LOC":
                 des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("translation"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "0.0f,0.0f,0.0f"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "0.0f,0.0f,0.0f"])
             case "SCALE":
                 des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("scale"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "0.0f,0.0f,0.0f"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "0.0f,0.0f,0.0f"])
             case "L_ROT":
                 des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("left_rotation "),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "0.0f,0.0f,0.0f"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "0.0f,0.0f,0.0f"])
             case "R_ROT":
                 des="".join([bpy.app.translations.pgettext_tip("Value of %s in transformation") % ("right_rotation"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "0.0f,0.0f,0.0f"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "0.0f,0.0f,0.0f"])
             case "POS":
                 des="".join([bpy.app.translations.pgettext_tip("Relative coordinates of entities"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "^0.0 ^0.0 ^0.0"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "^0.0 ^0.0 ^0.0"])
             case "ROT":
                 des="".join([bpy.app.translations.pgettext_tip("Relative rotation of entities"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "^0.0 ^0.0"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "^0.0 ^0.0"])
             case "ID":
                 des="".join([bpy.app.translations.pgettext_tip("Item ID"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "apple"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "apple"])
             case "TYPE":
                 des="".join([bpy.app.translations.pgettext_tip("entity type"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "item_display"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "item_display"])
             case "PROP":
                 des="".join([bpy.app.translations.pgettext_tip("Properties of the block (custom model data)"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "facing:\"east\",half:\"bottom\",open:\"false\""," | ",
-                             "\"minecraft:custom_model_data\":0" if context.scene.O2MCD_props.mc_version == "1.20.5" else "CustomModelData:0"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "facing:\"east\",half:\"bottom\",open:\"false\""," | ",
+                            "\"minecraft:custom_model_data\":0" if context.scene.O2MCD_props.mc_version == "1.20.5" else "CustomModelData:0"])
             case "TAG":
                 des="".join([bpy.app.translations.pgettext_tip("Object tags"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "tag=A,tag=B"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "tag=A,tag=B"])
             case "TAGS":
                 des="".join([bpy.app.translations.pgettext_tip("Object tags"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "\"A\",\"B\""])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "\"A\",\"B\""])
             case "NAME":
                 des="".join([bpy.app.translations.pgettext_tip("Object name"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "Cube.001"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "Cube.001"])
             case "NUM":
                 des="".join([bpy.app.translations.pgettext_tip("Object index"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "0"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "0"])
             case "FRAME":
                 des="".join([bpy.app.translations.pgettext_tip("Current Frame"),
-                             " \n",bpy.app.translations.pgettext_tip("Example:"),
-                             "0"])
+                            " \n",bpy.app.translations.pgettext_tip("Example:"),
+                            "0"])
             case "MATH":
                 des="".join([bpy.app.translations.pgettext_tip("formula"),
-                             " \n",bpy.app.translations.pgettext_tip("input"),bpy.app.translations.pgettext_tip("Example:"),
-                             "/math[1+1] | /math[round(pi,2)] | /math[bpy.data.objects[0][\"prop\"]]"])
+                            " \n",bpy.app.translations.pgettext_tip("input"),bpy.app.translations.pgettext_tip("Example:"),
+                            "/math[1+1] | /math[round(pi,2)] | /math[bpy.data.objects[0][\"prop\"]]"])
             case _:
                 des=""
         return des

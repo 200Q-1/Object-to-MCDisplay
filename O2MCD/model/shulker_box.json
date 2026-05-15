@@ -1,5 +1,4 @@
 {
-	"credit": "Made with Blockbench",
 	"textures": {
 		"0": "entity/shulker/shulker"
 	},
@@ -17,9 +16,10 @@
 			}
 		},
 		{
+			"animation": "shulker",
 			"from": [0, 4, 0],
 			"to": [16, 16, 16],
-			"rotation": {"angle": 0, "axis": "y", "origin": [0, 4, 0]},
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 10, 8]},
 			"faces": {
 				"north": {"uv": [4, 4, 8, 7], "texture": "#0"},
 				"east": {"uv": [0, 4, 4, 7], "texture": "#0"},
