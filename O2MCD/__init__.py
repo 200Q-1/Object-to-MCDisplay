@@ -262,7 +262,6 @@ def JarSet(self, context):
     return {'FINISHED'}
 
 
-
 classes = (
     O2MCD_BlockList,
     O2MCD_ItemList,

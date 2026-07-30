@@ -28,6 +28,7 @@ def menu_fn(self, context):
         self.layout.separator()
         self.layout.menu("OBJECTTOMCDISPLAY_MT_ObjectSub", text='O2MCD')
 
+
 def enum_item(self, context):  # アイテムリスト
     enum_items = []
     if self.action == 'ITEM':
