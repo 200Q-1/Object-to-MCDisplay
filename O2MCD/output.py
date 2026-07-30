@@ -43,21 +43,19 @@ def update_auto_reload(self,context):
             
 #  メッシュ更新
 def mesh_update(self,context):
-    version = bpy.context.scene.O2MCD_props.mc_version
-    version_list = [v[0] for v in version_items(None,bpy.context)]
     for o in bpy.context.scene.O2MCD_object_list:
         obj=o.obj
         if obj.type == 'MESH':
-            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes] and not version in version_list[version_list.index("1.21.4"):]:
+            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes] and not version_check(context,"1.21.4"):
                 obj.data=bpy.data.meshes[obj.O2MCD_props.mesh_enum.lower()]
                 obj.O2MCD_props.disp_id=sub('\.[0-9]+', "",obj.data.name.split("/")[-1])
-            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes] or version in version_list[version_list.index("1.21.4"):]:
+            if obj.O2MCD_props.mesh_enum.lower() in [n.name for n in bpy.data.meshes] or version_check(context,"1.21.4"):
                 for modi in list(filter(lambda m: m.type == 'NODES' and match("O2MCD(?:\.[0-9]+)?",m.name), obj.modifiers)):
                     if match(f"{modi.node_group.name}(?:\.[0-9]+)?",obj.data.name):
                         modi.show_viewport=True
                     else:
                         modi.show_viewport=False
-        if version in version_list[version_list.index("1.21.4"):] and obj.O2MCD_props.disp_type == "item_display":
+        if version_check(context,"1.21.4") and obj.O2MCD_props.disp_type == "item_display":
             object.change_model(self,bpy.context,obj)
                         
 def near_version(prop,prop_list):
@@ -394,16 +392,21 @@ class OBJECTTOMCDISPLAY_OT_Export(bpy.types.Operator):  # 出力ボタン
                 except:self.report({'ERROR'},bpy.app.translations.pgettext_tip("File path not found"))
         return {'FINISHED'}
 
-def version_items(self,context):
+def version_list(self,context):
     items=['1.19','1.20','1.20.5','1.21.4']
     if check_mcpp() and context.preferences.addons[__package__].preferences.mcpp_sync:
         items+=[e.name for e in type(bpy.context.preferences.addons[check_mcpp()].preferences).bl_rna.properties["mc_version_manager"].enum_items if not e.name in items]
     items.sort()
     items.reverse()
-    items=tuple([(i,i,"") for i in items])
-    return items
+    return tuple([(i,i,"") for i in items])
+
+def version_check(context,version):
+    version = context.scene.O2MCD_props.mc_version
+    list = [v[0] for v in version_list(None,context)]
+    
+    return version in list[list.index(version):]
 class O2MCD_Meny_Props(bpy.types.PropertyGroup):  # パネルのプロパティ
-    mc_version : bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext_tip("Minecraft version"), items=version_items,update=update_version)
+    mc_version : bpy.props.EnumProperty(name="Version",description=bpy.app.translations.pgettext_tip("Minecraft version"), items=version_list,update=update_version)
     rou: bpy.props.IntProperty(name="Round",description=bpy.app.translations.pgettext_tip("number of decimal places to round"), default=3, max=16, min=1)
     curr_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext_tip("single frame path"), subtype='FILE_PATH', default="")
     anim_path: bpy.props.StringProperty(name="Path",description=bpy.app.translations.pgettext_tip("animation path"), subtype='FILE_PATH', default="")

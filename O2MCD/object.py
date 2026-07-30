@@ -179,10 +179,7 @@ def panel_object(self,context):
                     current_mesh = context.active_object.O2MCD_props.data_list[context.active_object.O2MCD_props.mesh_index]
                     draw_recursive(col,current_mesh.item_data,True)
                     
-                    
-                    version = context.scene.O2MCD_props.mc_version
-                    version_list = [v[0] for v in output.version_items(None,context)]
-                    if not (version in version_list[version_list.index("1.21.4"):] and context.active_object.O2MCD_props.disp_type=="item_display"):
+                    if not (output.version_check(context, "1.21.4") and context.active_object.O2MCD_props.disp_type=="item_display"):
                         col=layout.column(align=True)
                         col.use_property_split = True
                         col.separator()
@@ -424,7 +421,7 @@ def change_model(self,context,obj):
     model_id=active_data["model_id"]
     if nbt != active_data.data:
         active_data.data=nbt
-        data = context.scene.O2MCD_props["models"][active_data["id"]]["model"]
+        data = context.scene.O2MCD_props["models"][active_data["model_id"]]["model"]
         item_data={}
         components={}
         try:
@@ -857,11 +854,9 @@ class OBJECTTOMCDISPLAY_OT_MeshListAction(bpy.types.Operator):
             data_list.move(mesh_index, mesh_index-1)
             context.object.O2MCD_props.mesh_index -= 1
         elif self.action == 'ADD':
-            version = context.scene.O2MCD_props.mc_version
-            version_list = [v[0] for v in output.version_items(None,context)]
             name=context.preferences.addons[__package__].preferences.item_id
             if context.active_object.O2MCD_props.disp_type == 'item_display' and context.preferences.addons[__package__].preferences.item_id:
-                if version in version_list[version_list.index("1.21.4"):]:
+                if output.version_check("1.21.4"):
                     file = ["assets", "minecraft", "items",name+".json"]
                 else:
                     file = ["assets", "minecraft", "models", "item",name+".json"]
@@ -910,16 +905,14 @@ class OBJECTTOMCDISPLAY_OT_SetId(bpy.types.Operator):
         name = self.enum
         types = self.action.lower()
         new = self.new
-        version = context.scene.O2MCD_props.mc_version
-        version_list = [v[0] for v in output.version_items(None,context)]
         if types == 'item':
-            if version in version_list[version_list.index("1.21.4"):]:
+            if output.version_check(context,"1.21.4"):
                 file = ["assets", "minecraft", "items",name+".json"]
             else:
                 file = ["assets", "minecraft", "models", "item",name+".json"]
         elif types == 'block':
             file = ["assets","minecraft","blockstates",name+".json"]
-        json_import.create_model(self, context, file, name, types, new)
+        json_import.create_model(self, context, file, ":".join(["minecraft", name]), types, new)
         if not context.view_layer.objects.active.O2MCD_props.command_list:
             bpy.ops.o2mcd.command_list_action(action='ADD')
         return {'FINISHED'}
